@@ -1,17 +1,39 @@
-# cap_app
+# Capstone Mobile App
 
-A new Flutter project.
+Android-first Flutter end-user MVP for supermarket price comparison and submissions.
 
-## Getting Started
+## Stack
 
-This project is a starting point for a Flutter application.
+- Flutter + Material 3
+- Riverpod (state management)
+- go_router (navigation)
+- Dio (HTTP)
+- flutter_secure_storage (JWT token storage)
+- shared_preferences (local cart persistence)
 
-A few resources to get you started if this is your first Flutter project:
+## Run
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Use backend URL through `API_BASE_URL`:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter run --dart-define API_BASE_URL=http://10.0.2.2:8080
+```
+
+For a physical Android device, replace `10.0.2.2` with your machine LAN IP.
+
+## Implemented MVP Flows
+
+- Register/login with JWT session restore
+- Product browse and search
+- Product detail with nutrition and per-supermarket prices
+- Local cart add/edit/remove persistence
+- Single-supermarket cart comparison with full/partial coverage diagnostics
+- Product and price submission forms
+- My submissions list with status chips (`PENDING`, `APPROVED`, `REJECTED`)
+
+## Quality Checks
+
+```bash
+flutter analyze
+flutter test
+```
