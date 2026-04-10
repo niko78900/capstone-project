@@ -1,0 +1,66 @@
+<section class="page">
+  <header class="header">
+    <h1>Submission Moderation</h1>
+    <p>Review user-submitted product and price changes.</p>
+  </header>
+
+  <mat-button-toggle-group [formControl]="statusControl" aria-label="Submission status filter">
+    @for (status of statuses; track status) {
+      <mat-button-toggle [value]="status">{{ status }}</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+
+  @if (loading()) {
+    <app-loading-state message="Loading submissions..." />
+  }
+
+  @if (errorMessage(); as errorMessage) {
+    <app-empty-state title="Unable to load submissions" [message]="errorMessage" />
+  }
+
+  @if (!loading() && !errorMessage() && submissions().length === 0) {
+    <app-empty-state
+      title="No submissions"
+      message="No submissions matched the selected status."
+    />
+  }
+
+  <div class="cards">
+    @for (submission of submissions(); track submission.id) {
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>#{{ submission.id }} • {{ submission.type }}</mat-card-title>
+          <mat-card-subtitle>
+            {{ submission.submittedByEmail }} • {{ displayDate(submission.createdAt) }}
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          @if (submission.notes) {
+            <p><strong>Notes:</strong> {{ submission.notes }}</p>
+          }
+          <pre>{{ formatPayload(submission.payload) }}</pre>
+        </mat-card-content>
+
+        <mat-card-actions>
+          <button
+            mat-flat-button
+            color="primary"
+            (click)="onApprove(submission)"
+            [disabled]="processingSubmissionId() === submission.id"
+          >
+            Approve
+          </button>
+          <button
+            mat-stroked-button
+            color="warn"
+            (click)="onReject(submission)"
+            [disabled]="processingSubmissionId() === submission.id"
+          >
+            Reject
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    }
+  </div>
+</section>

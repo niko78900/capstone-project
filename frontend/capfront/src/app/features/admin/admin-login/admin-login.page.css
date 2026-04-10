@@ -1,0 +1,21 @@
+.login-page {
+  display: grid;
+  justify-content: center;
+  padding-top: 36px;
+}
+
+mat-card {
+  max-width: 420px;
+  width: min(420px, calc(100vw - 32px));
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.server-error {
+  color: #b42318;
+  margin: 0;
+}
