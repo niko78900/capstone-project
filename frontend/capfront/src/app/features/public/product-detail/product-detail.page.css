@@ -1,0 +1,21 @@
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+mat-card {
+  max-width: 920px;
+}
+
+h3 {
+  margin: 16px 0 10px;
+}
+
+ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.prices-table {
+  width: 100%;
+}

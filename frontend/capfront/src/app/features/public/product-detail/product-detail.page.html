@@ -1,0 +1,71 @@
+<section class="page">
+  <a mat-button routerLink="/products">← Back to catalog</a>
+
+  @if (loading()) {
+    <app-loading-state message="Loading product details..." />
+  }
+
+  @if (errorMessage(); as errorMessage) {
+    <app-empty-state title="Could not load product" [message]="errorMessage" />
+  }
+
+  @if (!loading() && !errorMessage() && detail(); as detail) {
+    <mat-card appearance="outlined">
+      <mat-card-title>{{ detail.name }}</mat-card-title>
+      <mat-card-subtitle>
+        {{ detail.brand || 'Unbranded' }} • {{ detail.category }}
+      </mat-card-subtitle>
+      <mat-card-content>
+        @if (detail.barcode) {
+          <p><strong>Barcode:</strong> {{ detail.barcode }}</p>
+        }
+
+        <mat-divider />
+
+        <section class="nutrition">
+          <h3>Nutrition</h3>
+          @if (detail.nutrition) {
+            <ul>
+              <li>Calories: {{ detail.nutrition.calories ?? '-' }}</li>
+              <li>Protein (g): {{ detail.nutrition.proteinG ?? '-' }}</li>
+              <li>Carbs (g): {{ detail.nutrition.carbsG ?? '-' }}</li>
+              <li>Fat (g): {{ detail.nutrition.fatG ?? '-' }}</li>
+              <li>Serving size: {{ detail.nutrition.servingSize ?? '-' }}</li>
+            </ul>
+          } @else {
+            <p>No nutrition data available.</p>
+          }
+        </section>
+
+        <mat-divider />
+
+        <section class="prices">
+          <h3>Verified Prices</h3>
+          @if (detail.prices.length === 0) {
+            <p>No verified prices yet.</p>
+          } @else {
+            <table mat-table [dataSource]="detail.prices" class="prices-table">
+              <ng-container matColumnDef="supermarket">
+                <th mat-header-cell *matHeaderCellDef>Supermarket</th>
+                <td mat-cell *matCellDef="let row">{{ row.supermarketName }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="price">
+                <th mat-header-cell *matHeaderCellDef>Price</th>
+                <td mat-cell *matCellDef="let row">{{ row.price }} {{ row.currency }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="observedAt">
+                <th mat-header-cell *matHeaderCellDef>Observed</th>
+                <td mat-cell *matCellDef="let row">{{ formatTimestamp(row.observedAt) }}</td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            </table>
+          }
+        </section>
+      </mat-card-content>
+    </mat-card>
+  }
+</section>

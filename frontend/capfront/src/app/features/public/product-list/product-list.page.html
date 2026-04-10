@@ -1,0 +1,47 @@
+<section class="page">
+  <header class="header">
+    <h1>Product Catalog</h1>
+    <p>Search products and review latest verified supermarket prices.</p>
+  </header>
+
+  <mat-form-field appearance="outline" class="search-field">
+    <mat-label>Search by product or brand</mat-label>
+    <input matInput [formControl]="searchControl" />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+
+  @if (loading()) {
+    <app-loading-state message="Loading products..." />
+  }
+
+  @if (errorMessage(); as errorMessage) {
+    <app-empty-state title="Request failed" [message]="errorMessage" />
+  }
+
+  @if (!loading() && !errorMessage() && products().length === 0) {
+    <app-empty-state
+      title="No products found"
+      message="Try a broader search query or clear the search input."
+    />
+  }
+
+  <div class="grid">
+    @for (product of products(); track product.id) {
+      <mat-card class="product-card" appearance="outlined">
+        <mat-card-title>{{ product.name }}</mat-card-title>
+        <mat-card-subtitle>
+          {{ product.brand || 'Unbranded' }} • {{ product.category }}
+        </mat-card-subtitle>
+        <mat-card-content>
+          <p class="price">{{ formatPrice(product) }}</p>
+          <p class="subtle">
+            {{ product.bestPriceSupermarket || 'No supermarket data yet' }}
+          </p>
+        </mat-card-content>
+        <mat-card-actions>
+          <a mat-button color="primary" [routerLink]="['/products', product.id]">View details</a>
+        </mat-card-actions>
+      </mat-card>
+    }
+  </div>
+</section>

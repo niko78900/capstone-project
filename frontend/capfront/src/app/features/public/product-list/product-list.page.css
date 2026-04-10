@@ -1,0 +1,39 @@
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.header p {
+  color: #52617a;
+  margin: 4px 0 0;
+}
+
+.search-field {
+  max-width: 520px;
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.product-card {
+  height: 100%;
+}
+
+.price {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+
+.subtle {
+  color: #5b6982;
+  margin: 0;
+}
