@@ -1,6 +1,7 @@
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
+import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,8 @@ class SubmitProductScreen extends ConsumerStatefulWidget {
   const SubmitProductScreen({super.key});
 
   @override
-  ConsumerState<SubmitProductScreen> createState() => _SubmitProductScreenState();
+  ConsumerState<SubmitProductScreen> createState() =>
+      _SubmitProductScreenState();
 }
 
 class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
@@ -49,153 +51,168 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     final submitState = ref.watch(productSubmissionControllerProvider);
     final isSubmitting = submitState.isLoading;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Submit Product')),
-      drawer: const MainDrawer(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DropdownButtonFormField<int>(
-                  initialValue: _categoryId,
-                  decoration: InputDecoration(
-                    labelText: 'Category',
-                    errorText: _fieldErrors['categoryId'],
+    return BackToHomeScope(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Submit Product')),
+        drawer: const MainDrawer(),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  DropdownButtonFormField<int>(
+                    initialValue: _categoryId,
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      errorText: _fieldErrors['categoryId'],
+                    ),
+                    items: categoryOptions
+                        .map(
+                          (option) => DropdownMenuItem<int>(
+                            value: option.id,
+                            child: Text(option.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _categoryId = value ?? _categoryId;
+                            });
+                          },
                   ),
-                  items: categoryOptions
-                      .map(
-                        (option) => DropdownMenuItem<int>(
-                          value: option.id,
-                          child: Text(option.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: isSubmitting
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _categoryId = value ?? _categoryId;
-                          });
-                        },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Product name',
-                    errorText: _fieldErrors['name'],
-                  ),
-                  validator: (value) {
-                    if ((value ?? '').trim().isEmpty) {
-                      return 'Product name is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _brandController,
-                  decoration: InputDecoration(
-                    labelText: 'Brand (optional)',
-                    errorText: _fieldErrors['brand'],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _barcodeController,
-                  decoration: InputDecoration(
-                    labelText: 'Barcode (optional)',
-                    errorText: _fieldErrors['barcode'],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _imageUrlController,
-                  keyboardType: TextInputType.url,
-                  decoration: InputDecoration(
-                    labelText: 'Image URL (optional)',
-                    errorText: _fieldErrors['imageUrl'],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text('Nutrition (optional)', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _caloriesController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Calories',
-                    errorText: _fieldErrors['nutrition.calories'],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _proteinController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Protein (g)',
-                    errorText: _fieldErrors['nutrition.proteinG'],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _carbsController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Carbs (g)',
-                    errorText: _fieldErrors['nutrition.carbsG'],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _fatController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Fat (g)',
-                    errorText: _fieldErrors['nutrition.fatG'],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _servingController,
-                  decoration: InputDecoration(
-                    labelText: 'Serving size',
-                    errorText: _fieldErrors['nutrition.servingSize'],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _notesController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    labelText: 'Notes (optional)',
-                    errorText: _fieldErrors['notes'],
-                  ),
-                ),
-                if (_serverMessage != null) ...[
                   const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Product name',
+                      errorText: _fieldErrors['name'],
+                    ),
+                    validator: (value) {
+                      if ((value ?? '').trim().isEmpty) {
+                        return 'Product name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _brandController,
+                    decoration: InputDecoration(
+                      labelText: 'Brand (optional)',
+                      errorText: _fieldErrors['brand'],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _barcodeController,
+                    decoration: InputDecoration(
+                      labelText: 'Barcode (optional)',
+                      errorText: _fieldErrors['barcode'],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _imageUrlController,
+                    keyboardType: TextInputType.url,
+                    decoration: InputDecoration(
+                      labelText: 'Image URL (optional)',
+                      errorText: _fieldErrors['imageUrl'],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    _serverMessage!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    'Nutrition (optional)',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _caloriesController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Calories',
+                      errorText: _fieldErrors['nutrition.calories'],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _proteinController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Protein (g)',
+                      errorText: _fieldErrors['nutrition.proteinG'],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _carbsController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Carbs (g)',
+                      errorText: _fieldErrors['nutrition.carbsG'],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _fatController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Fat (g)',
+                      errorText: _fieldErrors['nutrition.fatG'],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _servingController,
+                    decoration: InputDecoration(
+                      labelText: 'Serving size',
+                      errorText: _fieldErrors['nutrition.servingSize'],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _notesController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: 'Notes (optional)',
+                      errorText: _fieldErrors['notes'],
+                    ),
+                  ),
+                  if (_serverMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _serverMessage!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  FilledButton(
+                    onPressed: isSubmitting ? null : _submit,
+                    child: isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Submit product proposal'),
                   ),
                 ],
-                const SizedBox(height: 18),
-                FilledButton(
-                  onPressed: isSubmitting ? null : _submit,
-                  child: isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Submit product proposal'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -229,9 +246,14 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       notes: _notesController.text,
     );
 
-    final result = await ref.read(productSubmissionControllerProvider.notifier).submit(request);
+    final result = await ref
+        .read(productSubmissionControllerProvider.notifier)
+        .submit(request);
     if (result == null) {
-      final error = ref.read(productSubmissionControllerProvider).asError?.error;
+      final error = ref
+          .read(productSubmissionControllerProvider)
+          .asError
+          ?.error;
       if (error != null) {
         _applyError(error);
       }
@@ -243,7 +265,9 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Product submission created and pending moderation.')),
+      const SnackBar(
+        content: Text('Product submission created and pending moderation.'),
+      ),
     );
     _clearForm();
   }

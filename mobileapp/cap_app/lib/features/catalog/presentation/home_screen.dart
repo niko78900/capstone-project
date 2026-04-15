@@ -5,10 +5,10 @@ import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
+import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
 import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,7 +22,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
-  DateTime? _lastBackPressAt;
 
   @override
   void dispose() {
@@ -34,28 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productListProvider);
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
-        final now = DateTime.now();
-        final shouldExit =
-            _lastBackPressAt != null &&
-            now.difference(_lastBackPressAt!) < const Duration(seconds: 2);
-        if (shouldExit) {
-          SystemNavigator.pop();
-          return;
-        }
-        _lastBackPressAt = now;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Press back again to exit'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      },
+    return HomeExitConfirmScope(
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Supermarket Catalog'),

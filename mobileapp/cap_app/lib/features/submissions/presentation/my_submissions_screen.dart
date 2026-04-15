@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
+import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
 import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
@@ -14,34 +15,38 @@ class MySubmissionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final submissionsAsync = ref.watch(mySubmissionsProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Submissions')),
-      drawer: const MainDrawer(),
-      body: AsyncValueView<List<SubmissionResponse>>(
-        value: submissionsAsync,
-        loadingMessage: 'Loading your submissions...',
-        data: (items) {
-          if (items.isEmpty) {
-            return const Center(
-              child: Text('No submissions yet. Use the drawer to submit products or prices.'),
-            );
-          }
+    return BackToHomeScope(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('My Submissions')),
+        drawer: const MainDrawer(),
+        body: AsyncValueView<List<SubmissionResponse>>(
+          value: submissionsAsync,
+          loadingMessage: 'Loading your submissions...',
+          data: (items) {
+            if (items.isEmpty) {
+              return const Center(
+                child: Text(
+                  'No submissions yet. Use the drawer to submit products or prices.',
+                ),
+              );
+            }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(mySubmissionsProvider);
-              await ref.read(mySubmissionsProvider.future);
-            },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemCount: items.length,
-              separatorBuilder: (_, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                return _SubmissionCard(item: items[index]);
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(mySubmissionsProvider);
+                await ref.read(mySubmissionsProvider.future);
               },
-            ),
-          );
-        },
+              child: ListView.separated(
+                padding: const EdgeInsets.all(12),
+                itemCount: items.length,
+                separatorBuilder: (_, index) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  return _SubmissionCard(item: items[index]);
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -95,7 +100,9 @@ class _SubmissionCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 const JsonEncoder.withIndent('  ').convert(item.payload),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
               ),
             ],
           ],

@@ -3,6 +3,7 @@ import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
+import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,116 +43,128 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
     final submitState = ref.watch(priceSubmissionControllerProvider);
     final isSubmitting = submitState.isLoading;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Submit Price')),
-      drawer: const MainDrawer(),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(allProductsProvider);
-            ref.invalidate(supermarketsProvider);
-            await Future.wait([
-              ref.read(allProductsProvider.future),
-              ref.read(supermarketsProvider.future),
-            ]);
-          },
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              productsAsync.when(
-                data: (products) => _ProductDropdown(
-                  products: products,
-                  value: _productId,
-                  errorText: _fieldErrors['productId'],
-                  enabled: !isSubmitting,
-                  onChanged: (value) => setState(() => _productId = value),
+    return BackToHomeScope(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Submit Price')),
+        drawer: const MainDrawer(),
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(allProductsProvider);
+              ref.invalidate(supermarketsProvider);
+              await Future.wait([
+                ref.read(allProductsProvider.future),
+                ref.read(supermarketsProvider.future),
+              ]);
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                productsAsync.when(
+                  data: (products) => _ProductDropdown(
+                    products: products,
+                    value: _productId,
+                    errorText: _fieldErrors['productId'],
+                    enabled: !isSubmitting,
+                    onChanged: (value) => setState(() => _productId = value),
+                  ),
+                  loading: () =>
+                      const _LoadingField(label: 'Loading products...'),
+                  error: (error, _) =>
+                      _ErrorField(message: 'Failed to load products: $error'),
                 ),
-                loading: () => const _LoadingField(label: 'Loading products...'),
-                error: (error, _) => _ErrorField(message: 'Failed to load products: $error'),
-              ),
-              const SizedBox(height: 12),
-              supermarketsAsync.when(
-                data: (supermarkets) => _SupermarketDropdown(
-                  supermarkets: supermarkets,
-                  value: _supermarketId,
-                  errorText: _fieldErrors['supermarketId'],
-                  enabled: !isSubmitting,
-                  onChanged: (value) => setState(() => _supermarketId = value),
-                ),
-                loading: () => const _LoadingField(label: 'Loading supermarkets...'),
-                error: (error, _) => _ErrorField(message: 'Failed to load supermarkets: $error'),
-              ),
-              const SizedBox(height: 12),
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _branchIdController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Branch ID (optional)',
-                        hintText: 'Example: 1',
-                        errorText: _fieldErrors['branchId'],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _priceController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: 'Price (MKD)',
-                        errorText: _fieldErrors['price'],
-                      ),
-                      validator: (value) {
-                        final parsed = double.tryParse((value ?? '').trim());
-                        if (parsed == null || parsed <= 0) {
-                          return 'Price must be a positive number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _observedAtController,
-                      decoration: InputDecoration(
-                        labelText: 'Observed at (optional ISO-8601)',
-                        hintText: '2026-04-10T15:45:00Z',
-                        errorText: _fieldErrors['observedAt'],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _notesController,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        labelText: 'Notes (optional)',
-                        errorText: _fieldErrors['notes'],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_serverMessage != null) ...[
                 const SizedBox(height: 12),
-                Text(
-                  _serverMessage!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                supermarketsAsync.when(
+                  data: (supermarkets) => _SupermarketDropdown(
+                    supermarkets: supermarkets,
+                    value: _supermarketId,
+                    errorText: _fieldErrors['supermarketId'],
+                    enabled: !isSubmitting,
+                    onChanged: (value) =>
+                        setState(() => _supermarketId = value),
+                  ),
+                  loading: () =>
+                      const _LoadingField(label: 'Loading supermarkets...'),
+                  error: (error, _) => _ErrorField(
+                    message: 'Failed to load supermarkets: $error',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _branchIdController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Branch ID (optional)',
+                          hintText: 'Example: 1',
+                          errorText: _fieldErrors['branchId'],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Price (MKD)',
+                          errorText: _fieldErrors['price'],
+                        ),
+                        validator: (value) {
+                          final parsed = double.tryParse((value ?? '').trim());
+                          if (parsed == null || parsed <= 0) {
+                            return 'Price must be a positive number';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _observedAtController,
+                        decoration: InputDecoration(
+                          labelText: 'Observed at (optional ISO-8601)',
+                          hintText: '2026-04-10T15:45:00Z',
+                          errorText: _fieldErrors['observedAt'],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _notesController,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          labelText: 'Notes (optional)',
+                          errorText: _fieldErrors['notes'],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_serverMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _serverMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                FilledButton(
+                  onPressed: isSubmitting ? null : _submit,
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Submit price update'),
                 ),
               ],
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: isSubmitting ? null : _submit,
-                child: isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Submit price update'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -167,7 +180,8 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
         _fieldErrors = {
           ..._fieldErrors,
           if (_productId == null) 'productId': 'Product is required',
-          if (_supermarketId == null) 'supermarketId': 'Supermarket is required',
+          if (_supermarketId == null)
+            'supermarketId': 'Supermarket is required',
         };
       });
       return;
@@ -187,7 +201,9 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
       notes: _notesController.text,
     );
 
-    final result = await ref.read(priceSubmissionControllerProvider.notifier).submit(request);
+    final result = await ref
+        .read(priceSubmissionControllerProvider.notifier)
+        .submit(request);
     if (result == null) {
       final error = ref.read(priceSubmissionControllerProvider).asError?.error;
       if (error != null) {
@@ -200,7 +216,9 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Price submission created and pending moderation.')),
+      const SnackBar(
+        content: Text('Price submission created and pending moderation.'),
+      ),
     );
     _clearForm();
   }
@@ -261,10 +279,7 @@ class _ProductDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<int>(
       initialValue: value,
-      decoration: InputDecoration(
-        labelText: 'Product',
-        errorText: errorText,
-      ),
+      decoration: InputDecoration(labelText: 'Product', errorText: errorText),
       items: products
           .map(
             (product) => DropdownMenuItem<int>(
