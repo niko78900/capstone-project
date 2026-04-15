@@ -1,4 +1,5 @@
 import 'package:cap_app/app/app_router.dart';
+import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +13,7 @@ class CapstoneApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(submissionNotificationBootstrapProvider);
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: 'Capstone Supermarket',
