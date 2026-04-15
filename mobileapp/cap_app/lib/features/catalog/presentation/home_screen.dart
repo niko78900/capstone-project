@@ -8,6 +8,7 @@ import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
 import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -21,6 +22,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
+  DateTime? _lastBackPressAt;
 
   @override
   void dispose() {
@@ -32,77 +34,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productListProvider);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Supermarket Catalog'),
-        actions: [
-          IconButton(
-            tooltip: 'My Cart',
-            onPressed: () => context.push(AppRoutes.cart),
-            icon: const Icon(Icons.shopping_cart_outlined),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        final now = DateTime.now();
+        final shouldExit =
+            _lastBackPressAt != null &&
+            now.difference(_lastBackPressAt!) < const Duration(seconds: 2);
+        if (shouldExit) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBackPressAt = now;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Press back again to exit'),
+            duration: Duration(seconds: 2),
           ),
-        ],
-      ),
-      drawer: const MainDrawer(),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search products by name or brand',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          ref.read(productSearchQueryProvider.notifier).state =
-                              '';
-                          setState(() {});
-                        },
-                        icon: const Icon(Icons.clear),
-                      ),
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Supermarket Catalog'),
+          actions: [
+            IconButton(
+              tooltip: 'My Cart',
+              onPressed: () => context.push(AppRoutes.cart),
+              icon: const Icon(Icons.shopping_cart_outlined),
+            ),
+          ],
+        ),
+        drawer: const MainDrawer(),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search products by name or brand',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            ref
+                                    .read(productSearchQueryProvider.notifier)
+                                    .state =
+                                '';
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.clear),
+                        ),
+                ),
+                onChanged: (value) {
+                  _debounce?.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 350), () {
+                    ref.read(productSearchQueryProvider.notifier).state = value
+                        .trim();
+                  });
+                  setState(() {});
+                },
               ),
-              onChanged: (value) {
-                _debounce?.cancel();
-                _debounce = Timer(const Duration(milliseconds: 350), () {
-                  ref.read(productSearchQueryProvider.notifier).state = value
-                      .trim();
-                });
-                setState(() {});
-              },
             ),
-          ),
-          Expanded(
-            child: AsyncValueView<List<ProductSummaryDto>>(
-              value: productsAsync,
-              loadingMessage: 'Loading products...',
-              data: (products) {
-                if (products.isEmpty) {
-                  return const Center(
-                    child: Text('No products found for your search.'),
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(productListProvider);
-                    await ref.read(productListProvider.future);
-                  },
-                  child: ListView.separated(
-                    itemCount: products.length,
-                    separatorBuilder: (_, index) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final product = products[index];
-                      return _ProductListTile(product: product);
+            Expanded(
+              child: AsyncValueView<List<ProductSummaryDto>>(
+                value: productsAsync,
+                loadingMessage: 'Loading products...',
+                data: (products) {
+                  if (products.isEmpty) {
+                    return const Center(
+                      child: Text('No products found for your search.'),
+                    );
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(productListProvider);
+                      await ref.read(productListProvider.future);
                     },
-                  ),
-                );
-              },
+                    child: ListView.separated(
+                      itemCount: products.length,
+                      separatorBuilder: (_, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final product = products[index];
+                        return _ProductListTile(product: product);
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
