@@ -29,7 +29,13 @@
 
   <div class="cards">
     @for (submission of submissions(); track submission.id) {
-      <mat-card appearance="outlined" class="submission-card">
+      <mat-card
+        appearance="outlined"
+        class="submission-card"
+        [class.submission-card-pending]="submission.status === 'PENDING'"
+        [class.submission-card-approved]="submission.status === 'APPROVED'"
+        [class.submission-card-rejected]="submission.status === 'REJECTED'"
+      >
         <mat-card-header class="submission-head">
           <div>
             <mat-card-title>Ref {{ submissionReference(submission) }} &bull; {{ submission.type }}</mat-card-title>
@@ -86,8 +92,16 @@
                     @for (row of rows; track row.key) {
                       <div class="diff-row" [class.diff-row-changed]="row.changed">
                         <div class="diff-cell diff-field">{{ row.label }}</div>
-                        <div class="diff-cell diff-before">{{ row.before }}</div>
-                        <div class="diff-cell diff-after">{{ row.after }}</div>
+                        <div class="diff-cell diff-before" [class.diff-before-changed]="row.changed">
+                          {{ row.before }}
+                        </div>
+                        <div
+                          class="diff-cell diff-after"
+                          [class.diff-after-changed]="row.changed"
+                          [class.diff-after-rejected]="row.changed && submission.status === 'REJECTED'"
+                        >
+                          {{ row.after }}
+                        </div>
                       </div>
                     }
                   </div>
@@ -97,24 +111,26 @@
           }
         </mat-card-content>
 
-        <mat-card-actions class="actions">
-          <button
-            mat-flat-button
-            color="primary"
-            (click)="onApprove(submission)"
-            [disabled]="processingSubmissionId() === submission.id"
-          >
-            Approve
-          </button>
-          <button
-            mat-stroked-button
-            color="warn"
-            (click)="onReject(submission)"
-            [disabled]="processingSubmissionId() === submission.id"
-          >
-            Reject
-          </button>
-        </mat-card-actions>
+        @if (submission.status === 'PENDING') {
+          <mat-card-actions class="actions">
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="onApprove(submission)"
+              [disabled]="processingSubmissionId() === submission.id"
+            >
+              Approve
+            </button>
+            <button
+              mat-stroked-button
+              color="warn"
+              (click)="onReject(submission)"
+              [disabled]="processingSubmissionId() === submission.id"
+            >
+              Reject
+            </button>
+          </mat-card-actions>
+        }
       </mat-card>
     }
   </div>

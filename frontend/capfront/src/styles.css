@@ -12,6 +12,14 @@
   --card-shadow: rgba(15, 23, 42, 0.06);
   --payload-bg: #0f172a;
   --payload-text: #e2e8f0;
+  --diff-before-bg: #fef2f2;
+  --diff-before-text: #9f1239;
+  --diff-after-bg: #ecfdf3;
+  --diff-after-text: #14532d;
+  --diff-rejected-after-bg: #fee2e2;
+  --diff-rejected-after-text: #991b1b;
+  --diff-rejected-before-bg: #dcfce7;
+  --diff-rejected-before-text: #166534;
 }
 
 html,
@@ -39,6 +47,14 @@ body.dark-theme {
   --card-shadow: rgba(2, 6, 23, 0.45);
   --payload-bg: #07101f;
   --payload-text: #dbeafe;
+  --diff-before-bg: rgba(248, 113, 113, 0.2);
+  --diff-before-text: #fecaca;
+  --diff-after-bg: rgba(34, 197, 94, 0.2);
+  --diff-after-text: #bbf7d0;
+  --diff-rejected-after-bg: rgba(220, 38, 38, 0.32);
+  --diff-rejected-after-text: #fecaca;
+  --diff-rejected-before-bg: rgba(16, 185, 129, 0.28);
+  --diff-rejected-before-text: #a7f3d0;
 }
 
 body.dark-theme .mat-mdc-button,

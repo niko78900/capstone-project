@@ -612,9 +612,11 @@ export class AdminSubmissionsPageComponent {
     options: { canCompare?: boolean; forceChanged?: boolean } = {},
   ): SubmissionDiffRow {
     const canCompare = options.canCompare ?? true;
-    const changed =
-      options.forceChanged ??
-      (canCompare ? this.normalizeComparison(before) !== this.normalizeComparison(after) : false);
+    const changed = options.forceChanged === true
+      ? true
+      : (canCompare
+          ? this.normalizeComparison(before) !== this.normalizeComparison(after)
+          : false);
 
     return {
       key,

@@ -1,7 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { filter, map, startWith } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
 import { AuthSessionService } from './core/services/auth-session.service';
 import { ThemeService } from './core/services/theme.service';
@@ -16,10 +18,20 @@ export class App {
   private readonly authService = inject(AuthService);
   private readonly authSession = inject(AuthSessionService);
   private readonly theme = inject(ThemeService);
+  private readonly router = inject(Router);
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
 
   readonly currentUser = this.authSession.session;
   readonly isAdmin = this.authSession.isAdmin;
   readonly isDarkTheme = this.theme.isDark;
+  readonly isLoginRoute = computed(() => this.currentUrl().startsWith('/admin/login'));
   readonly themeToggleLabel = computed(() =>
     this.isDarkTheme() ? 'Light theme' : 'Dark theme',
   );

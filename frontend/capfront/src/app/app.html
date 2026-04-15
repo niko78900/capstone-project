@@ -1,20 +1,24 @@
 <mat-toolbar class="topbar">
-  <div class="brand" routerLink="/products">Skopje Price Compass</div>
-  <nav class="nav-links">
-    <a mat-button routerLink="/products" routerLinkActive="active-link">Products</a>
-    <a
-      mat-button
-      [routerLink]="isAdmin() ? '/admin/submissions' : '/admin/login'"
-      routerLinkActive="active-link"
-    >
-      {{ adminActionLabel() }}
-    </a>
-  </nav>
+  @if (isLoginRoute()) {
+    <div class="brand">Skopje Price Compass</div>
+  } @else {
+    <div class="brand" routerLink="/products">Skopje Price Compass</div>
+    <nav class="nav-links">
+      <a mat-button routerLink="/products" routerLinkActive="active-link">Products</a>
+      <a
+        mat-button
+        [routerLink]="isAdmin() ? '/admin/submissions' : '/admin/login'"
+        routerLinkActive="active-link"
+      >
+        {{ adminActionLabel() }}
+      </a>
+    </nav>
+  }
   <span class="spacer"></span>
   <button mat-stroked-button class="theme-toggle" (click)="toggleTheme()">
     {{ themeToggleLabel() }}
   </button>
-  @if (currentUser(); as session) {
+  @if (!isLoginRoute() && currentUser(); as session) {
     <span class="user-chip">{{ session.user.displayName }} ({{ session.user.role }})</span>
     <button mat-button (click)="logout()">Logout</button>
   }
