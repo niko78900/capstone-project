@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 public record ProductSubmissionRequest(
         @NotNull(message = "Category id is required")
         Long categoryId,
+        Long sourceProductId,
         @NotBlank(message = "Product name is required")
         @Size(max = 200, message = "Name must be at most 200 characters")
         String name,

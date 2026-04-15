@@ -73,6 +73,26 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> postMultipart(
+    String path, {
+    required FormData formData,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.post<dynamic>(
+        path,
+        data: formData,
+        queryParameters: queryParameters,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return response.data;
+    } on DioException catch (error) {
+      throw _extractException(error);
+    } catch (_) {
+      throw const AppException(message: 'Unexpected network error');
+    }
+  }
+
   DioException _mapError(DioException error) {
     final response = error.response;
     late final AppException mapped;

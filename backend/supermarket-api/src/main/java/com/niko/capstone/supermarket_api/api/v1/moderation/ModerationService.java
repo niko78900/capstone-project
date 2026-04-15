@@ -128,22 +128,23 @@ public class ModerationService {
 
     private void approveProductSubmission(SubmissionEntity submission) {
         ProductSubmissionPayload payload = readPayload(submission, ProductSubmissionPayload.class);
+        ProductEntity sourceProduct = resolveSourceProduct(payload.sourceProductId());
 
         String barcode = normalizeOptional(payload.barcode());
-        if (barcode != null && productRepository.findByBarcode(barcode).isPresent()) {
+        if (isDuplicateBarcode(barcode, sourceProduct)) {
             throw new ConflictException("Duplicate product by barcode");
         }
 
         String normalizedName = NameNormalizer.normalize(payload.name());
         String normalizedBrand = NameNormalizer.normalize(payload.brand());
-        if (productRepository.findFirstByNormalizedNameAndNormalizedBrand(normalizedName, normalizedBrand).isPresent()) {
+        if (isDuplicateNameBrand(normalizedName, normalizedBrand, sourceProduct)) {
             throw new ConflictException("Duplicate product by normalized name and brand");
         }
 
         CategoryEntity category = categoryRepository.findById(payload.categoryId())
                 .orElseThrow(() -> new NotFoundException("Category not found"));
 
-        ProductEntity product = new ProductEntity();
+        ProductEntity product = sourceProduct == null ? new ProductEntity() : sourceProduct;
         product.setCategory(category);
         product.setName(payload.name().trim());
         product.setBrand(normalizeOptional(payload.brand()));
@@ -155,8 +156,12 @@ public class ModerationService {
         ProductEntity savedProduct = productRepository.save(product);
 
         if (payload.nutrition() != null) {
-            ProductNutritionEntity nutrition = new ProductNutritionEntity();
-            nutrition.setProduct(savedProduct);
+            ProductNutritionEntity nutrition = productNutritionRepository.findByProductId(savedProduct.getId())
+                    .orElseGet(() -> {
+                        ProductNutritionEntity entity = new ProductNutritionEntity();
+                        entity.setProduct(savedProduct);
+                        return entity;
+                    });
             applyNutritionValues(nutrition, payload.nutrition());
             productNutritionRepository.save(nutrition);
         }
@@ -230,6 +235,29 @@ public class ModerationService {
         if (submission.getStatus() != SubmissionStatus.PENDING) {
             throw new ConflictException("Submission has already been reviewed");
         }
+    }
+
+    private ProductEntity resolveSourceProduct(Long sourceProductId) {
+        if (sourceProductId == null) {
+            return null;
+        }
+        return productRepository.findById(sourceProductId)
+                .orElseThrow(() -> new NotFoundException("Source product not found"));
+    }
+
+    private boolean isDuplicateBarcode(String barcode, ProductEntity sourceProduct) {
+        if (barcode == null) {
+            return false;
+        }
+        return productRepository.findByBarcode(barcode)
+                .map(candidate -> sourceProduct == null || !candidate.getId().equals(sourceProduct.getId()))
+                .orElse(false);
+    }
+
+    private boolean isDuplicateNameBrand(String normalizedName, String normalizedBrand, ProductEntity sourceProduct) {
+        return productRepository.findFirstByNormalizedNameAndNormalizedBrand(normalizedName, normalizedBrand)
+                .map(candidate -> sourceProduct == null || !candidate.getId().equals(sourceProduct.getId()))
+                .orElse(false);
     }
 
     private UserEntity findUserByEmail(String email) {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
+import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
 import com.niko.capstone.supermarket_api.api.v1.common.util.NameNormalizer;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
@@ -24,16 +25,27 @@ import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
 public class SubmissionService {
+
+    private static final long MAX_IMAGE_BYTES = 5L * 1024L * 1024L;
 
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
@@ -43,25 +55,30 @@ public class SubmissionService {
     private final BranchRepository branchRepository;
     private final SubmissionRepository submissionRepository;
 
+    @Value("${app.uploads.directory:uploads}")
+    private String uploadsDirectory;
+
     @Transactional
     public SubmissionResponse createProductSubmission(String userEmail, ProductSubmissionRequest request) {
         UserEntity user = findUserByEmail(userEmail);
         categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new NotFoundException("Category not found"));
+        ProductEntity sourceProduct = resolveSourceProduct(request.sourceProductId());
 
         String barcode = normalizeOptional(request.barcode());
-        if (barcode != null && productRepository.findByBarcode(barcode).isPresent()) {
+        if (isDuplicateBarcode(barcode, sourceProduct)) {
             throw new ConflictException("Duplicate product by barcode");
         }
 
         String normalizedName = NameNormalizer.normalize(request.name());
         String normalizedBrand = NameNormalizer.normalize(request.brand());
-        if (productRepository.findFirstByNormalizedNameAndNormalizedBrand(normalizedName, normalizedBrand).isPresent()) {
+        if (isDuplicateNameBrand(normalizedName, normalizedBrand, sourceProduct)) {
             throw new ConflictException("Duplicate product by normalized name and brand");
         }
 
         ProductSubmissionPayload payload = new ProductSubmissionPayload(
                 request.categoryId(),
+                request.sourceProductId(),
                 request.name().trim(),
                 normalizeOptional(request.brand()),
                 barcode,
@@ -124,6 +141,64 @@ public class SubmissionService {
                 .toList();
     }
 
+    private ProductEntity resolveSourceProduct(Long sourceProductId) {
+        if (sourceProductId == null) {
+            return null;
+        }
+        return productRepository.findById(sourceProductId)
+                .orElseThrow(() -> new NotFoundException("Source product not found"));
+    }
+
+    private boolean isDuplicateBarcode(String barcode, ProductEntity sourceProduct) {
+        if (barcode == null) {
+            return false;
+        }
+        return productRepository.findByBarcode(barcode)
+                .map(candidate -> sourceProduct == null || !candidate.getId().equals(sourceProduct.getId()))
+                .orElse(false);
+    }
+
+    private boolean isDuplicateNameBrand(String normalizedName, String normalizedBrand, ProductEntity sourceProduct) {
+        return productRepository.findFirstByNormalizedNameAndNormalizedBrand(normalizedName, normalizedBrand)
+                .map(candidate -> sourceProduct == null || !candidate.getId().equals(sourceProduct.getId()))
+                .orElse(false);
+    }
+
+    public String uploadSubmissionImage(MultipartFile file, String baseUrl) {
+        if (file == null || file.isEmpty()) {
+            throw new UnprocessableEntityException("Image file is required");
+        }
+        if (file.getSize() > MAX_IMAGE_BYTES) {
+            throw new UnprocessableEntityException("Image size must be at most 5 MB");
+        }
+        String contentType = normalizeOptional(file.getContentType());
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new UnprocessableEntityException("Only image files are allowed");
+        }
+
+        String extension = extensionFor(file.getOriginalFilename(), contentType);
+        String fileName = "submission_" + UUID.randomUUID() + extension;
+        Path root = Paths.get(uploadsDirectory).toAbsolutePath().normalize();
+        Path destination = root.resolve(fileName).normalize();
+        if (!destination.startsWith(root)) {
+            throw new IllegalStateException("Invalid upload path");
+        }
+
+        try {
+            Files.createDirectories(root);
+            try (InputStream input = file.getInputStream()) {
+                Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to store image", ex);
+        }
+
+        String normalizedBase = baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
+        return normalizedBase + "/uploads/" + fileName;
+    }
+
     private UserEntity findUserByEmail(String email) {
         if (email == null || email.isBlank()) {
             throw new UnauthorizedException("Authenticated user not found");
@@ -166,5 +241,23 @@ public class SubmissionService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String extensionFor(String originalName, String contentType) {
+        if (originalName != null) {
+            int index = originalName.lastIndexOf('.');
+            if (index >= 0 && index < originalName.length() - 1) {
+                String extension = originalName.substring(index);
+                if (extension.length() <= 10) {
+                    return extension.toLowerCase(Locale.ROOT);
+                }
+            }
+        }
+        return switch (contentType.toLowerCase(Locale.ROOT)) {
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            case "image/gif" -> ".gif";
+            default -> ".jpg";
+        };
     }
 }

@@ -22,6 +22,7 @@ import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,7 @@ class SubmissionServiceTest {
 
         ProductSubmissionRequest request = new ProductSubmissionRequest(
                 1L,
+                null,
                 "Milk",
                 "Brand",
                 "1234567890123",
@@ -84,6 +86,48 @@ class SubmissionServiceTest {
                 .hasMessageContaining("Duplicate product by barcode");
 
         verify(submissionRepository, never()).save(any());
+    }
+
+    @Test
+    void createProductSubmission_shouldAllowSameBarcodeWhenEditingSameProduct() {
+        UserEntity user = new UserEntity();
+        user.setId(1L);
+        user.setEmail("user@example.com");
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(new CategoryEntity()));
+
+        ProductEntity existing = new ProductEntity();
+        existing.setId(42L);
+        existing.setBarcode("1234567890123");
+        existing.setNormalizedName("milk");
+        existing.setNormalizedBrand("brand");
+        when(productRepository.findById(42L)).thenReturn(Optional.of(existing));
+        when(productRepository.findByBarcode("1234567890123")).thenReturn(Optional.of(existing));
+        when(productRepository.findFirstByNormalizedNameAndNormalizedBrand("milk", "brand"))
+                .thenReturn(Optional.of(existing));
+
+        when(submissionRepository.save(any())).thenAnswer(invocation -> {
+            var saved = invocation.getArgument(0, com.niko.capstone.supermarket_api.domain.model.SubmissionEntity.class);
+            saved.setId(10L);
+            saved.setCreatedAt(Instant.now());
+            saved.setUpdatedAt(Instant.now());
+            return saved;
+        });
+
+        ProductSubmissionRequest request = new ProductSubmissionRequest(
+                1L,
+                42L,
+                "Milk",
+                "Brand",
+                "1234567890123",
+                null,
+                null,
+                null
+        );
+
+        submissionService.createProductSubmission("user@example.com", request);
+
+        verify(submissionRepository).save(any());
     }
 
     @Test

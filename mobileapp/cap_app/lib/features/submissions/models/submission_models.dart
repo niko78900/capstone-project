@@ -1,8 +1,5 @@
 class CategoryOption {
-  const CategoryOption({
-    required this.id,
-    required this.name,
-  });
+  const CategoryOption({required this.id, required this.name});
 
   final int id;
   final String name;
@@ -21,19 +18,9 @@ const categoryOptions = <CategoryOption>[
   CategoryOption(id: 10, name: 'Household'),
 ];
 
-enum SubmissionType {
-  product,
-  price,
-  nutrition,
-  unknown,
-}
+enum SubmissionType { product, price, nutrition, unknown }
 
-enum SubmissionStatus {
-  pending,
-  approved,
-  rejected,
-  unknown,
-}
+enum SubmissionStatus { pending, approved, rejected, unknown }
 
 SubmissionType parseSubmissionType(String? raw) {
   switch ((raw ?? '').toUpperCase()) {
@@ -97,6 +84,7 @@ class SubmissionNutritionInput {
 class ProductSubmissionRequestDto {
   const ProductSubmissionRequestDto({
     required this.categoryId,
+    this.sourceProductId,
     required this.name,
     this.brand,
     this.barcode,
@@ -106,6 +94,7 @@ class ProductSubmissionRequestDto {
   });
 
   final int categoryId;
+  final int? sourceProductId;
   final String name;
   final String? brand;
   final String? barcode;
@@ -116,11 +105,14 @@ class ProductSubmissionRequestDto {
   Map<String, dynamic> toJson() {
     return {
       'categoryId': categoryId,
+      'sourceProductId': sourceProductId,
       'name': name,
       'brand': _nullIfBlank(brand),
       'barcode': _nullIfBlank(barcode),
       'imageUrl': _nullIfBlank(imageUrl),
-      'nutrition': nutrition == null || nutrition!.isEmpty ? null : nutrition!.toJson(),
+      'nutrition': nutrition == null || nutrition!.isEmpty
+          ? null
+          : nutrition!.toJson(),
       'notes': _nullIfBlank(notes),
     };
   }
@@ -182,8 +174,12 @@ class SubmissionResponse {
       status: parseSubmissionStatus(json['status']?.toString()),
       payload: payload is Map ? payload.cast<String, dynamic>() : null,
       notes: _nullIfBlank(json['notes']?.toString()),
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now().toUtc(),
-      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ?? DateTime.now().toUtc(),
+      createdAt:
+          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now().toUtc(),
+      updatedAt:
+          DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+          DateTime.now().toUtc(),
     );
   }
 }

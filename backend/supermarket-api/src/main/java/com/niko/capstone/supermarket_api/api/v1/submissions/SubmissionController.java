@@ -1,20 +1,26 @@
 package com.niko.capstone.supermarket_api.api.v1.submissions;
 
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ImageUploadResponse;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.SubmissionResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/v1/submissions")
@@ -39,6 +45,21 @@ public class SubmissionController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(submissionService.createPriceSubmission(currentEmail(authentication), request));
+    }
+
+    @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ImageUploadResponse> uploadImage(
+            Authentication authentication,
+            @RequestPart("file") MultipartFile file,
+            HttpServletRequest request
+    ) {
+        currentEmail(authentication);
+        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(request)
+                .replacePath(null)
+                .build()
+                .toUriString();
+        String imageUrl = submissionService.uploadSubmissionImage(file, baseUrl);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ImageUploadResponse(imageUrl));
     }
 
     @GetMapping("/me")
