@@ -19,13 +19,11 @@ class SubmitPriceScreen extends ConsumerStatefulWidget {
 
 class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _branchIdController = TextEditingController();
   final _priceController = TextEditingController();
-  final _observedAtController = TextEditingController();
-  final _notesController = TextEditingController();
 
   int? _productId;
   int? _supermarketId;
+  DateTime? _observedAt;
   String? _serverMessage;
   Map<String, String> _fieldErrors = const {};
 
@@ -37,10 +35,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
 
   @override
   void dispose() {
-    _branchIdController.dispose();
     _priceController.dispose();
-    _observedAtController.dispose();
-    _notesController.dispose();
     super.dispose();
   }
 
@@ -103,16 +98,6 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
                   child: Column(
                     children: [
                       TextFormField(
-                        controller: _branchIdController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Branch ID (optional)',
-                          hintText: 'Example: 1',
-                          errorText: _fieldErrors['branchId'],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
                         controller: _priceController,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -130,22 +115,36 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _observedAtController,
-                        decoration: InputDecoration(
-                          labelText: 'Observed at (optional ISO-8601)',
-                          hintText: '2026-04-10T15:45:00Z',
-                          errorText: _fieldErrors['observedAt'],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          labelText: 'Notes (optional)',
-                          errorText: _fieldErrors['notes'],
+                      InkWell(
+                        onTap: isSubmitting ? null : _pickObservedAt,
+                        borderRadius: BorderRadius.circular(8),
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Observed at time',
+                            hintText: 'Tap to select date and time',
+                            errorText: _fieldErrors['observedAt'],
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_observedAt != null)
+                                  IconButton(
+                                    tooltip: 'Clear date and time',
+                                    onPressed: isSubmitting ? null : _clearObservedAt,
+                                    icon: const Icon(Icons.close),
+                                  ),
+                                IconButton(
+                                  tooltip: 'Select date and time',
+                                  onPressed: isSubmitting ? null : _pickObservedAt,
+                                  icon: const Icon(Icons.event),
+                                ),
+                              ],
+                            ),
+                          ),
+                          child: Text(
+                            _observedAt == null
+                                ? 'Tap to choose date and time'
+                                : _formatObservedAt(_observedAt!),
+                          ),
                         ),
                       ),
                     ],
@@ -203,10 +202,8 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
     final request = PriceSubmissionRequestDto(
       productId: _productId!,
       supermarketId: _supermarketId!,
-      branchId: int.tryParse(_branchIdController.text.trim()),
       price: double.parse(_priceController.text.trim()),
-      observedAt: _parseDate(_observedAtController.text),
-      notes: _notesController.text,
+      observedAt: _observedAt,
     );
 
     final result = await ref
@@ -232,25 +229,71 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
   }
 
   void _clearForm() {
-    _branchIdController.clear();
     _priceController.clear();
-    _observedAtController.clear();
-    _notesController.clear();
     setState(() {
       _productId = null;
       _supermarketId = null;
+      _observedAt = null;
       _serverMessage = null;
       _fieldErrors = const {};
     });
     ref.read(priceSubmissionControllerProvider.notifier).clear();
   }
 
-  DateTime? _parseDate(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) {
-      return null;
+  Future<void> _pickObservedAt() async {
+    final now = DateTime.now();
+    final initial = _observedAt ?? now;
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (selectedDate == null || !mounted) {
+      return;
     }
-    return DateTime.tryParse(trimmed);
+
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (selectedTime == null) {
+      return;
+    }
+
+    final picked = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
+    nextFieldErrors.remove('observedAt');
+    setState(() {
+      _observedAt = picked;
+      _fieldErrors = nextFieldErrors;
+    });
+  }
+
+  void _clearObservedAt() {
+    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
+    nextFieldErrors.remove('observedAt');
+    setState(() {
+      _observedAt = null;
+      _fieldErrors = nextFieldErrors;
+    });
+  }
+
+  String _formatObservedAt(DateTime value) {
+    final local = value.toLocal();
+    final localization = MaterialLocalizations.of(context);
+    final date = localization.formatMediumDate(local);
+    final time = localization.formatTimeOfDay(
+      TimeOfDay.fromDateTime(local),
+      alwaysUse24HourFormat: MediaQuery.of(context).alwaysUse24HourFormat,
+    );
+    return '$date - $time';
   }
 
   void _applyError(Object error) {
@@ -489,3 +532,4 @@ class _ErrorField extends StatelessWidget {
     );
   }
 }
+

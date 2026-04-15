@@ -17,9 +17,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  String? _serverMessage;
-  Map<String, String> _fieldErrors = const {};
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -31,6 +28,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authSessionProvider);
     final isLoading = authState.isLoading;
+    final authError = _resolveError(authState.asError?.error);
+    final fieldErrors = authError?.fieldErrors ?? const <String, String>{};
+    final serverMessage = authError?.message;
 
     return Scaffold(
       body: SafeArea(
@@ -59,7 +59,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        errorText: _fieldErrors['email'],
+                        errorText: fieldErrors['email'],
                       ),
                       validator: (value) {
                         final trimmed = value?.trim() ?? '';
@@ -78,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        errorText: _fieldErrors['password'],
+                        errorText: fieldErrors['password'],
                       ),
                       validator: (value) {
                         if ((value ?? '').isEmpty) {
@@ -90,10 +90,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return null;
                       },
                     ),
-                    if (_serverMessage != null) ...[
+                    if (serverMessage != null) ...[
                       const SizedBox(height: 12),
                       Text(
-                        _serverMessage!,
+                        serverMessage,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.error,
                         ),
@@ -134,11 +134,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _serverMessage = null;
-      _fieldErrors = const {};
-    });
-
     await ref
         .read(authSessionProvider.notifier)
         .login(
@@ -147,29 +142,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
 
     final state = ref.read(authSessionProvider);
-    final error = state.asError?.error;
-    if (error != null) {
-      _applyError(error);
+    if (state.hasError) {
       return;
     }
 
-    if (mounted) {
+    if (mounted && state.valueOrNull != null) {
       context.go(AppRoutes.home);
     }
   }
 
-  void _applyError(Object error) {
-    if (error is AppException) {
-      setState(() {
-        _serverMessage = error.message;
-        _fieldErrors = error.fieldErrors;
-      });
-      return;
+  _AuthUiError? _resolveError(Object? error) {
+    if (error == null) {
+      return null;
     }
 
-    setState(() {
-      _serverMessage = 'Login failed. Please try again.';
-      _fieldErrors = const {};
-    });
+    if (error is AppException) {
+      return _AuthUiError(
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      );
+    }
+
+    return const _AuthUiError(message: 'Login failed. Please try again.');
   }
+}
+
+class _AuthUiError {
+  const _AuthUiError({
+    required this.message,
+    this.fieldErrors = const {},
+  });
+
+  final String message;
+  final Map<String, String> fieldErrors;
 }
