@@ -63,6 +63,8 @@ public class SubmissionService {
         UserEntity user = findUserByEmail(userEmail);
         categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new NotFoundException("Category not found"));
+        supermarketRepository.findById(request.supermarketId())
+                .orElseThrow(() -> new NotFoundException("Supermarket not found"));
         ProductEntity sourceProduct = resolveSourceProduct(request.sourceProductId());
 
         String barcode = normalizeOptional(request.barcode());
@@ -82,6 +84,8 @@ public class SubmissionService {
                 request.name().trim(),
                 normalizeOptional(request.brand()),
                 barcode,
+                request.supermarketId(),
+                request.price(),
                 normalizeOptional(request.imageUrl()),
                 request.nutrition()
         );

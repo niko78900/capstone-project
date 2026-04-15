@@ -129,6 +129,14 @@ public class ModerationService {
     private void approveProductSubmission(SubmissionEntity submission) {
         ProductSubmissionPayload payload = readPayload(submission, ProductSubmissionPayload.class);
         ProductEntity sourceProduct = resolveSourceProduct(payload.sourceProductId());
+        if (payload.supermarketId() == null) {
+            throw new UnprocessableEntityException("Supermarket is required in product submission");
+        }
+        if (payload.price() == null) {
+            throw new UnprocessableEntityException("Price is required in product submission");
+        }
+        SupermarketEntity supermarket = supermarketRepository.findById(payload.supermarketId())
+                .orElseThrow(() -> new NotFoundException("Supermarket not found"));
 
         String barcode = normalizeOptional(payload.barcode());
         if (isDuplicateBarcode(barcode, sourceProduct)) {
@@ -165,6 +173,16 @@ public class ModerationService {
             applyNutritionValues(nutrition, payload.nutrition());
             productNutritionRepository.save(nutrition);
         }
+
+        VerifiedPriceEntity verifiedPrice = new VerifiedPriceEntity();
+        verifiedPrice.setProduct(savedProduct);
+        verifiedPrice.setSupermarket(supermarket);
+        verifiedPrice.setPrice(payload.price());
+        verifiedPrice.setCurrency("MKD");
+        verifiedPrice.setObservedAt(Instant.now());
+        verifiedPrice.setSourceType(PriceSourceType.USER);
+        verifiedPrice.setSubmission(submission);
+        verifiedPriceRepository.save(verifiedPrice);
     }
 
     private void approvePriceSubmission(SubmissionEntity submission) {

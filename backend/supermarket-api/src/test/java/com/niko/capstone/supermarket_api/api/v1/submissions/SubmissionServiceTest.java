@@ -68,6 +68,7 @@ class SubmissionServiceTest {
         user.setEmail("user@example.com");
         when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(new CategoryEntity()));
+        when(supermarketRepository.findById(1L)).thenReturn(Optional.of(new SupermarketEntity()));
         when(productRepository.findByBarcode("1234567890123")).thenReturn(Optional.of(new ProductEntity()));
 
         ProductSubmissionRequest request = new ProductSubmissionRequest(
@@ -76,6 +77,8 @@ class SubmissionServiceTest {
                 "Milk",
                 "Brand",
                 "1234567890123",
+                1L,
+                new BigDecimal("55.00"),
                 null,
                 null,
                 null
@@ -95,6 +98,7 @@ class SubmissionServiceTest {
         user.setEmail("user@example.com");
         when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(new CategoryEntity()));
+        when(supermarketRepository.findById(1L)).thenReturn(Optional.of(new SupermarketEntity()));
 
         ProductEntity existing = new ProductEntity();
         existing.setId(42L);
@@ -120,6 +124,8 @@ class SubmissionServiceTest {
                 "Milk",
                 "Brand",
                 "1234567890123",
+                1L,
+                new BigDecimal("55.00"),
                 null,
                 null,
                 null
