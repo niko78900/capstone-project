@@ -25,7 +25,7 @@ void main() {
     test('uses safe defaults for non-map payloads', () {
       final payload = ApiErrorPayload.fromDynamic('invalid');
       expect(payload.status, 500);
-      expect(payload.message, 'Unexpected error');
+      expect(payload.message, 'Request failed');
       expect(payload.fieldErrors, isEmpty);
     });
   });

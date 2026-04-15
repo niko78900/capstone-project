@@ -6,18 +6,18 @@ import 'package:dio/dio.dart';
 
 class ApiClient {
   ApiClient(this._tokenStorage)
-      : _dio = Dio(
-          BaseOptions(
-            baseUrl: AppConfig.apiBaseUrl,
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-            sendTimeout: const Duration(seconds: 15),
-            headers: const {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          ),
-        ) {
+    : _dio = Dio(
+        BaseOptions(
+          baseUrl: AppConfig.apiBaseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          sendTimeout: const Duration(seconds: 15),
+          headers: const {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      ) {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -42,7 +42,10 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final response = await _dio.get<dynamic>(path, queryParameters: queryParameters);
+      final response = await _dio.get<dynamic>(
+        path,
+        queryParameters: queryParameters,
+      );
       return response.data;
     } on DioException catch (error) {
       throw _extractException(error);
@@ -71,21 +74,50 @@ class ApiClient {
   }
 
   DioException _mapError(DioException error) {
-    final payload = ApiErrorPayload.fromDynamic(error.response?.data);
-    final statusCode = error.response?.statusCode ?? payload.status;
-    final mapped = AppException(
-      message: payload.message,
-      statusCode: statusCode,
-      fieldErrors: payload.fieldErrorMap,
-    );
+    final response = error.response;
+    late final AppException mapped;
+
+    if (response != null) {
+      final payload = ApiErrorPayload.fromDynamic(response.data);
+      final fallback = response.statusMessage?.trim();
+      mapped = AppException(
+        message: payload.message.isNotEmpty
+            ? payload.message
+            : (fallback?.isNotEmpty == true ? fallback! : 'Request failed'),
+        statusCode: response.statusCode ?? payload.status,
+        fieldErrors: payload.fieldErrorMap,
+      );
+    } else {
+      mapped = AppException(message: _transportErrorMessage(error));
+    }
+
     return DioException(
       requestOptions: error.requestOptions,
-      response: error.response,
+      response: response,
       type: error.type,
       error: mapped,
       stackTrace: error.stackTrace,
       message: error.message,
     );
+  }
+
+  String _transportErrorMessage(DioException error) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+        return 'Could not connect to the server. Please try again.';
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'The request timed out. Please try again.';
+      case DioExceptionType.connectionError:
+        return 'Cannot reach server at ${AppConfig.apiBaseUrl}. Check that the backend is running.';
+      case DioExceptionType.badCertificate:
+        return 'Secure connection failed.';
+      case DioExceptionType.cancel:
+        return 'Request was cancelled.';
+      case DioExceptionType.badResponse:
+      case DioExceptionType.unknown:
+        return 'Request failed. Please try again.';
+    }
   }
 
   AppException _extractException(DioException error) {

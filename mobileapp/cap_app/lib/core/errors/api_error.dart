@@ -1,8 +1,5 @@
 class FieldValidationError {
-  const FieldValidationError({
-    required this.field,
-    required this.message,
-  });
+  const FieldValidationError({required this.field, required this.message});
 
   final String field;
   final String message;
@@ -36,18 +33,27 @@ class ApiErrorPayload {
 
   factory ApiErrorPayload.fromDynamic(dynamic raw) {
     final map = raw is Map ? raw.cast<String, dynamic>() : <String, dynamic>{};
+    final resolvedMessage = map['message']?.toString().trim();
+    final fallbackMessage = map['error']?.toString().trim();
     final fieldsRaw = map['fieldErrors'];
     final fieldErrors = fieldsRaw is List
         ? fieldsRaw
-            .whereType<Map>()
-            .map((item) => FieldValidationError.fromJson(item.cast<String, dynamic>()))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    FieldValidationError.fromJson(item.cast<String, dynamic>()),
+              )
+              .toList()
         : <FieldValidationError>[];
 
     return ApiErrorPayload(
       status: map['status'] is int ? map['status'] as int : 500,
       error: map['error']?.toString() ?? 'Error',
-      message: map['message']?.toString() ?? 'Unexpected error',
+      message: resolvedMessage?.isNotEmpty == true
+          ? resolvedMessage!
+          : (fallbackMessage?.isNotEmpty == true
+                ? fallbackMessage!
+                : 'Request failed'),
       path: map['path']?.toString() ?? '',
       fieldErrors: fieldErrors,
     );
