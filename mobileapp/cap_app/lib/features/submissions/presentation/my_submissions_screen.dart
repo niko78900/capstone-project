@@ -1,4 +1,5 @@
 import 'package:cap_app/core/utils/formatters.dart';
+import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
@@ -13,6 +14,23 @@ class MySubmissionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final submissionsAsync = ref.watch(mySubmissionsProvider);
+    final productNamesById = ref
+        .watch(allProductsProvider)
+        .maybeWhen(
+          data: (products) => {
+            for (final product in products) product.id: product.name,
+          },
+          orElse: () => const <int, String>{},
+        );
+    final supermarketNamesById = ref
+        .watch(supermarketsProvider)
+        .maybeWhen(
+          data: (supermarkets) => {
+            for (final supermarket in supermarkets)
+              supermarket.id: supermarket.name,
+          },
+          orElse: () => const <int, String>{},
+        );
     return BackToHomeScope(
       child: Scaffold(
         appBar: AppBar(title: const Text('My Submissions')),
@@ -39,7 +57,11 @@ class MySubmissionsScreen extends ConsumerWidget {
                 itemCount: items.length,
                 separatorBuilder: (_, index) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
-                  return _SubmissionCard(item: items[index]);
+                  return _SubmissionCard(
+                    item: items[index],
+                    productNamesById: productNamesById,
+                    supermarketNamesById: supermarketNamesById,
+                  );
                 },
               ),
             );
@@ -51,9 +73,15 @@ class MySubmissionsScreen extends ConsumerWidget {
 }
 
 class _SubmissionCard extends StatelessWidget {
-  const _SubmissionCard({required this.item});
+  const _SubmissionCard({
+    required this.item,
+    required this.productNamesById,
+    required this.supermarketNamesById,
+  });
 
   final SubmissionResponse item;
+  final Map<int, String> productNamesById;
+  final Map<int, String> supermarketNamesById;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +132,11 @@ class _SubmissionCard extends StatelessWidget {
                 ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.32),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: _SubmissionPayloadView(item: item),
+              child: _SubmissionPayloadView(
+                item: item,
+                productNamesById: productNamesById,
+                supermarketNamesById: supermarketNamesById,
+              ),
             ),
           ],
         ),
@@ -114,9 +146,15 @@ class _SubmissionCard extends StatelessWidget {
 }
 
 class _SubmissionPayloadView extends StatelessWidget {
-  const _SubmissionPayloadView({required this.item});
+  const _SubmissionPayloadView({
+    required this.item,
+    required this.productNamesById,
+    required this.supermarketNamesById,
+  });
 
   final SubmissionResponse item;
+  final Map<int, String> productNamesById;
+  final Map<int, String> supermarketNamesById;
 
   @override
   Widget build(BuildContext context) {
@@ -126,18 +164,32 @@ class _SubmissionPayloadView extends StatelessWidget {
     }
 
     return switch (item.type) {
-      SubmissionType.product => _ProductPayloadView(payload: payload),
-      SubmissionType.price => _PricePayloadView(payload: payload),
-      SubmissionType.nutrition => _NutritionPayloadView(payload: payload),
+      SubmissionType.product => _ProductPayloadView(
+        payload: payload,
+        supermarketNamesById: supermarketNamesById,
+      ),
+      SubmissionType.price => _PricePayloadView(
+        payload: payload,
+        productNamesById: productNamesById,
+        supermarketNamesById: supermarketNamesById,
+      ),
+      SubmissionType.nutrition => _NutritionPayloadView(
+        payload: payload,
+        productNamesById: productNamesById,
+      ),
       SubmissionType.unknown => _GenericPayloadView(payload: payload),
     };
   }
 }
 
 class _ProductPayloadView extends StatelessWidget {
-  const _ProductPayloadView({required this.payload});
+  const _ProductPayloadView({
+    required this.payload,
+    required this.supermarketNamesById,
+  });
 
   final Map<String, dynamic> payload;
+  final Map<int, String> supermarketNamesById;
 
   @override
   Widget build(BuildContext context) {
@@ -176,9 +228,10 @@ class _ProductPayloadView extends StatelessWidget {
         ),
         _LabeledValue(
           label: 'Supermarket',
-          value: _asInt(payload['supermarketId']) == null
-              ? '-'
-              : '#${_asInt(payload['supermarketId'])}',
+          value: _supermarketLabel(
+            _asInt(payload['supermarketId']),
+            supermarketNamesById,
+          ),
         ),
         _LabeledValue(
           label: 'Proposed price',
@@ -236,9 +289,15 @@ class _ProductPayloadView extends StatelessWidget {
 }
 
 class _PricePayloadView extends StatelessWidget {
-  const _PricePayloadView({required this.payload});
+  const _PricePayloadView({
+    required this.payload,
+    required this.productNamesById,
+    required this.supermarketNamesById,
+  });
 
   final Map<String, dynamic> payload;
+  final Map<int, String> productNamesById;
+  final Map<int, String> supermarketNamesById;
 
   @override
   Widget build(BuildContext context) {
@@ -257,11 +316,11 @@ class _PricePayloadView extends StatelessWidget {
         const SizedBox(height: 8),
         _LabeledValue(
           label: 'Product',
-          value: productId == null ? '-' : '#$productId',
+          value: _productLabel(productId, productNamesById),
         ),
         _LabeledValue(
           label: 'Supermarket',
-          value: supermarketId == null ? '-' : '#$supermarketId',
+          value: _supermarketLabel(supermarketId, supermarketNamesById),
         ),
         if (branchId != null)
           _LabeledValue(label: 'Branch', value: '#$branchId'),
@@ -281,9 +340,13 @@ class _PricePayloadView extends StatelessWidget {
 }
 
 class _NutritionPayloadView extends StatelessWidget {
-  const _NutritionPayloadView({required this.payload});
+  const _NutritionPayloadView({
+    required this.payload,
+    required this.productNamesById,
+  });
 
   final Map<String, dynamic> payload;
+  final Map<int, String> productNamesById;
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +363,7 @@ class _NutritionPayloadView extends StatelessWidget {
         const SizedBox(height: 8),
         _LabeledValue(
           label: 'Product',
-          value: productId == null ? '-' : '#$productId',
+          value: _productLabel(productId, productNamesById),
         ),
         if (nutrition == null || nutrition.isEmpty)
           const Text('No nutrition fields submitted.')
@@ -462,9 +525,34 @@ num? _asNum(dynamic value) {
 
 DateTime? _asDateTime(dynamic value) {
   if (value is String) {
-    return DateTime.tryParse(value);
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) {
+      return parsed;
+    }
+    final numeric = num.tryParse(value);
+    if (numeric != null) {
+      return _dateTimeFromEpoch(numeric);
+    }
+    return null;
+  }
+  if (value is num) {
+    return _dateTimeFromEpoch(value);
   }
   return null;
+}
+
+DateTime? _dateTimeFromEpoch(num value) {
+  if (!value.isFinite) {
+    return null;
+  }
+  final absolute = value.abs();
+  final milliseconds = absolute >= 100000000000
+      ? value
+      : value * 1000;
+  return DateTime.fromMillisecondsSinceEpoch(
+    milliseconds.round(),
+    isUtc: true,
+  );
 }
 
 String _formatMeasure(dynamic value, String unit) {
@@ -473,6 +561,28 @@ String _formatMeasure(dynamic value, String unit) {
     return '-';
   }
   return '$numeric $unit';
+}
+
+String _productLabel(int? productId, Map<int, String> namesById) {
+  if (productId == null) {
+    return '-';
+  }
+  final name = namesById[productId];
+  if (name == null || name.trim().isEmpty) {
+    return '#$productId';
+  }
+  return name;
+}
+
+String _supermarketLabel(int? supermarketId, Map<int, String> namesById) {
+  if (supermarketId == null) {
+    return '-';
+  }
+  final name = namesById[supermarketId];
+  if (name == null || name.trim().isEmpty) {
+    return '#$supermarketId';
+  }
+  return name;
 }
 
 String? _categoryName(int? id) {
