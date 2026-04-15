@@ -13,7 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   styles: `
     .loading-state {
       align-items: center;
-      color: #3a4a60;
+      color: var(--text-muted);
       display: inline-flex;
       gap: 12px;
       padding: 16px 0;

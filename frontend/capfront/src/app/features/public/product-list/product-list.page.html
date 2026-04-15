@@ -7,7 +7,7 @@
   <mat-form-field appearance="outline" class="search-field">
     <mat-label>Search by product or brand</mat-label>
     <input matInput [formControl]="searchControl" />
-    <mat-icon matSuffix>search</mat-icon>
+    <span matSuffix class="search-icon" aria-hidden="true">&#128269;</span>
   </mat-form-field>
 
   @if (loading()) {
@@ -28,10 +28,12 @@
   <div class="grid">
     @for (product of products(); track product.id) {
       <mat-card class="product-card" appearance="outlined">
-        <mat-card-title>{{ product.name }}</mat-card-title>
-        <mat-card-subtitle>
-          {{ product.brand || 'Unbranded' }} • {{ product.category }}
-        </mat-card-subtitle>
+        <mat-card-header>
+          <mat-card-title>{{ product.name }}</mat-card-title>
+          <mat-card-subtitle>
+            {{ product.brand || 'Unbranded' }} &bull; {{ product.category }}
+          </mat-card-subtitle>
+        </mat-card-header>
         <mat-card-content>
           <p class="price">{{ formatPrice(product) }}</p>
           <p class="subtle">
@@ -45,3 +47,4 @@
     }
   </div>
 </section>
+

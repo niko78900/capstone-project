@@ -10,15 +10,16 @@ import { Component, input } from '@angular/core';
   `,
   styles: `
     .empty-state {
-      background: #f5f7fb;
-      border: 1px dashed #c6cfdd;
+      background: var(--surface);
+      border: 1px dashed var(--border);
       border-radius: 12px;
-      color: #4b5a74;
+      color: var(--text-muted);
       padding: 20px;
       text-align: center;
     }
 
     h3 {
+      color: var(--app-text);
       margin: 0 0 8px;
     }
 

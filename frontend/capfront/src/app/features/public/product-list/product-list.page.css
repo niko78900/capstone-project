@@ -8,13 +8,24 @@
 }
 
 .header p {
-  color: #52617a;
+  color: var(--text-muted);
   margin: 4px 0 0;
 }
 
 .search-field {
   max-width: 520px;
   width: 100%;
+}
+
+.search-icon {
+  color: var(--text-muted);
+  display: inline-flex;
+  font-size: 16px;
+  height: 20px;
+  line-height: 1;
+  width: 20px;
+  align-items: center;
+  justify-content: center;
 }
 
 .grid {
@@ -24,7 +35,23 @@
 }
 
 .product-card {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 18px var(--card-shadow);
   height: 100%;
+}
+
+.product-card .mat-mdc-card-header {
+  padding: 16px 16px 0;
+}
+
+.product-card .mat-mdc-card-content {
+  padding: 10px 16px 8px;
+}
+
+.product-card .mat-mdc-card-actions {
+  padding: 0 8px 10px;
 }
 
 .price {
@@ -34,6 +61,6 @@
 }
 
 .subtle {
-  color: #5b6982;
+  color: var(--text-muted);
   margin: 0;
 }

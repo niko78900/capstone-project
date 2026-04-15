@@ -11,6 +11,9 @@
     </a>
   </nav>
   <span class="spacer"></span>
+  <button mat-stroked-button class="theme-toggle" (click)="toggleTheme()">
+    {{ themeToggleLabel() }}
+  </button>
   @if (currentUser(); as session) {
     <span class="user-chip">{{ session.user.displayName }} ({{ session.user.role }})</span>
     <button mat-button (click)="logout()">Logout</button>
