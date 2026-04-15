@@ -41,7 +41,7 @@ class ProductDetailScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
-                Text('${detail.brand ?? 'Unbranded'} • ${detail.category}'),
+                Text('${detail.brand ?? 'Unbranded'} - ${detail.category}'),
                 if ((detail.barcode ?? '').isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text('Barcode: ${detail.barcode}'),
@@ -79,6 +79,20 @@ class ProductDetailScreen extends ConsumerWidget {
                   },
                   icon: const Icon(Icons.add_shopping_cart_outlined),
                   label: const Text('Add to cart'),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.tonalIcon(
+                  onPressed: () =>
+                      context.push(AppRoutes.submitPrice, extra: detail.id),
+                  icon: const Icon(Icons.price_change_outlined),
+                  label: const Text('Submit price update'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      context.push(AppRoutes.submitProduct, extra: detail),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Suggest product details edit'),
                 ),
                 const SizedBox(height: 20),
                 _NutritionCard(nutrition: detail.nutrition),

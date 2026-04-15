@@ -1,4 +1,5 @@
 import 'package:cap_app/core/errors/app_exception.dart';
+import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
@@ -7,7 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SubmitProductScreen extends ConsumerStatefulWidget {
-  const SubmitProductScreen({super.key});
+  const SubmitProductScreen({this.initialProduct, super.key});
+
+  final ProductDetailDto? initialProduct;
 
   @override
   ConsumerState<SubmitProductScreen> createState() =>
@@ -30,6 +33,28 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   int _categoryId = categoryOptions.first.id;
   String? _serverMessage;
   Map<String, String> _fieldErrors = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    final initialProduct = widget.initialProduct;
+    if (initialProduct == null) {
+      return;
+    }
+    _categoryId = _resolveCategoryId(initialProduct.category);
+    _nameController.text = initialProduct.name;
+    _brandController.text = initialProduct.brand ?? '';
+    _barcodeController.text = initialProduct.barcode ?? '';
+    _imageUrlController.text = initialProduct.imageUrl ?? '';
+    final nutrition = initialProduct.nutrition;
+    if (nutrition != null) {
+      _caloriesController.text = _asNumberInput(nutrition.calories);
+      _proteinController.text = _asNumberInput(nutrition.proteinG);
+      _carbsController.text = _asNumberInput(nutrition.carbsG);
+      _fatController.text = _asNumberInput(nutrition.fatG);
+      _servingController.text = nutrition.servingSize ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -311,5 +336,25 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       return null;
     }
     return double.tryParse(trimmed);
+  }
+
+  int _resolveCategoryId(String categoryName) {
+    final normalized = categoryName.trim().toLowerCase();
+    for (final option in categoryOptions) {
+      if (option.name.toLowerCase() == normalized) {
+        return option.id;
+      }
+    }
+    return categoryOptions.first.id;
+  }
+
+  String _asNumberInput(double? value) {
+    if (value == null) {
+      return '';
+    }
+    if (value == value.roundToDouble()) {
+      return value.toInt().toString();
+    }
+    return value.toString();
   }
 }

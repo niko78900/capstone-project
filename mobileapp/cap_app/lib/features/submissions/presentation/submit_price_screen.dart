@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SubmitPriceScreen extends ConsumerStatefulWidget {
-  const SubmitPriceScreen({super.key});
+  const SubmitPriceScreen({this.initialProductId, super.key});
+
+  final int? initialProductId;
 
   @override
   ConsumerState<SubmitPriceScreen> createState() => _SubmitPriceScreenState();
@@ -26,6 +28,12 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
   int? _supermarketId;
   String? _serverMessage;
   Map<String, String> _fieldErrors = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    _productId = widget.initialProductId;
+  }
 
   @override
   void dispose() {
@@ -61,12 +69,12 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 productsAsync.when(
-                  data: (products) => _ProductDropdown(
+                  data: (products) => _ProductPickerField(
                     products: products,
                     value: _productId,
                     errorText: _fieldErrors['productId'],
                     enabled: !isSubmitting,
-                    onChanged: (value) => setState(() => _productId = value),
+                    onTap: () => _pickProduct(products),
                   ),
                   loading: () =>
                       const _LoadingField(label: 'Loading products...'),
@@ -258,37 +266,149 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
       _fieldErrors = const {};
     });
   }
+
+  Future<void> _pickProduct(List<ProductSummaryDto> products) async {
+    final selectedProductId = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (modalContext) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredProducts = _filterProducts(products, query);
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 8,
+                  bottom: MediaQuery.of(modalContext).viewInsets.bottom + 16,
+                ),
+                child: SizedBox(
+                  height: 480,
+                  child: Column(
+                    children: [
+                      TextField(
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Search products',
+                          hintText: 'Type product name, brand, or category',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                        onChanged: (value) {
+                          setModalState(() {
+                            query = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: filteredProducts.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No products found for your search.',
+                                ),
+                              )
+                            : ListView.separated(
+                                itemCount: filteredProducts.length,
+                                separatorBuilder: (_, index) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final product = filteredProducts[index];
+                                  return ListTile(
+                                    title: Text(product.name),
+                                    subtitle: Text(
+                                      '${product.brand ?? 'Unbranded'} - ${product.category}',
+                                    ),
+                                    onTap: () =>
+                                        Navigator.of(context).pop(product.id),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || selectedProductId == null) {
+      return;
+    }
+
+    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
+    nextFieldErrors.remove('productId');
+    setState(() {
+      _productId = selectedProductId;
+      _fieldErrors = nextFieldErrors;
+    });
+  }
+
+  List<ProductSummaryDto> _filterProducts(
+    List<ProductSummaryDto> products,
+    String query,
+  ) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return products;
+    }
+    return products.where((product) {
+      final name = product.name.toLowerCase();
+      final brand = product.brand?.toLowerCase() ?? '';
+      final category = product.category.toLowerCase();
+      return name.contains(normalizedQuery) ||
+          brand.contains(normalizedQuery) ||
+          category.contains(normalizedQuery);
+    }).toList();
+  }
 }
 
-class _ProductDropdown extends StatelessWidget {
-  const _ProductDropdown({
+class _ProductPickerField extends StatelessWidget {
+  const _ProductPickerField({
     required this.products,
     required this.value,
-    required this.onChanged,
+    required this.onTap,
     required this.enabled,
     this.errorText,
   });
 
   final List<ProductSummaryDto> products;
   final int? value;
-  final ValueChanged<int?> onChanged;
+  final VoidCallback onTap;
   final bool enabled;
   final String? errorText;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<int>(
-      initialValue: value,
-      decoration: InputDecoration(labelText: 'Product', errorText: errorText),
-      items: products
-          .map(
-            (product) => DropdownMenuItem<int>(
-              value: product.id,
-              child: Text('${product.name} (${product.brand ?? 'Unbranded'})'),
-            ),
-          )
-          .toList(),
-      onChanged: enabled ? onChanged : null,
+    ProductSummaryDto? selectedProduct;
+    for (final product in products) {
+      if (product.id == value) {
+        selectedProduct = product;
+        break;
+      }
+    }
+
+    final displayText = selectedProduct == null
+        ? 'Tap to choose a product'
+        : '${selectedProduct.name} (${selectedProduct.brand ?? 'Unbranded'})';
+
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(8),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Product',
+          errorText: errorText,
+          suffixIcon: const Icon(Icons.search),
+          enabled: enabled,
+        ),
+        child: Text(displayText),
+      ),
     );
   }
 }

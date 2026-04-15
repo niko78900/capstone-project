@@ -5,6 +5,7 @@ import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/presentation/cart_screen.dart';
 import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
+import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
 import 'package:cap_app/features/submissions/presentation/my_submissions_screen.dart';
@@ -41,7 +42,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authSessionProvider);
       final session = authState.valueOrNull;
-      final isAuthRoute = state.fullPath == AppRoutes.login || state.fullPath == AppRoutes.register;
+      final isAuthRoute =
+          state.fullPath == AppRoutes.login ||
+          state.fullPath == AppRoutes.register;
 
       if (authState.isLoading) {
         return null;
@@ -87,17 +90,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.compareResult,
         builder: (context, state) {
-          final result = state.extra is CartComparisonResponse ? state.extra as CartComparisonResponse : null;
+          final result = state.extra is CartComparisonResponse
+              ? state.extra as CartComparisonResponse
+              : null;
           return CompareResultScreen(result: result);
         },
       ),
       GoRoute(
         path: AppRoutes.submitProduct,
-        builder: (context, state) => const SubmitProductScreen(),
+        builder: (context, state) {
+          final prefill = state.extra is ProductDetailDto
+              ? state.extra as ProductDetailDto
+              : null;
+          return SubmitProductScreen(initialProduct: prefill);
+        },
       ),
       GoRoute(
         path: AppRoutes.submitPrice,
-        builder: (context, state) => const SubmitPriceScreen(),
+        builder: (context, state) {
+          final initialProductId = state.extra is int
+              ? state.extra as int
+              : null;
+          return SubmitPriceScreen(initialProductId: initialProductId);
+        },
       ),
       GoRoute(
         path: AppRoutes.submissions,
