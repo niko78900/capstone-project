@@ -38,7 +38,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         actions: [
           IconButton(
             tooltip: 'My Cart',
-            onPressed: () => context.go(AppRoutes.cart),
+            onPressed: () => context.push(AppRoutes.cart),
             icon: const Icon(Icons.shopping_cart_outlined),
           ),
         ],
@@ -58,7 +58,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     : IconButton(
                         onPressed: () {
                           _searchController.clear();
-                          ref.read(productSearchQueryProvider.notifier).state = '';
+                          ref.read(productSearchQueryProvider.notifier).state =
+                              '';
                           setState(() {});
                         },
                         icon: const Icon(Icons.clear),
@@ -67,7 +68,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onChanged: (value) {
                 _debounce?.cancel();
                 _debounce = Timer(const Duration(milliseconds: 350), () {
-                  ref.read(productSearchQueryProvider.notifier).state = value.trim();
+                  ref.read(productSearchQueryProvider.notifier).state = value
+                      .trim();
                 });
                 setState(() {});
               },
@@ -118,7 +120,7 @@ class _ProductListTile extends ConsumerWidget {
         ? 'No verified price yet'
         : '${AppFormatters.asCurrency(bestPrice)} (${product.bestPriceSupermarket ?? '-'})';
     return ListTile(
-      onTap: () => context.go(AppRoutes.productDetail(product.id)),
+      onTap: () => context.push(AppRoutes.productDetail(product.id)),
       title: Text(product.name),
       subtitle: Text(
         '${product.brand?.isNotEmpty == true ? product.brand : 'Unbranded'} • ${product.category}\n$bestPriceLabel',
@@ -127,10 +129,9 @@ class _ProductListTile extends ConsumerWidget {
       trailing: IconButton(
         tooltip: 'Add to cart',
         onPressed: () async {
-          await ref.read(cartNotifierProvider.notifier).addOrIncrement(
-                productId: product.id,
-                productName: product.name,
-              );
+          await ref
+              .read(cartNotifierProvider.notifier)
+              .addOrIncrement(productId: product.id, productName: product.name);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Added ${product.name} to cart')),

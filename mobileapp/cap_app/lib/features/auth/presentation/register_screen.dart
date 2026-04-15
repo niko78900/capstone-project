@@ -116,7 +116,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Confirm password'),
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm password',
+                      ),
                       validator: (value) {
                         if ((value ?? '').isEmpty) {
                           return 'Please confirm your password';
@@ -131,7 +133,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _serverMessage!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 18),
@@ -150,7 +154,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: isLoading
                           ? null
                           : () {
-                              context.go(AppRoutes.login);
+                              if (context.canPop()) {
+                                context.pop();
+                              } else {
+                                context.go(AppRoutes.login);
+                              }
                             },
                       child: const Text('Back to login'),
                     ),
@@ -174,7 +182,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _fieldErrors = const {};
     });
 
-    await ref.read(authSessionProvider.notifier).register(
+    await ref
+        .read(authSessionProvider.notifier)
+        .register(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           displayName: _nameController.text.trim(),

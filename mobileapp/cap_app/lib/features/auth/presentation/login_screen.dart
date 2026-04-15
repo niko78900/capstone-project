@@ -94,7 +94,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _serverMessage!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 18),
@@ -113,7 +115,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onPressed: isLoading
                           ? null
                           : () {
-                              context.go(AppRoutes.register);
+                              context.push(AppRoutes.register);
                             },
                       child: const Text('Create account'),
                     ),
@@ -137,7 +139,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _fieldErrors = const {};
     });
 
-    await ref.read(authSessionProvider.notifier).login(
+    await ref
+        .read(authSessionProvider.notifier)
+        .login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );

@@ -15,7 +15,9 @@ class MainDrawer extends ConsumerWidget {
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+            ),
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Column(
@@ -36,11 +38,36 @@ class MainDrawer extends ConsumerWidget {
               ),
             ),
           ),
-          _entry(context, icon: Icons.home_outlined, label: 'Home', route: AppRoutes.home),
-          _entry(context, icon: Icons.shopping_cart_outlined, label: 'Cart', route: AppRoutes.cart),
-          _entry(context, icon: Icons.add_box_outlined, label: 'Submit Product', route: AppRoutes.submitProduct),
-          _entry(context, icon: Icons.price_change_outlined, label: 'Submit Price', route: AppRoutes.submitPrice),
-          _entry(context, icon: Icons.inbox_outlined, label: 'My Submissions', route: AppRoutes.submissions),
+          _entry(
+            context,
+            icon: Icons.home_outlined,
+            label: 'Home',
+            route: AppRoutes.home,
+          ),
+          _entry(
+            context,
+            icon: Icons.shopping_cart_outlined,
+            label: 'Cart',
+            route: AppRoutes.cart,
+          ),
+          _entry(
+            context,
+            icon: Icons.add_box_outlined,
+            label: 'Submit Product',
+            route: AppRoutes.submitProduct,
+          ),
+          _entry(
+            context,
+            icon: Icons.price_change_outlined,
+            label: 'Submit Price',
+            route: AppRoutes.submitPrice,
+          ),
+          _entry(
+            context,
+            icon: Icons.inbox_outlined,
+            label: 'My Submissions',
+            route: AppRoutes.submissions,
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -58,13 +85,18 @@ class MainDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _entry(BuildContext context, {required IconData icon, required String label, required String route}) {
+  Widget _entry(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String route,
+  }) {
     return ListTile(
       leading: Icon(icon),
       title: Text(label),
       onTap: () {
         Navigator.of(context).pop();
-        context.go(route);
+        context.push(route);
       },
     );
   }

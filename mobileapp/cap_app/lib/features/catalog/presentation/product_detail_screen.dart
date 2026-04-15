@@ -9,10 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class ProductDetailScreen extends ConsumerWidget {
-  const ProductDetailScreen({
-    required this.productId,
-    super.key,
-  });
+  const ProductDetailScreen({required this.productId, super.key});
 
   final int productId;
 
@@ -25,7 +22,7 @@ class ProductDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'My Cart',
-            onPressed: () => context.go(AppRoutes.cart),
+            onPressed: () => context.push(AppRoutes.cart),
             icon: const Icon(Icons.shopping_cart_outlined),
           ),
         ],
@@ -37,7 +34,10 @@ class ProductDetailScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(detail.name, style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                detail.name,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const SizedBox(height: 8),
               Text('${detail.brand ?? 'Unbranded'} • ${detail.category}'),
               if ((detail.barcode ?? '').isNotEmpty) ...[
@@ -52,14 +52,17 @@ class ProductDetailScreen extends ConsumerWidget {
                     detail.imageUrl!,
                     fit: BoxFit.cover,
                     height: 180,
-                    errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const SizedBox.shrink(),
                   ),
                 ),
               ],
               const SizedBox(height: 18),
               FilledButton.icon(
                 onPressed: () async {
-                  await ref.read(cartNotifierProvider.notifier).addOrIncrement(
+                  await ref
+                      .read(cartNotifierProvider.notifier)
+                      .addOrIncrement(
                         productId: detail.id,
                         productName: detail.name,
                       );
@@ -75,7 +78,10 @@ class ProductDetailScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               _NutritionCard(nutrition: detail.nutrition),
               const SizedBox(height: 16),
-              Text('Verified Prices', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Verified Prices',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
               if (detail.prices.isEmpty)
                 const Card(
@@ -89,7 +95,9 @@ class ProductDetailScreen extends ConsumerWidget {
                   (price) => Card(
                     child: ListTile(
                       title: Text(price.supermarketName),
-                      subtitle: Text('Observed ${AppFormatters.asRelativeDateTime(price.observedAt)}'),
+                      subtitle: Text(
+                        'Observed ${AppFormatters.asRelativeDateTime(price.observedAt)}',
+                      ),
                       trailing: Text(
                         AppFormatters.asCurrency(price.price),
                         style: const TextStyle(fontWeight: FontWeight.w600),
@@ -129,9 +137,18 @@ class _NutritionCard extends StatelessWidget {
           children: [
             Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            _row('Calories', nutrition!.calories == null ? '-' : '${nutrition!.calories} kcal'),
-            _row('Protein', nutrition!.proteinG == null ? '-' : '${nutrition!.proteinG} g'),
-            _row('Carbs', nutrition!.carbsG == null ? '-' : '${nutrition!.carbsG} g'),
+            _row(
+              'Calories',
+              nutrition!.calories == null ? '-' : '${nutrition!.calories} kcal',
+            ),
+            _row(
+              'Protein',
+              nutrition!.proteinG == null ? '-' : '${nutrition!.proteinG} g',
+            ),
+            _row(
+              'Carbs',
+              nutrition!.carbsG == null ? '-' : '${nutrition!.carbsG} g',
+            ),
             _row('Fat', nutrition!.fatG == null ? '-' : '${nutrition!.fatG} g'),
             _row('Serving', nutrition!.servingSize ?? '-'),
           ],
