@@ -1,4 +1,3 @@
-import 'package:cap_app/features/auth/models/auth_models.dart';
 import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
@@ -8,6 +7,7 @@ import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
+import 'package:cap_app/features/settings/presentation/settings_screen.dart';
 import 'package:cap_app/features/submissions/presentation/my_submissions_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_price_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_product_screen.dart';
@@ -24,6 +24,7 @@ class AppRoutes {
   static const submitProduct = '/submit/product';
   static const submitPrice = '/submit/price';
   static const submissions = '/submissions';
+  static const settings = '/settings';
 
   static String productDetail(int productId) => '/product/$productId';
 }
@@ -110,6 +111,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.submissions,
         builder: (context, state) => const MySubmissionsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );

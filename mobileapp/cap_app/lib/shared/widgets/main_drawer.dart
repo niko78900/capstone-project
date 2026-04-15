@@ -31,7 +31,7 @@ class MainDrawer extends ConsumerWidget {
                   const SizedBox(height: 8),
                   if (session != null)
                     Text(
-                      '${session.user.displayName} • ${session.user.role.name.toUpperCase()}',
+                      '${session.user.displayName} - ${session.user.role.name.toUpperCase()}',
                       style: const TextStyle(fontSize: 13),
                     ),
                 ],
@@ -68,6 +68,12 @@ class MainDrawer extends ConsumerWidget {
             label: 'My Submissions',
             route: AppRoutes.submissions,
           ),
+          _entry(
+            context,
+            icon: Icons.settings_outlined,
+            label: 'Settings',
+            route: AppRoutes.settings,
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -101,3 +107,4 @@ class MainDrawer extends ConsumerWidget {
     );
   }
 }
+
