@@ -20,14 +20,12 @@ class ApiClient {
       ) {
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final token = await _tokenStorage.readToken();
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
+        onError: (error, handler) async {
+          final recovered = await _retryWithAuthHeaderIfNeeded(error);
+          if (recovered != null) {
+            handler.resolve(recovered);
+            return;
           }
-          handler.next(options);
-        },
-        onError: (error, handler) {
           handler.reject(_mapError(error));
         },
       ),
@@ -42,9 +40,11 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
+      final options = await _authorizedOptions();
       final response = await _dio.get<dynamic>(
         path,
         queryParameters: queryParameters,
+        options: options,
       );
       return response.data;
     } on DioException catch (error) {
@@ -60,10 +60,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
+      final options = await _authorizedOptions();
       final response = await _dio.post<dynamic>(
         path,
         data: data,
         queryParameters: queryParameters,
+        options: options,
       );
       return response.data;
     } on DioException catch (error) {
@@ -79,11 +81,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
+      final options = await _authorizedOptions(contentType: 'multipart/form-data');
       final response = await _dio.post<dynamic>(
         path,
         data: formData,
         queryParameters: queryParameters,
-        options: Options(contentType: 'multipart/form-data'),
+        options: options,
       );
       return response.data;
     } on DioException catch (error) {
@@ -150,4 +153,56 @@ class ApiClient {
       statusCode: error.response?.statusCode,
     );
   }
+
+  Future<Options?> _authorizedOptions({String? contentType}) async {
+    final token = await _tokenStorage.readToken();
+    if (token == null || token.isEmpty) {
+      if (contentType == null) {
+        return null;
+      }
+      return Options(contentType: contentType);
+    }
+
+    return Options(
+      contentType: contentType,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+  }
+
+  Future<Response<dynamic>?> _retryWithAuthHeaderIfNeeded(DioException error) async {
+    final request = error.requestOptions;
+    final response = error.response;
+    if (response?.statusCode != 401) {
+      return null;
+    }
+
+    final alreadyRetried = request.extra[_retriedWithAuthHeaderKey] == true;
+    if (alreadyRetried) {
+      return null;
+    }
+
+    final token = await _tokenStorage.readToken();
+    if (token == null || token.isEmpty) {
+      return null;
+    }
+
+    final normalizedHeaders = Map<String, dynamic>.from(request.headers);
+    normalizedHeaders['Authorization'] = 'Bearer $token';
+
+    final normalizedExtra = Map<String, dynamic>.from(request.extra);
+    normalizedExtra[_retriedWithAuthHeaderKey] = true;
+
+    final retryRequest = request.copyWith(
+      headers: normalizedHeaders,
+      extra: normalizedExtra,
+    );
+
+    try {
+      return await _dio.fetch<dynamic>(retryRequest);
+    } on DioException {
+      return null;
+    }
+  }
+
+  static const _retriedWithAuthHeaderKey = 'retried_with_auth_header';
 }

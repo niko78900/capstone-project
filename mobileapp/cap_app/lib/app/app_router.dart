@@ -29,18 +29,11 @@ class AppRoutes {
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final refreshListenable = ValueNotifier<int>(0);
-  ref.onDispose(refreshListenable.dispose);
-  ref.listen<AsyncValue<AuthSession?>>(
-    authSessionProvider,
-    (previous, next) => refreshListenable.value++,
-  );
+  final authState = ref.watch(authSessionProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.login,
-    refreshListenable: refreshListenable,
     redirect: (context, state) {
-      final authState = ref.read(authSessionProvider);
       final session = authState.valueOrNull;
       final isAuthRoute =
           state.fullPath == AppRoutes.login ||

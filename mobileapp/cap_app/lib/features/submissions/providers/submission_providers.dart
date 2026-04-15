@@ -9,6 +9,9 @@ final submissionRepositoryProvider = Provider<SubmissionRepository>((ref) {
 });
 
 final mySubmissionsProvider = FutureProvider<List<SubmissionResponse>>((ref) async {
+  ref.watch(
+    authSessionProvider.select((state) => state.valueOrNull?.accessToken),
+  );
   final repo = ref.watch(submissionRepositoryProvider);
   try {
     return await repo.getMySubmissions();

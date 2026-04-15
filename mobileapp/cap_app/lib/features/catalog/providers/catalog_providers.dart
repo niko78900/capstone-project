@@ -11,6 +11,9 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
 final productSearchQueryProvider = StateProvider<String>((ref) => '');
 
 final productListProvider = FutureProvider<List<ProductSummaryDto>>((ref) async {
+  ref.watch(
+    authSessionProvider.select((state) => state.valueOrNull?.accessToken),
+  );
   final query = ref.watch(productSearchQueryProvider);
   final repo = ref.watch(catalogRepositoryProvider);
   try {
@@ -22,6 +25,9 @@ final productListProvider = FutureProvider<List<ProductSummaryDto>>((ref) async 
 });
 
 final allProductsProvider = FutureProvider<List<ProductSummaryDto>>((ref) async {
+  ref.watch(
+    authSessionProvider.select((state) => state.valueOrNull?.accessToken),
+  );
   final repo = ref.watch(catalogRepositoryProvider);
   try {
     return await repo.getProducts();
@@ -32,6 +38,9 @@ final allProductsProvider = FutureProvider<List<ProductSummaryDto>>((ref) async 
 });
 
 final productDetailProvider = FutureProvider.family<ProductDetailDto, int>((ref, productId) async {
+  ref.watch(
+    authSessionProvider.select((state) => state.valueOrNull?.accessToken),
+  );
   final repo = ref.watch(catalogRepositoryProvider);
   try {
     return await repo.getProductDetail(productId);
@@ -42,6 +51,9 @@ final productDetailProvider = FutureProvider.family<ProductDetailDto, int>((ref,
 });
 
 final supermarketsProvider = FutureProvider<List<SupermarketDto>>((ref) async {
+  ref.watch(
+    authSessionProvider.select((state) => state.valueOrNull?.accessToken),
+  );
   final repo = ref.watch(catalogRepositoryProvider);
   try {
     return await repo.getSupermarkets();
