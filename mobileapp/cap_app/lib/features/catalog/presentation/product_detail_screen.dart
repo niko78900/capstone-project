@@ -70,7 +70,10 @@ class ProductDetailScreen extends ConsumerWidget {
                         );
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added ${detail.name} to cart')),
+                        SnackBar(
+                          content: Text('Added ${detail.name} to cart'),
+                          duration: const Duration(milliseconds: 800),
+                        ),
                       );
                     }
                   },
