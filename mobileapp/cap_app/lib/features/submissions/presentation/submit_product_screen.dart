@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
+import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
@@ -27,6 +28,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _barcodeController = TextEditingController();
+  final _priceController = TextEditingController();
   final _caloriesController = TextEditingController();
   final _proteinController = TextEditingController();
   final _carbsController = TextEditingController();
@@ -34,6 +36,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   final _imagePicker = ImagePicker();
 
   int _categoryId = categoryOptions.first.id;
+  int? _supermarketId;
   String? _imageUrl;
   String? _selectedImagePath;
   bool _isUploadingImage = false;
@@ -52,6 +55,11 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     _brandController.text = initialProduct.brand ?? '';
     _barcodeController.text = initialProduct.barcode ?? '';
     _imageUrl = initialProduct.imageUrl;
+    if (initialProduct.prices.isNotEmpty) {
+      final firstPrice = initialProduct.prices.first;
+      _supermarketId = firstPrice.supermarketId;
+      _priceController.text = _asNumberInput(firstPrice.price);
+    }
     final nutrition = initialProduct.nutrition;
     if (nutrition != null) {
       _caloriesController.text = _asNumberInput(nutrition.calories);
@@ -66,6 +74,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     _nameController.dispose();
     _brandController.dispose();
     _barcodeController.dispose();
+    _priceController.dispose();
     _caloriesController.dispose();
     _proteinController.dispose();
     _carbsController.dispose();
@@ -75,6 +84,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final supermarketsAsync = ref.watch(supermarketsProvider);
     final submitState = ref.watch(productSubmissionControllerProvider);
     final isSubmitting = submitState.isLoading;
     final isBusy = isSubmitting || _isUploadingImage;
@@ -139,9 +149,57 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                   TextFormField(
                     controller: _barcodeController,
                     decoration: InputDecoration(
-                      labelText: 'Barcode (optional)',
+                      labelText: 'Barcode',
                       errorText: _fieldErrors['barcode'],
                     ),
+                    validator: (value) {
+                      if ((value ?? '').trim().isEmpty) {
+                        return 'Barcode is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  supermarketsAsync.when(
+                    data: (supermarkets) => _SupermarketDropdown(
+                      supermarkets: supermarkets,
+                      value: _supermarketId,
+                      errorText: _fieldErrors['supermarketId'],
+                      enabled: !isBusy,
+                      onChanged: (value) {
+                        final nextFieldErrors = Map<String, String>.from(
+                          _fieldErrors,
+                        );
+                        nextFieldErrors.remove('supermarketId');
+                        setState(() {
+                          _supermarketId = value;
+                          _fieldErrors = nextFieldErrors;
+                        });
+                      },
+                    ),
+                    loading: () =>
+                        const _LoadingField(label: 'Loading supermarkets...'),
+                    error: (error, _) => _ErrorField(
+                      message: 'Failed to load supermarkets: $error',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _priceController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Price (MKD)',
+                      errorText: _fieldErrors['price'],
+                    ),
+                    validator: (value) {
+                      final parsed = double.tryParse((value ?? '').trim());
+                      if (parsed == null || parsed <= 0) {
+                        return 'Price must be a positive number';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
@@ -328,6 +386,15 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    if (_supermarketId == null) {
+      setState(() {
+        _fieldErrors = {
+          ..._fieldErrors,
+          'supermarketId': 'Supermarket is required',
+        };
+      });
+      return;
+    }
 
     setState(() {
       _serverMessage = null;
@@ -377,7 +444,9 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       sourceProductId: widget.initialProduct?.id,
       name: _nameController.text.trim(),
       brand: _brandController.text,
-      barcode: _barcodeController.text,
+      barcode: _barcodeController.text.trim(),
+      supermarketId: _supermarketId!,
+      price: double.parse(_priceController.text.trim()),
       imageUrl: imageUrl,
       nutrition: hasNutritionInput
           ? SubmissionNutritionInput(
@@ -420,6 +489,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     _nameController.clear();
     _brandController.clear();
     _barcodeController.clear();
+    _priceController.clear();
     _caloriesController.clear();
     _proteinController.clear();
     _carbsController.clear();
@@ -428,6 +498,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       _serverMessage = null;
       _fieldErrors = const {};
       _categoryId = categoryOptions.first.id;
+      _supermarketId = null;
       _imageUrl = null;
       _selectedImagePath = null;
       _isUploadingImage = false;
@@ -531,5 +602,82 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
         _serverMessage = 'Could not access camera or gallery.';
       });
     }
+  }
+}
+
+class _SupermarketDropdown extends StatelessWidget {
+  const _SupermarketDropdown({
+    required this.supermarkets,
+    required this.value,
+    required this.onChanged,
+    required this.enabled,
+    this.errorText,
+  });
+
+  final List<SupermarketDto> supermarkets;
+  final int? value;
+  final ValueChanged<int?> onChanged;
+  final bool enabled;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<int>(
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: 'Supermarket',
+        errorText: errorText,
+      ),
+      items: supermarkets
+          .map(
+            (market) => DropdownMenuItem<int>(
+              value: market.id,
+              child: Text(market.name),
+            ),
+          )
+          .toList(),
+      onChanged: enabled ? onChanged : null,
+    );
+  }
+}
+
+class _LoadingField extends StatelessWidget {
+  const _LoadingField({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: const InputDecoration(border: OutlineInputBorder()),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 10),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorField extends StatelessWidget {
+  const _ErrorField({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: const InputDecoration(border: OutlineInputBorder()),
+      child: Text(
+        message,
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      ),
+    );
   }
 }

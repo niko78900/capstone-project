@@ -77,7 +77,7 @@ class _SubmissionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Submission #${item.id} - $typeLabel',
+                    '$typeLabel | Ref ${_submissionReference(item)}',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -173,6 +173,16 @@ class _ProductPayloadView extends StatelessWidget {
         _LabeledValue(
           label: 'Barcode',
           value: _asString(payload['barcode']) ?? '-',
+        ),
+        _LabeledValue(
+          label: 'Supermarket',
+          value: _asInt(payload['supermarketId']) == null
+              ? '-'
+              : '#${_asInt(payload['supermarketId'])}',
+        ),
+        _LabeledValue(
+          label: 'Proposed price',
+          value: AppFormatters.asCurrency(_asNum(payload['price'])),
         ),
         if (imageUrl != null && imageUrl.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -387,6 +397,23 @@ String _typeLabel(SubmissionType type) {
     SubmissionType.nutrition => 'NUTRITION',
     SubmissionType.unknown => 'UNKNOWN',
   };
+}
+
+String _submissionReference(SubmissionResponse item) {
+  final typePrefix = switch (item.type) {
+    SubmissionType.product => 'PRD',
+    SubmissionType.price => 'PRC',
+    SubmissionType.nutrition => 'NTR',
+    SubmissionType.unknown => 'SUB',
+  };
+  final created = item.createdAt.toUtc();
+  final datePart =
+      '${created.year.toString().padLeft(4, '0')}'
+      '${created.month.toString().padLeft(2, '0')}'
+      '${created.day.toString().padLeft(2, '0')}';
+  final safeId = item.id > 0 ? item.id : 0;
+  final compactId = safeId.toRadixString(36).toUpperCase().padLeft(4, '0');
+  return '$typePrefix-$datePart-$compactId';
 }
 
 Map<String, dynamic>? _asMap(dynamic value) {

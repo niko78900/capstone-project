@@ -87,7 +87,9 @@ class ProductSubmissionRequestDto {
     this.sourceProductId,
     required this.name,
     this.brand,
-    this.barcode,
+    required this.barcode,
+    required this.supermarketId,
+    required this.price,
     this.imageUrl,
     this.nutrition,
     this.notes,
@@ -97,7 +99,9 @@ class ProductSubmissionRequestDto {
   final int? sourceProductId;
   final String name;
   final String? brand;
-  final String? barcode;
+  final String barcode;
+  final int supermarketId;
+  final double price;
   final String? imageUrl;
   final SubmissionNutritionInput? nutrition;
   final String? notes;
@@ -109,6 +113,8 @@ class ProductSubmissionRequestDto {
       'name': name,
       'brand': _nullIfBlank(brand),
       'barcode': _nullIfBlank(barcode),
+      'supermarketId': supermarketId,
+      'price': price,
       'imageUrl': _nullIfBlank(imageUrl),
       'nutrition': nutrition == null || nutrition!.isEmpty
           ? null
