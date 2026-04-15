@@ -1,7 +1,6 @@
 package com.niko.capstone.supermarket_api.api.v1.submissions;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
@@ -138,7 +137,7 @@ public class SubmissionService {
                 submission.getId(),
                 submission.getType(),
                 submission.getStatus(),
-                readJson(submission.getPayload()),
+                readJsonValue(submission.getPayload()),
                 submission.getNotes(),
                 submission.getCreatedAt(),
                 submission.getUpdatedAt()
@@ -153,9 +152,9 @@ public class SubmissionService {
         }
     }
 
-    private JsonNode readJson(String payload) {
+    private Object readJsonValue(String payload) {
         try {
-            return objectMapper.readTree(payload);
+            return objectMapper.readValue(payload, Object.class);
         } catch (JsonProcessingException ex) {
             return objectMapper.createObjectNode();
         }

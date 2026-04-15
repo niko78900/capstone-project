@@ -1,7 +1,6 @@
 package com.niko.capstone.supermarket_api.api.v1.moderation;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
@@ -218,7 +217,7 @@ public class ModerationService {
                 submission.getId(),
                 submission.getType(),
                 submission.getStatus(),
-                readPayloadTree(submission.getPayload()),
+                readPayloadValue(submission.getPayload()),
                 submission.getNotes(),
                 submission.getUser().getId(),
                 submission.getUser().getEmail(),
@@ -257,9 +256,9 @@ public class ModerationService {
         }
     }
 
-    private JsonNode readPayloadTree(String payload) {
+    private Object readPayloadValue(String payload) {
         try {
-            return objectMapper.readTree(payload);
+            return objectMapper.readValue(payload, Object.class);
         } catch (JsonProcessingException ex) {
             return objectMapper.createObjectNode();
         }
