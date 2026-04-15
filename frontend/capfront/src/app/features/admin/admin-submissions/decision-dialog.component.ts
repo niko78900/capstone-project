@@ -53,7 +53,7 @@ export class DecisionDialogComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const reason = this.form.controls.reason.value?.trim();
-    this.dialogRef.close(reason ? reason : undefined);
+    const reason = (this.form.controls.reason.value ?? '').trim();
+    this.dialogRef.close(reason);
   }
 }

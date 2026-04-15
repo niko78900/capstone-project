@@ -88,4 +88,14 @@ describe('AdminSubmissionsPageComponent', () => {
 
     expect(moderationService.approve).toHaveBeenCalledWith(10, 'looks valid');
   });
+
+  it('approves submission when dialog reason is blank', () => {
+    dialog.open.and.returnValue({
+      afterClosed: () => of(''),
+    } as never);
+
+    component.onApprove(pendingSubmission);
+
+    expect(moderationService.approve).toHaveBeenCalledWith(10, '');
+  });
 });
