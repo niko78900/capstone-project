@@ -138,10 +138,12 @@ class _ProductListTile extends ConsumerWidget {
               .read(cartNotifierProvider.notifier)
               .addOrIncrement(productId: product.id, productName: product.name);
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            final messenger = ScaffoldMessenger.of(context);
+            messenger.removeCurrentSnackBar();
+            messenger.showSnackBar(
               SnackBar(
                 content: Text('Added ${product.name} to cart'),
-                duration: const Duration(milliseconds: 800),
+                duration: const Duration(milliseconds: 600),
               ),
             );
           }

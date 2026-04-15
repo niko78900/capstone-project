@@ -69,10 +69,12 @@ class ProductDetailScreen extends ConsumerWidget {
                           productName: detail.name,
                         );
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.removeCurrentSnackBar();
+                      messenger.showSnackBar(
                         SnackBar(
                           content: Text('Added ${detail.name} to cart'),
-                          duration: const Duration(milliseconds: 800),
+                          duration: const Duration(milliseconds: 600),
                         ),
                       );
                     }

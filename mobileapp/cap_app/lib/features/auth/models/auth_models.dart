@@ -57,8 +57,11 @@ class AuthSession {
   final AuthUser user;
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
+    final rawToken =
+        json['accessToken']?.toString() ?? json['token']?.toString() ?? '';
+    final normalizedToken = _normalizeAccessToken(rawToken);
     return AuthSession(
-      accessToken: json['accessToken']?.toString() ?? '',
+      accessToken: normalizedToken,
       tokenType: json['tokenType']?.toString() ?? 'Bearer',
       expiresInMs: (json['expiresInMs'] as num?)?.toInt() ?? 0,
       user: AuthUser.fromJson((json['user'] as Map).cast<String, dynamic>()),
@@ -85,5 +88,19 @@ class AuthSession {
       return null;
     }
     return AuthSession.fromJson(raw);
+  }
+
+  static String _normalizeAccessToken(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+    const bearerPrefix = 'bearer ';
+    if (trimmed.length > bearerPrefix.length &&
+        trimmed.substring(0, bearerPrefix.length).toLowerCase() ==
+            bearerPrefix) {
+      return trimmed.substring(bearerPrefix.length).trim();
+    }
+    return trimmed;
   }
 }
