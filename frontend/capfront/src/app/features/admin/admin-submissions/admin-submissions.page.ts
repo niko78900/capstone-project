@@ -7,12 +7,37 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { catchError, filter, finalize, of, startWith, switchMap } from 'rxjs';
+import { ProductDetailDto } from '../../../core/models/catalog.model';
 import { mapApiError } from '../../../core/models/api-error.model';
 import { ModerationSubmissionDto, SubmissionStatus } from '../../../core/models/moderation.model';
+import { CatalogService } from '../../../core/services/catalog.service';
 import { ModerationService } from '../../../core/services/moderation.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
 import { DecisionDialogComponent } from './decision-dialog.component';
+
+interface SubmissionDiffRow {
+  key: string;
+  label: string;
+  before: string;
+  after: string;
+  changed: boolean;
+}
+
+type PayloadRecord = Record<string, unknown>;
+
+const CATEGORY_NAMES: Record<number, string> = {
+  1: 'Fruits & Vegetables',
+  2: 'Bakery',
+  3: 'Dairy & Eggs',
+  4: 'Meat & Fish',
+  5: 'Pasta & Rice',
+  6: 'Canned & Jarred',
+  7: 'Snacks',
+  8: 'Beverages',
+  9: 'Frozen',
+  10: 'Household',
+};
 
 @Component({
   selector: 'app-admin-submissions-page',
@@ -30,15 +55,20 @@ import { DecisionDialogComponent } from './decision-dialog.component';
 })
 export class AdminSubmissionsPageComponent {
   private readonly moderationService = inject(ModerationService);
+  private readonly catalogService = inject(CatalogService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+
+  private readonly requestedProductDetails = new Set<number>();
 
   readonly statusControl = new FormControl<SubmissionStatus>('PENDING', { nonNullable: true });
   readonly submissions = signal<ModerationSubmissionDto[]>([]);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly processingSubmissionId = signal<number | null>(null);
+  readonly payloadModeBySubmission = signal<Record<number, 'details' | 'json'>>({});
+  readonly productDetailsById = signal<Record<number, ProductDetailDto | null>>({});
 
   readonly statuses: SubmissionStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
 
@@ -49,7 +79,10 @@ export class AdminSubmissionsPageComponent {
         switchMap((status) => this.loadSubmissions(status)),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((submissions) => this.submissions.set(submissions));
+      .subscribe((submissions) => {
+        this.submissions.set(submissions);
+        this.prefetchComparisonContext(submissions);
+      });
   }
 
   displayDate(raw: string): string {
@@ -68,12 +101,63 @@ export class AdminSubmissionsPageComponent {
     }
   }
 
+  isJsonMode(submissionId: number): boolean {
+    return this.payloadModeBySubmission()[submissionId] === 'json';
+  }
+
+  togglePayloadMode(submissionId: number): void {
+    this.payloadModeBySubmission.update((current) => {
+      const nextMode = current[submissionId] === 'json' ? 'details' : 'json';
+      return { ...current, [submissionId]: nextMode };
+    });
+  }
+
+  detailRows(submission: ModerationSubmissionDto): SubmissionDiffRow[] {
+    switch (submission.type) {
+      case 'PRODUCT':
+        return this.buildProductRows(submission);
+      case 'PRICE':
+        return this.buildPriceRows(submission);
+      case 'NUTRITION':
+        return this.buildNutritionRows(submission);
+      default:
+        return [];
+    }
+  }
+
+  changedRowCount(rows: SubmissionDiffRow[]): number {
+    return rows.filter((row) => row.changed).length;
+  }
+
+  contextMessage(submission: ModerationSubmissionDto): string | null {
+    const productId = this.referenceProductId(submission);
+    if (productId == null) {
+      return null;
+    }
+
+    const detail = this.productDetailsById()[productId];
+    if (detail === undefined) {
+      return 'Loading current product snapshot for before/after comparison...';
+    }
+    if (detail === null) {
+      return 'Current product snapshot unavailable. Showing submitted values and placeholders.';
+    }
+    return null;
+  }
+
   onApprove(submission: ModerationSubmissionDto): void {
     this.openDecisionDialog('approve', submission);
   }
 
   onReject(submission: ModerationSubmissionDto): void {
     this.openDecisionDialog('reject', submission);
+  }
+
+  submissionReference(submission: ModerationSubmissionDto): string {
+    const typePrefix = this.typePrefix(submission.type);
+    const dateKey = this.dateKey(submission.createdAt);
+    const compactId = this.compactId(submission.id);
+    return `${typePrefix}-${dateKey}-${compactId}`;
   }
 
   private loadSubmissions(status: SubmissionStatus) {
@@ -90,9 +174,10 @@ export class AdminSubmissionsPageComponent {
   }
 
   private openDecisionDialog(mode: 'approve' | 'reject', submission: ModerationSubmissionDto): void {
+    const submissionRef = this.submissionReference(submission);
     const dialogRef = this.dialog.open(DecisionDialogComponent, {
       width: '420px',
-      data: { mode, submissionId: submission.id },
+      data: { mode, submissionId: submission.id, submissionRef },
     });
 
     dialogRef
@@ -121,10 +206,514 @@ export class AdminSubmissionsPageComponent {
           return;
         }
         const verb = response.action === 'APPROVED' ? 'approved' : 'rejected';
-        this.snackBar.open(`Submission #${response.submissionId} ${verb}.`, 'Dismiss', {
+        this.snackBar.open(`Submission ${submissionRef} ${verb}.`, 'Dismiss', {
           duration: 3000,
         });
         this.statusControl.setValue(this.statusControl.value, { emitEvent: true });
       });
+  }
+
+  private prefetchComparisonContext(submissions: ModerationSubmissionDto[]): void {
+    const ids = new Set<number>();
+    for (const submission of submissions) {
+      const productId = this.referenceProductId(submission);
+      if (productId != null && productId > 0) {
+        ids.add(productId);
+      }
+    }
+
+    for (const productId of ids) {
+      if (this.requestedProductDetails.has(productId)) {
+        continue;
+      }
+      this.requestedProductDetails.add(productId);
+
+      this.catalogService
+        .getProductDetail(productId)
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe((detail) => {
+          this.productDetailsById.update((current) => ({ ...current, [productId]: detail }));
+        });
+    }
+  }
+
+  private buildProductRows(submission: ModerationSubmissionDto): SubmissionDiffRow[] {
+    const payload = this.asRecord(submission.payload);
+    if (payload == null) {
+      return [];
+    }
+
+    const sourceProductId = this.asNumber(payload['sourceProductId']);
+    const isCreate = sourceProductId == null;
+    const current = sourceProductId == null ? null : this.productDetailsById()[sourceProductId] ?? null;
+    const canCompare = !isCreate && current != null;
+    const beforeFallback = isCreate ? '-' : this.snapshotPlaceholder(sourceProductId, current);
+    const submittedSupermarketId = this.asNumber(payload['supermarketId']);
+    const submittedPrice = this.asNumber(payload['price']);
+    const currentPriceForSelectedMarket =
+      current?.prices.find(
+        (entry) =>
+          submittedSupermarketId != null && entry.supermarketId === submittedSupermarketId,
+      ) ?? null;
+
+    const rows: SubmissionDiffRow[] = [];
+
+    rows.push(
+      this.makeRow(
+        'name',
+        'Name',
+        isCreate ? '-' : current?.name ?? beforeFallback,
+        this.asText(payload['name'], '-'),
+        { canCompare, forceChanged: isCreate },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'brand',
+        'Brand',
+        isCreate ? '-' : this.asText(current?.brand, 'Unbranded') ?? beforeFallback,
+        this.asText(payload['brand'], 'Unbranded'),
+        { canCompare, forceChanged: isCreate },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'category',
+        'Category',
+        isCreate ? '-' : current?.category ?? beforeFallback,
+        this.categoryName(payload['categoryId']),
+        { canCompare, forceChanged: isCreate },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'barcode',
+        'Barcode',
+        isCreate ? '-' : this.asText(current?.barcode, 'Not set') ?? beforeFallback,
+        this.asText(payload['barcode'], 'Not set'),
+        { canCompare, forceChanged: isCreate },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'supermarket',
+        'Supermarket',
+        currentPriceForSelectedMarket?.supermarketName ?? (isCreate ? '-' : 'No current price'),
+        submittedSupermarketId == null
+            ? 'Unknown supermarket'
+            : `#${submittedSupermarketId}`,
+        { canCompare, forceChanged: isCreate },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'price',
+        'Price',
+        currentPriceForSelectedMarket
+            ? this.formatMoney(
+                currentPriceForSelectedMarket.price,
+                currentPriceForSelectedMarket.currency,
+              )
+            : (isCreate ? '-' : 'No current price'),
+        this.formatMoney(submittedPrice, currentPriceForSelectedMarket?.currency ?? 'MKD'),
+        { canCompare, forceChanged: isCreate },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'imageUrl',
+        'Image',
+        isCreate ? '-' : this.asText(current?.imageUrl, 'No image') ?? beforeFallback,
+        this.asText(payload['imageUrl'], 'No image'),
+        { canCompare, forceChanged: isCreate },
+      ),
+    );
+
+    const submittedNutrition = this.asRecord(payload['nutrition']);
+    const currentNutrition = current?.nutrition;
+
+    if (submittedNutrition != null) {
+      const nutritionComparable = canCompare && currentNutrition != null;
+      rows.push(
+        this.makeRow(
+          'calories',
+          'Calories',
+          isCreate
+            ? '-'
+            : currentNutrition
+              ? this.formatMeasure(currentNutrition.calories, 'kcal')
+              : this.asText(beforeFallback, '-'),
+          this.formatMeasure(submittedNutrition['calories'], 'kcal'),
+          { canCompare: nutritionComparable, forceChanged: isCreate },
+        ),
+      );
+      rows.push(
+        this.makeRow(
+          'proteinG',
+          'Protein',
+          isCreate
+            ? '-'
+            : currentNutrition
+              ? this.formatMeasure(currentNutrition.proteinG, 'g')
+              : this.asText(beforeFallback, '-'),
+          this.formatMeasure(submittedNutrition['proteinG'], 'g'),
+          { canCompare: nutritionComparable, forceChanged: isCreate },
+        ),
+      );
+      rows.push(
+        this.makeRow(
+          'carbsG',
+          'Carbs',
+          isCreate
+            ? '-'
+            : currentNutrition
+              ? this.formatMeasure(currentNutrition.carbsG, 'g')
+              : this.asText(beforeFallback, '-'),
+          this.formatMeasure(submittedNutrition['carbsG'], 'g'),
+          { canCompare: nutritionComparable, forceChanged: isCreate },
+        ),
+      );
+      rows.push(
+        this.makeRow(
+          'fatG',
+          'Fat',
+          isCreate
+            ? '-'
+            : currentNutrition
+              ? this.formatMeasure(currentNutrition.fatG, 'g')
+              : this.asText(beforeFallback, '-'),
+          this.formatMeasure(submittedNutrition['fatG'], 'g'),
+          { canCompare: nutritionComparable, forceChanged: isCreate },
+        ),
+      );
+    } else {
+      rows.push(
+        this.makeRow(
+          'nutrition',
+          'Nutrition',
+          isCreate ? '-' : 'Current values',
+          'No nutrition change submitted',
+          { canCompare: false, forceChanged: false },
+        ),
+      );
+    }
+
+    return rows;
+  }
+
+  private buildPriceRows(submission: ModerationSubmissionDto): SubmissionDiffRow[] {
+    const payload = this.asRecord(submission.payload);
+    if (payload == null) {
+      return [];
+    }
+
+    const productId = this.asNumber(payload['productId']);
+    const supermarketId = this.asNumber(payload['supermarketId']);
+    const current = productId == null ? null : this.productDetailsById()[productId] ?? null;
+    const currentPrice =
+      current?.prices.find((entry) => supermarketId != null && entry.supermarketId === supermarketId) ?? null;
+
+    const rows: SubmissionDiffRow[] = [];
+
+    rows.push(
+      this.makeRow(
+        'product',
+        'Product',
+        current ? `${current.name} (#${current.id})` : this.productFallback(productId),
+        current ? `${current.name} (#${current.id})` : this.productFallback(productId),
+        { canCompare: false },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'supermarket',
+        'Supermarket',
+        currentPrice?.supermarketName ?? this.supermarketFallback(supermarketId),
+        currentPrice?.supermarketName ?? this.supermarketFallback(supermarketId),
+        { canCompare: false },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'price',
+        'Price',
+        currentPrice
+          ? this.formatMoney(currentPrice.price, currentPrice.currency)
+          : 'No verified price',
+        this.formatMoney(this.asNumber(payload['price']), currentPrice?.currency ?? 'MKD'),
+        { canCompare: currentPrice != null },
+      ),
+    );
+
+    const branchId = this.asNumber(payload['branchId']);
+    rows.push(
+      this.makeRow(
+        'branch',
+        'Branch',
+        'Any branch',
+        branchId == null ? 'Any branch' : `#${branchId}`,
+        { canCompare: true },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'observedAt',
+        'Observed at',
+        currentPrice?.observedAt ? this.displayDate(currentPrice.observedAt) : '-',
+        this.asDateText(payload['observedAt']) ?? 'On approval time',
+        { canCompare: false },
+      ),
+    );
+
+    return rows;
+  }
+
+  private buildNutritionRows(submission: ModerationSubmissionDto): SubmissionDiffRow[] {
+    const payload = this.asRecord(submission.payload);
+    if (payload == null) {
+      return [];
+    }
+
+    const productId = this.asNumber(payload['productId']);
+    const submittedNutrition = this.asRecord(payload['nutrition']);
+    const current = productId == null ? null : this.productDetailsById()[productId] ?? null;
+    const currentNutrition = current?.nutrition;
+    const canCompare = currentNutrition != null && submittedNutrition != null;
+
+    const rows: SubmissionDiffRow[] = [];
+
+    rows.push(
+      this.makeRow(
+        'product',
+        'Product',
+        current ? `${current.name} (#${current.id})` : this.productFallback(productId),
+        current ? `${current.name} (#${current.id})` : this.productFallback(productId),
+        { canCompare: false },
+      ),
+    );
+
+    if (submittedNutrition == null) {
+      rows.push(
+        this.makeRow('nutrition', 'Nutrition', 'Current values', 'No nutrition payload provided', {
+          canCompare: false,
+        }),
+      );
+      return rows;
+    }
+
+    rows.push(
+      this.makeRow(
+        'calories',
+        'Calories',
+        this.formatMeasure(currentNutrition?.calories, 'kcal'),
+        this.formatMeasure(submittedNutrition['calories'], 'kcal'),
+        { canCompare },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'proteinG',
+        'Protein',
+        this.formatMeasure(currentNutrition?.proteinG, 'g'),
+        this.formatMeasure(submittedNutrition['proteinG'], 'g'),
+        { canCompare },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'carbsG',
+        'Carbs',
+        this.formatMeasure(currentNutrition?.carbsG, 'g'),
+        this.formatMeasure(submittedNutrition['carbsG'], 'g'),
+        { canCompare },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'fatG',
+        'Fat',
+        this.formatMeasure(currentNutrition?.fatG, 'g'),
+        this.formatMeasure(submittedNutrition['fatG'], 'g'),
+        { canCompare },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'servingSize',
+        'Serving size',
+        this.asText(currentNutrition?.servingSize, '100 g'),
+        this.asText(submittedNutrition['servingSize'], '100 g'),
+        { canCompare },
+      ),
+    );
+
+    return rows;
+  }
+
+  private referenceProductId(submission: ModerationSubmissionDto): number | null {
+    const payload = this.asRecord(submission.payload);
+    if (payload == null) {
+      return null;
+    }
+
+    if (submission.type === 'PRODUCT') {
+      return this.asNumber(payload['sourceProductId']);
+    }
+
+    if (submission.type === 'PRICE' || submission.type === 'NUTRITION') {
+      return this.asNumber(payload['productId']);
+    }
+
+    return null;
+  }
+
+  private snapshotPlaceholder(
+    productId: number | null,
+    detail: ProductDetailDto | null,
+  ): string {
+    if (productId == null) {
+      return '-';
+    }
+    if (detail == null) {
+      return 'Current value unavailable';
+    }
+    return '-';
+  }
+
+  private categoryName(raw: unknown): string {
+    const categoryId = this.asNumber(raw);
+    if (categoryId == null) {
+      return 'Unknown category';
+    }
+    return CATEGORY_NAMES[categoryId] ?? `Category #${categoryId}`;
+  }
+
+  private makeRow(
+    key: string,
+    label: string,
+    before: string,
+    after: string,
+    options: { canCompare?: boolean; forceChanged?: boolean } = {},
+  ): SubmissionDiffRow {
+    const canCompare = options.canCompare ?? true;
+    const changed =
+      options.forceChanged ??
+      (canCompare ? this.normalizeComparison(before) !== this.normalizeComparison(after) : false);
+
+    return {
+      key,
+      label,
+      before,
+      after,
+      changed,
+    };
+  }
+
+  private normalizeComparison(value: string): string {
+    return value.trim().toLowerCase();
+  }
+
+  private asRecord(value: unknown): PayloadRecord | null {
+    if (value == null || Array.isArray(value) || typeof value !== 'object') {
+      return null;
+    }
+    return value as PayloadRecord;
+  }
+
+  private asText(value: unknown, fallback = '-'): string {
+    if (value == null) {
+      return fallback;
+    }
+    const text = String(value).trim();
+    if (text.length === 0 || text.toLowerCase() === 'null') {
+      return fallback;
+    }
+    return text;
+  }
+
+  private asNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }
+
+  private asDateText(value: unknown): string | null {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return null;
+    }
+    return this.displayDate(value);
+  }
+
+  private formatMeasure(value: unknown, unit: string): string {
+    const numeric = this.asNumber(value);
+    if (numeric == null) {
+      return '-';
+    }
+    return `${numeric} ${unit}`;
+  }
+
+  private formatMoney(value: number | null, currency: string): string {
+    if (value == null || !Number.isFinite(value)) {
+      return '-';
+    }
+    return `${value.toFixed(2)} ${currency}`;
+  }
+
+  private productFallback(productId: number | null): string {
+    return productId == null ? 'Unknown product' : `Product #${productId}`;
+  }
+
+  private supermarketFallback(supermarketId: number | null): string {
+    return supermarketId == null ? 'Unknown supermarket' : `Supermarket #${supermarketId}`;
+  }
+
+  private typePrefix(type: ModerationSubmissionDto['type']): string {
+    switch (type) {
+      case 'PRODUCT':
+        return 'PRD';
+      case 'PRICE':
+        return 'PRC';
+      case 'NUTRITION':
+        return 'NTR';
+      default:
+        return 'SUB';
+    }
+  }
+
+  private dateKey(raw: string): string {
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return '00000000';
+    }
+    const year = String(date.getFullYear()).padStart(4, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
+
+  private compactId(id: number): string {
+    const safe = Number.isFinite(id) && id > 0 ? Math.floor(id) : 0;
+    return safe.toString(36).toUpperCase().padStart(4, '0');
   }
 }

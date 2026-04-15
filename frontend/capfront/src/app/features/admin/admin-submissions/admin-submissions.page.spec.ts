@@ -3,6 +3,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
+import { CatalogService } from '../../../core/services/catalog.service';
 import { ModerationService } from '../../../core/services/moderation.service';
 import { AdminSubmissionsPageComponent } from './admin-submissions.page';
 
@@ -10,6 +11,7 @@ describe('AdminSubmissionsPageComponent', () => {
   let fixture: ComponentFixture<AdminSubmissionsPageComponent>;
   let component: AdminSubmissionsPageComponent;
   let moderationService: jasmine.SpyObj<ModerationService>;
+  let catalogService: jasmine.SpyObj<CatalogService>;
   let dialog: jasmine.SpyObj<MatDialog>;
 
   const pendingSubmission = {
@@ -30,6 +32,7 @@ describe('AdminSubmissionsPageComponent', () => {
       'approve',
       'reject',
     ]);
+    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', ['getProductDetail']);
 
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
@@ -53,12 +56,25 @@ describe('AdminSubmissionsPageComponent', () => {
         reviewedAt: new Date().toISOString(),
       }),
     );
+    catalogService.getProductDetail.and.returnValue(
+      of({
+        id: 1,
+        name: 'Test Product',
+        brand: 'Test Brand',
+        barcode: '1234567890',
+        imageUrl: null,
+        category: 'Dairy & Eggs',
+        nutrition: null,
+        prices: [],
+      }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [AdminSubmissionsPageComponent],
       providers: [
         provideNoopAnimations(),
         { provide: ModerationService, useValue: moderationService },
+        { provide: CatalogService, useValue: catalogService },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
       ],

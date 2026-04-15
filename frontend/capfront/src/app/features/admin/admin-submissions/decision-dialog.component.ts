@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 export interface DecisionDialogData {
   mode: 'approve' | 'reject';
   submissionId: number;
+  submissionRef: string;
 }
 
 @Component({
@@ -16,7 +17,7 @@ export interface DecisionDialogData {
   template: `
     <h2 mat-dialog-title>{{ data.mode === 'approve' ? 'Approve' : 'Reject' }} submission</h2>
     <mat-dialog-content>
-      <p>Submission #{{ data.submissionId }}</p>
+      <p>Ref {{ data.submissionRef }}</p>
       <mat-form-field appearance="outline" class="reason-field">
         <mat-label>Reason (optional)</mat-label>
         <textarea matInput rows="4" formControlName="reason"></textarea>

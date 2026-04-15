@@ -4,11 +4,13 @@
     <p>Review user-submitted product and price changes.</p>
   </header>
 
-  <mat-button-toggle-group [formControl]="statusControl" aria-label="Submission status filter">
-    @for (status of statuses; track status) {
-      <mat-button-toggle [value]="status">{{ status }}</mat-button-toggle>
-    }
-  </mat-button-toggle-group>
+  <section class="status-filter" aria-label="Submission status filter">
+    <mat-button-toggle-group [formControl]="statusControl">
+      @for (status of statuses; track status) {
+        <mat-button-toggle [value]="status">{{ status }}</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+  </section>
 
   @if (loading()) {
     <app-loading-state message="Loading submissions..." />
@@ -27,22 +29,75 @@
 
   <div class="cards">
     @for (submission of submissions(); track submission.id) {
-      <mat-card appearance="outlined">
-        <mat-card-header>
-          <mat-card-title>#{{ submission.id }} • {{ submission.type }}</mat-card-title>
-          <mat-card-subtitle>
-            {{ submission.submittedByEmail }} • {{ displayDate(submission.createdAt) }}
-          </mat-card-subtitle>
+      <mat-card appearance="outlined" class="submission-card">
+        <mat-card-header class="submission-head">
+          <div>
+            <mat-card-title>Ref {{ submissionReference(submission) }} &bull; {{ submission.type }}</mat-card-title>
+            <mat-card-subtitle>
+              {{ submission.submittedByEmail }} &bull; {{ displayDate(submission.createdAt) }}
+            </mat-card-subtitle>
+          </div>
+          <span
+            class="status-chip"
+            [class.status-pending]="submission.status === 'PENDING'"
+            [class.status-approved]="submission.status === 'APPROVED'"
+            [class.status-rejected]="submission.status === 'REJECTED'"
+          >
+            {{ submission.status }}
+          </span>
         </mat-card-header>
 
         <mat-card-content>
           @if (submission.notes) {
-            <p><strong>Notes:</strong> {{ submission.notes }}</p>
+            <p class="notes"><strong>Notes:</strong> {{ submission.notes }}</p>
           }
-          <pre>{{ formatPayload(submission.payload) }}</pre>
+
+          <div class="payload-toolbar">
+            <p class="payload-title">Change preview</p>
+            <button
+              mat-stroked-button
+              type="button"
+              class="payload-toggle"
+              (click)="togglePayloadMode(submission.id)"
+            >
+              {{ isJsonMode(submission.id) ? 'View details' : 'View JSON' }}
+            </button>
+          </div>
+
+          @if (isJsonMode(submission.id)) {
+            <pre class="payload">{{ formatPayload(submission.payload) }}</pre>
+          } @else {
+            @if (contextMessage(submission); as context) {
+              <p class="context-note">{{ context }}</p>
+            }
+
+            @if (detailRows(submission); as rows) {
+              @if (rows.length === 0) {
+                <p class="context-note">No descriptive preview is available for this payload.</p>
+              } @else {
+                <p class="change-summary">{{ changedRowCount(rows) }} changed field(s)</p>
+
+                <div class="diff-wrap">
+                  <div class="diff-table">
+                    <div class="diff-head">Field</div>
+                    <div class="diff-head">Before</div>
+                    <div class="diff-head">After</div>
+
+                    @for (row of rows; track row.key) {
+                      <div class="diff-row" [class.diff-row-changed]="row.changed">
+                        <div class="diff-cell diff-field">{{ row.label }}</div>
+                        <div class="diff-cell diff-before">{{ row.before }}</div>
+                        <div class="diff-cell diff-after">{{ row.after }}</div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          }
         </mat-card-content>
 
-        <mat-card-actions>
+        <mat-card-actions class="actions">
           <button
             mat-flat-button
             color="primary"
