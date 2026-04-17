@@ -160,6 +160,7 @@ class SubmissionResponse {
     required this.status,
     required this.payload,
     required this.notes,
+    required this.reviewReason,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -169,6 +170,7 @@ class SubmissionResponse {
   final SubmissionStatus status;
   final Map<String, dynamic>? payload;
   final String? notes;
+  final String? reviewReason;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -180,6 +182,7 @@ class SubmissionResponse {
       status: parseSubmissionStatus(json['status']?.toString()),
       payload: payload is Map ? payload.cast<String, dynamic>() : null,
       notes: _nullIfBlank(json['notes']?.toString()),
+      reviewReason: _nullIfBlank(json['reviewReason']?.toString()),
       createdAt:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
           DateTime.now().toUtc(),

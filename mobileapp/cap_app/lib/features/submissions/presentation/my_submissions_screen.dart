@@ -118,10 +118,12 @@ class _SubmissionCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text('Created ${AppFormatters.asRelativeDateTime(item.createdAt)}'),
-            if ((item.notes ?? '').isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('Moderator note: ${item.notes}'),
-            ],
+            const SizedBox(height: 8),
+            Text('Your note: ${((item.notes ?? '').trim().isEmpty) ? '-' : item.notes}'),
+            const SizedBox(height: 4),
+            Text(
+              'Moderator note: ${((item.reviewReason ?? '').trim().isEmpty) ? '-' : item.reviewReason}',
+            ),
             const SizedBox(height: 10),
             Container(
               width: double.infinity,
