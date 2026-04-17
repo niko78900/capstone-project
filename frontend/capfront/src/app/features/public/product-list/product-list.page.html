@@ -21,7 +21,18 @@
     <div class="search-help">
       <p class="hint-title">How to use this page</p>
       <p class="hint-copy">This web catalog is read-only. Open a product for verified prices and nutrition details.</p>
+      <p class="hint-copy">Sort: {{ sortLabel(sortControl.value) }}</p>
     </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Sort</mat-label>
+      <mat-select [formControl]="sortControl">
+        <mat-option value="RELEVANCE">{{ hasQuery() ? 'Relevance' : 'Default order' }}</mat-option>
+        <mat-option value="NAME_ASC">Name (A-Z)</mat-option>
+        <mat-option value="PRICE_ASC">Price (low-high)</mat-option>
+        <mat-option value="PRICE_DESC">Price (high-low)</mat-option>
+      </mat-select>
+    </mat-form-field>
   </app-filter-toolbar>
 
   @if (loading()) {
@@ -47,7 +58,7 @@
   }
 
   <section class="grid" aria-live="polite">
-    @for (product of products(); track product.id) {
+    @for (product of sortedProducts(); track product.id) {
       <mat-card class="product-card" appearance="outlined">
         <mat-card-content>
           <p class="category">{{ product.category }}</p>
