@@ -10,6 +10,7 @@ public record SubmissionResponse(
         SubmissionStatus status,
         Object payload,
         String notes,
+        String reviewReason,
         Instant createdAt,
         Instant updatedAt
 ) {

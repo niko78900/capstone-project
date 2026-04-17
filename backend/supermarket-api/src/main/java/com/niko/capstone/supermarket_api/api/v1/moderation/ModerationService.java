@@ -242,6 +242,7 @@ public class ModerationService {
                 submission.getStatus(),
                 readPayloadValue(submission.getPayload()),
                 submission.getNotes(),
+                latestReviewReason(submission.getId()),
                 submission.getUser().getId(),
                 submission.getUser().getEmail(),
                 submission.getCreatedAt(),
@@ -292,6 +293,15 @@ public class ModerationService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String latestReviewReason(Long submissionId) {
+        if (submissionId == null) {
+            return null;
+        }
+        return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId)
+                .map(review -> normalizeOptional(review.getReason()))
+                .orElse(null);
     }
 
     private <T> T readPayload(SubmissionEntity submission, Class<T> type) {

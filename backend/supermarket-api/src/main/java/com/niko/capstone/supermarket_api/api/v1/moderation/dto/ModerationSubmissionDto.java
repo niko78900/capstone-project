@@ -10,6 +10,7 @@ public record ModerationSubmissionDto(
         SubmissionStatus status,
         Object payload,
         String notes,
+        String reviewReason,
         Long submittedByUserId,
         String submittedByEmail,
         Instant createdAt,

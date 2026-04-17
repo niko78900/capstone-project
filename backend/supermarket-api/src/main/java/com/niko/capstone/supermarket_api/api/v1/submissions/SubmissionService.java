@@ -23,6 +23,7 @@ import com.niko.capstone.supermarket_api.domain.repository.BranchRepository;
 import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
+import com.niko.capstone.supermarket_api.domain.repository.SubmissionReviewRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
 import java.io.IOException;
@@ -54,6 +55,7 @@ public class SubmissionService {
     private final SupermarketRepository supermarketRepository;
     private final BranchRepository branchRepository;
     private final SubmissionRepository submissionRepository;
+    private final SubmissionReviewRepository submissionReviewRepository;
 
     @Value("${app.uploads.directory:uploads}")
     private String uploadsDirectory;
@@ -218,9 +220,19 @@ public class SubmissionService {
                 submission.getStatus(),
                 readJsonValue(submission.getPayload()),
                 submission.getNotes(),
+                latestReviewReason(submission.getId()),
                 submission.getCreatedAt(),
                 submission.getUpdatedAt()
         );
+    }
+
+    private String latestReviewReason(Long submissionId) {
+        if (submissionId == null) {
+            return null;
+        }
+        return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId)
+                .map(review -> normalizeOptional(review.getReason()))
+                .orElse(null);
     }
 
     private String writeJson(Object payload) {
