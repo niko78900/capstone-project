@@ -9,18 +9,22 @@ export interface DecisionDialogData {
   mode: 'approve' | 'reject';
   submissionId: number;
   submissionRef: string;
+  title?: string;
 }
 
 @Component({
   selector: 'app-decision-dialog',
   imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   template: `
-    <h2 mat-dialog-title>{{ data.mode === 'approve' ? 'Approve' : 'Reject' }} submission</h2>
+    <h2 mat-dialog-title>{{ data.title || (data.mode === 'approve' ? 'Approve' : 'Reject') + ' submission' }}</h2>
     <mat-dialog-content>
       <p>Ref {{ data.submissionRef }}</p>
       <mat-form-field appearance="outline" class="reason-field">
-        <mat-label>Reason (optional)</mat-label>
+        <mat-label>{{ data.mode === 'reject' ? 'Reason (required)' : 'Reason (optional)' }}</mat-label>
         <textarea matInput rows="4" formControlName="reason"></textarea>
+        @if (form.controls.reason.hasError('required')) {
+          <mat-error>Reason is required when rejecting a submission.</mat-error>
+        }
         @if (form.controls.reason.hasError('maxlength')) {
           <mat-error>Reason must be at most 1000 characters.</mat-error>
         }
@@ -46,7 +50,12 @@ export class DecisionDialogComponent {
   private readonly formBuilder = inject(FormBuilder);
 
   readonly form = this.formBuilder.group({
-    reason: ['', [Validators.maxLength(1000)]],
+    reason: [
+      '',
+      this.data.mode === 'reject'
+        ? [Validators.required, Validators.maxLength(1000)]
+        : [Validators.maxLength(1000)],
+    ],
   });
 
   confirm(): void {

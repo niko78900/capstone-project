@@ -1,0 +1,156 @@
+<section class="page">
+  <app-page-header eyebrow="Admin" [title]="title()" [subtitle]="subtitle()">
+    <a
+      header-actions
+      mat-stroked-button
+      routerLink="/admin/submissions"
+      [queryParams]="returnQueryParams()"
+    >
+      Back to queue
+    </a>
+  </app-page-header>
+
+  @if (loading()) {
+    <app-loading-state message="Loading submission details..." />
+  }
+
+  @if (errorMessage(); as errorMessage) {
+    <app-empty-state icon="warning" title="Could not load submission" [message]="errorMessage" />
+  }
+
+  @if (!loading() && !errorMessage() && submission(); as submission) {
+    <mat-card class="summary-card" appearance="outlined">
+      <mat-card-content>
+        <section class="summary-head">
+          <div class="status-wrap">
+            <span class="status-chip" [class]="statusChipClass(submission.status)">{{ submission.status }}</span>
+            <p class="summary-meta">
+              Updated {{ displayDate(submission.updatedAt) }}
+            </p>
+          </div>
+
+          @if (submission.status === 'PENDING') {
+            <div class="actions">
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="onApprove()"
+                [disabled]="processingDecision()"
+              >
+                {{ processingDecision() ? 'Processing...' : 'Approve' }}
+              </button>
+              <button
+                mat-stroked-button
+                color="warn"
+                type="button"
+                (click)="onReject()"
+                [disabled]="processingDecision()"
+              >
+                Reject
+              </button>
+            </div>
+          }
+        </section>
+
+        <p class="limitation-note">
+          Submission editing before approval is not available in the current moderation API. Admin workflow supports approve or reject only.
+        </p>
+
+        @if (submission.notes) {
+          <p class="notes"><strong>User notes:</strong> {{ submission.notes }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    @if (imagePreviewUrl(); as imagePreviewUrl) {
+      <mat-card class="evidence-card" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Submitted Evidence</mat-card-title>
+          <mat-card-subtitle>Image URL attached in the submission payload.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <a class="evidence-link" [href]="imagePreviewUrl" target="_blank" rel="noopener noreferrer">
+            Open image in new tab
+          </a>
+          <img class="evidence-image" [src]="imagePreviewUrl" alt="Submitted evidence image" />
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <mat-card class="payload-card" appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Submitted Fields</mat-card-title>
+        <mat-card-subtitle>All payload fields are expanded below for review.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="payload-toolbar">
+          <p>{{ payloadFields().length }} field(s)</p>
+          <button mat-stroked-button type="button" (click)="togglePayloadMode()">
+            {{ showJson() ? 'View flattened fields' : 'View raw JSON' }}
+          </button>
+        </div>
+
+        @if (showJson()) {
+          <pre class="payload-json">{{ formatPayload(submission.payload) }}</pre>
+        } @else {
+          @if (payloadFields().length === 0) {
+            <p class="payload-empty">No payload fields available.</p>
+          } @else {
+            <div class="payload-table-wrap">
+              <table class="payload-table">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (field of payloadFields(); track field.key) {
+                    <tr>
+                      <td>{{ field.label }}</td>
+                      <td>{{ field.value }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+
+    @if (sourceProduct() !== undefined) {
+      <mat-card class="context-card" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Current Catalog Snapshot</mat-card-title>
+          <mat-card-subtitle>Used as context for this moderation decision.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (sourceProduct() === null) {
+            <p class="payload-empty">Current product context could not be loaded.</p>
+          } @else if (sourceProduct(); as sourceProduct) {
+            <div class="context-grid">
+              <div>
+                <p class="label">Name</p>
+                <p>{{ sourceProduct.name }}</p>
+              </div>
+              <div>
+                <p class="label">Brand</p>
+                <p>{{ sourceProduct.brand || 'Unbranded' }}</p>
+              </div>
+              <div>
+                <p class="label">Category</p>
+                <p>{{ sourceProduct.category }}</p>
+              </div>
+              <div>
+                <p class="label">Barcode</p>
+                <p>{{ sourceProduct.barcode || 'Not set' }}</p>
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</section>

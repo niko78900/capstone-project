@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -55,6 +55,7 @@ const CATEGORY_NAMES: Record<number, string> = {
 @Component({
   selector: 'app-admin-submissions-page',
   imports: [
+    RouterLink,
     ReactiveFormsModule,
     MatButtonModule,
     MatButtonToggleModule,
@@ -86,6 +87,7 @@ export class AdminSubmissionsPageComponent {
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly typeControl = new FormControl<SubmissionTypeFilter>('ALL', { nonNullable: true });
   readonly sortControl = new FormControl<SubmissionSortOrder>('NEWEST', { nonNullable: true });
+  readonly pageSizeControl = new FormControl(10, { nonNullable: true });
 
   readonly submissions = signal<ModerationSubmissionDto[]>([]);
   readonly loading = signal(true);
@@ -97,9 +99,12 @@ export class AdminSubmissionsPageComponent {
   readonly searchQuery = signal('');
   readonly selectedType = signal<SubmissionTypeFilter>('ALL');
   readonly selectedSort = signal<SubmissionSortOrder>('NEWEST');
+  readonly selectedPageSize = signal(10);
+  readonly pageIndex = signal(0);
 
   readonly statuses: SubmissionStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
   readonly submissionTypes: SubmissionTypeFilter[] = ['ALL', 'PRODUCT', 'PRICE', 'NUTRITION'];
+  readonly pageSizeOptions: number[] = [10, 25, 50];
 
   readonly hasActiveClientFilters = computed(
     () =>
@@ -139,6 +144,33 @@ export class AdminSubmissionsPageComponent {
     });
   });
 
+  readonly totalPages = computed(() => {
+    const totalItems = this.visibleSubmissions().length;
+    const pageSize = this.selectedPageSize();
+    return totalItems === 0 ? 1 : Math.ceil(totalItems / pageSize);
+  });
+
+  readonly pagedSubmissions = computed(() => {
+    const submissions = this.visibleSubmissions();
+    const pageSize = this.selectedPageSize();
+    const totalPages = this.totalPages();
+    const safeIndex = Math.min(this.pageIndex(), totalPages - 1);
+    const start = safeIndex * pageSize;
+    return submissions.slice(start, start + pageSize);
+  });
+
+  readonly paginationSummary = computed(() => {
+    const total = this.visibleSubmissions().length;
+    if (total === 0) {
+      return '0 results';
+    }
+    const pageSize = this.selectedPageSize();
+    const page = Math.min(this.pageIndex(), this.totalPages() - 1);
+    const start = page * pageSize + 1;
+    const end = Math.min(total, start + pageSize - 1);
+    return `${start}-${end} of ${total}`;
+  });
+
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const requestedStatus = this.normalizeStatus((params.get('status') ?? '').toUpperCase());
@@ -171,19 +203,36 @@ export class AdminSubmissionsPageComponent {
       .subscribe((submissions) => {
         this.submissions.set(submissions);
         this.prefetchComparisonContext(submissions);
+        this.pageIndex.set(0);
       });
 
     this.searchControl.valueChanges
       .pipe(startWith(this.searchControl.value), takeUntilDestroyed(this.destroyRef))
-      .subscribe((query) => this.searchQuery.set(query));
+      .subscribe((query) => {
+        this.searchQuery.set(query);
+        this.pageIndex.set(0);
+      });
 
     this.typeControl.valueChanges
       .pipe(startWith(this.typeControl.value), takeUntilDestroyed(this.destroyRef))
-      .subscribe((type) => this.selectedType.set(type));
+      .subscribe((type) => {
+        this.selectedType.set(type);
+        this.pageIndex.set(0);
+      });
 
     this.sortControl.valueChanges
       .pipe(startWith(this.sortControl.value), takeUntilDestroyed(this.destroyRef))
-      .subscribe((sort) => this.selectedSort.set(sort));
+      .subscribe((sort) => {
+        this.selectedSort.set(sort);
+        this.pageIndex.set(0);
+      });
+
+    this.pageSizeControl.valueChanges
+      .pipe(startWith(this.pageSizeControl.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((pageSize) => {
+        this.selectedPageSize.set(pageSize);
+        this.pageIndex.set(0);
+      });
   }
 
   displayDate(raw: string): string {
@@ -267,6 +316,49 @@ export class AdminSubmissionsPageComponent {
     this.searchControl.setValue('');
     this.typeControl.setValue('ALL');
     this.sortControl.setValue('NEWEST');
+  }
+
+  goToPreviousPage(): void {
+    this.pageIndex.update((current) => (current > 0 ? current - 1 : current));
+  }
+
+  goToNextPage(): void {
+    const maxIndex = this.totalPages() - 1;
+    this.pageIndex.update((current) => (current < maxIndex ? current + 1 : current));
+  }
+
+  canGoToPreviousPage(): boolean {
+    return this.pageIndex() > 0;
+  }
+
+  canGoToNextPage(): boolean {
+    return this.pageIndex() < this.totalPages() - 1;
+  }
+
+  submissionDetailQueryParams(): {
+    status: SubmissionStatus;
+    q: string;
+    type: SubmissionTypeFilter;
+    sort: SubmissionSortOrder;
+  } {
+    return {
+      status: this.statusControl.value,
+      q: this.searchControl.value,
+      type: this.typeControl.value,
+      sort: this.sortControl.value,
+    };
+  }
+
+  evidenceImageUrl(submission: ModerationSubmissionDto): string | null {
+    if (submission.type !== 'PRODUCT') {
+      return null;
+    }
+    const payload = this.asRecord(submission.payload);
+    if (payload == null) {
+      return null;
+    }
+    const imageUrl = this.asText(payload['imageUrl'], '');
+    return imageUrl.length > 0 ? imageUrl : null;
   }
 
   isProcessingDecision(submissionId: number, mode: 'approve' | 'reject'): boolean {

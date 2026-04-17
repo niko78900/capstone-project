@@ -22,28 +22,45 @@
     title="Filters"
     [subtitle]="'Showing ' + visibleSubmissions().length + ' of ' + submissions().length + ' submission(s)'"
   >
-    <mat-form-field appearance="outline">
-      <mat-label>Search by email or reference</mat-label>
-      <input matInput [formControl]="searchControl" />
-      <mat-icon matSuffix>search</mat-icon>
-    </mat-form-field>
+    <div class="filter-field">
+      <p class="filter-field-label">Search</p>
+      <mat-form-field appearance="outline">
+        <input matInput [formControl]="searchControl" placeholder="Search by email or reference" aria-label="Search by email or reference" />
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+    </div>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Submission type</mat-label>
-      <mat-select [formControl]="typeControl">
-        @for (submissionType of submissionTypes; track submissionType) {
-          <mat-option [value]="submissionType">{{ typeLabel(submissionType) }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+    <div class="filter-field">
+      <p class="filter-field-label">Submission type</p>
+      <mat-form-field appearance="outline">
+        <mat-select [formControl]="typeControl" aria-label="Submission type">
+          @for (submissionType of submissionTypes; track submissionType) {
+            <mat-option [value]="submissionType">{{ typeLabel(submissionType) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Sort by</mat-label>
-      <mat-select [formControl]="sortControl">
-        <mat-option value="NEWEST">Newest first</mat-option>
-        <mat-option value="OLDEST">Oldest first</mat-option>
-      </mat-select>
-    </mat-form-field>
+    <div class="filter-field">
+      <p class="filter-field-label">Sort by</p>
+      <mat-form-field appearance="outline">
+        <mat-select [formControl]="sortControl" aria-label="Sort by">
+          <mat-option value="NEWEST">Newest first</mat-option>
+          <mat-option value="OLDEST">Oldest first</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="filter-field">
+      <p class="filter-field-label">Rows per page</p>
+      <mat-form-field appearance="outline">
+        <mat-select [formControl]="pageSizeControl" aria-label="Rows per page">
+          @for (size of pageSizeOptions; track size) {
+            <mat-option [value]="size">{{ size }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
 
     <div class="toolbar-actions">
       @if (hasActiveClientFilters()) {
@@ -80,8 +97,22 @@
     </app-empty-state>
   }
 
+  @if (!loading() && !errorMessage() && visibleSubmissions().length > 0) {
+    <section class="pagination-toolbar" aria-label="Submissions pagination">
+      <p class="pagination-summary">{{ paginationSummary() }}</p>
+      <div class="pagination-actions">
+        <button mat-stroked-button type="button" (click)="goToPreviousPage()" [disabled]="!canGoToPreviousPage()">
+          Previous
+        </button>
+        <button mat-stroked-button type="button" (click)="goToNextPage()" [disabled]="!canGoToNextPage()">
+          Next
+        </button>
+      </div>
+    </section>
+  }
+
   <div class="cards">
-    @for (submission of visibleSubmissions(); track submission.id) {
+    @for (submission of pagedSubmissions(); track submission.id) {
       <mat-card
         appearance="outlined"
         class="submission-card"
@@ -108,6 +139,17 @@
         </mat-card-header>
 
         <mat-card-content>
+          <div class="card-toolbar">
+            <a
+              mat-stroked-button
+              class="detail-link"
+              [routerLink]="['/admin/submissions', submission.id]"
+              [queryParams]="submissionDetailQueryParams()"
+            >
+              Open full review
+            </a>
+          </div>
+
           @if (submission.status === 'PENDING') {
             <p class="pending-callout">
               Pending review. Compare carefully before approving or rejecting.
@@ -120,6 +162,13 @@
 
           @if (submission.notes) {
             <p class="notes"><strong>User notes:</strong> {{ submission.notes }}</p>
+          }
+
+          @if (evidenceImageUrl(submission); as evidenceImageUrl) {
+            <div class="evidence-preview">
+              <a [href]="evidenceImageUrl" target="_blank" rel="noopener noreferrer">Open evidence image</a>
+              <img [src]="evidenceImageUrl" alt="Submission evidence image preview" />
+            </div>
           }
 
           <div class="payload-toolbar">

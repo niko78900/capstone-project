@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
@@ -7,16 +7,16 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { ModerationService } from '../../../core/services/moderation.service';
-import { AdminSubmissionsPageComponent } from './admin-submissions.page';
+import { AdminSubmissionDetailPageComponent } from './admin-submission-detail.page';
 
-describe('AdminSubmissionsPageComponent', () => {
-  let fixture: ComponentFixture<AdminSubmissionsPageComponent>;
-  let component: AdminSubmissionsPageComponent;
+describe('AdminSubmissionDetailPageComponent', () => {
+  let fixture: ComponentFixture<AdminSubmissionDetailPageComponent>;
+  let component: AdminSubmissionDetailPageComponent;
   let moderationService: jasmine.SpyObj<ModerationService>;
   let catalogService: jasmine.SpyObj<CatalogService>;
   let dialog: jasmine.SpyObj<MatDialog>;
 
-  const pendingSubmission = {
+  const submission = {
     id: 10,
     type: 'PRODUCT' as const,
     status: 'PENDING' as const,
@@ -37,22 +37,6 @@ describe('AdminSubmissionsPageComponent', () => {
     updatedAt: '2026-04-15T13:20:00Z',
   };
 
-  const secondPendingSubmission = {
-    id: 11,
-    type: 'PRICE' as const,
-    status: 'PENDING' as const,
-    payload: {
-      productId: 1,
-      supermarketId: 2,
-      price: 59.99,
-    },
-    notes: null,
-    submittedByUserId: 3,
-    submittedByEmail: 'another@example.com',
-    createdAt: '2026-04-16T08:10:00Z',
-    updatedAt: '2026-04-16T08:10:00Z',
-  };
-
   beforeEach(async () => {
     moderationService = jasmine.createSpyObj<ModerationService>('ModerationService', [
       'getSubmissions',
@@ -65,7 +49,7 @@ describe('AdminSubmissionsPageComponent', () => {
 
     moderationService.getSubmissions.and.callFake((status) => {
       if (status === 'PENDING') {
-        return of([pendingSubmission, secondPendingSubmission]);
+        return of([submission]);
       }
       return of([]);
     });
@@ -85,7 +69,7 @@ describe('AdminSubmissionsPageComponent', () => {
         submissionId: 10,
         status: 'REJECTED',
         action: 'REJECTED',
-        reason: 'Wrong data',
+        reason: 'Incorrect payload',
         reviewedAt: new Date().toISOString(),
       }),
     );
@@ -104,13 +88,14 @@ describe('AdminSubmissionsPageComponent', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [AdminSubmissionsPageComponent],
+      imports: [AdminSubmissionDetailPageComponent],
       providers: [
         provideNoopAnimations(),
         provideRouter([]),
         {
           provide: ActivatedRoute,
           useValue: {
+            paramMap: of(convertToParamMap({ id: '10' })),
             queryParamMap: of(convertToParamMap({ status: 'PENDING' })),
           },
         },
@@ -121,53 +106,24 @@ describe('AdminSubmissionsPageComponent', () => {
       ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(AdminSubmissionsPageComponent);
+    fixture = TestBed.createComponent(AdminSubmissionDetailPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
 
-  it('loads pending submissions and renders review links', () => {
-    expect(moderationService.getSubmissions).toHaveBeenCalledWith('PENDING');
-    expect(component.submissions().length).toBe(2);
-    expect(fixture.nativeElement.textContent).toContain('Open full review');
+  it('loads and renders full submission detail', () => {
+    expect(component.submission()?.id).toBe(10);
+    expect(component.payloadFields().length).toBeGreaterThan(0);
+    expect(fixture.nativeElement.textContent).toContain('Submitted Fields');
   });
 
-  it('filters submissions by text search', fakeAsync(() => {
-    component.searchControl.setValue('another@example.com');
-    tick();
-    fixture.detectChanges();
-
-    expect(component.visibleSubmissions().length).toBe(1);
-    expect(component.visibleSubmissions()[0].id).toBe(11);
-  }));
-
-  it('approves a submission when dialog returns reason', () => {
+  it('approves the submission from detail view', () => {
     dialog.open.and.returnValue({
-      afterClosed: () => of('looks valid'),
+      afterClosed: () => of('ready'),
     } as never);
 
-    component.onApprove(pendingSubmission);
+    component.onApprove();
 
-    expect(moderationService.approve).toHaveBeenCalledWith(10, 'looks valid');
-  });
-
-  it('rejects a submission when dialog returns required reason', () => {
-    dialog.open.and.returnValue({
-      afterClosed: () => of('wrong barcode'),
-    } as never);
-
-    component.onReject(pendingSubmission);
-
-    expect(moderationService.reject).toHaveBeenCalledWith(10, 'wrong barcode');
-  });
-
-  it('does not call reject when dialog is cancelled', () => {
-    dialog.open.and.returnValue({
-      afterClosed: () => of(undefined),
-    } as never);
-
-    component.onReject(pendingSubmission);
-
-    expect(moderationService.reject).not.toHaveBeenCalled();
+    expect(moderationService.approve).toHaveBeenCalledWith(10, 'ready');
   });
 });
