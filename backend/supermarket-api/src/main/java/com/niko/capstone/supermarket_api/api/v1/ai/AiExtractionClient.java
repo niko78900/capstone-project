@@ -1,0 +1,10 @@
+package com.niko.capstone.supermarket_api.api.v1.ai;
+
+import com.niko.capstone.supermarket_api.api.v1.ai.dto.AiExtractionResult;
+
+public interface AiExtractionClient {
+
+    AiExtractionResult extractProductDraft(String imageUrl);
+
+    String configuredModel();
+}

@@ -1,7 +1,10 @@
 package com.niko.capstone.supermarket_api.api.v1.submissions;
 
+import com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ImageUploadResponse;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiDraftRequest;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiDraftResponse;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.SubmissionResponse;
@@ -28,6 +31,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final AiAnalysisService aiAnalysisService;
 
     @PostMapping("/product")
     public ResponseEntity<SubmissionResponse> submitProduct(
@@ -45,6 +49,14 @@ public class SubmissionController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(submissionService.createPriceSubmission(currentEmail(authentication), request));
+    }
+
+    @PostMapping("/product/ai-draft")
+    public ProductAiDraftResponse draftProductFromImage(
+            Authentication authentication,
+            @Valid @RequestBody ProductAiDraftRequest request
+    ) {
+        return aiAnalysisService.createProductDraft(currentEmail(authentication), request.imageUrl());
     }
 
     @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -19,6 +19,7 @@ import com.niko.capstone.supermarket_api.domain.repository.BranchRepository;
 import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
+import com.niko.capstone.supermarket_api.domain.repository.SubmissionReviewRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
 import java.math.BigDecimal;
@@ -45,6 +46,10 @@ class SubmissionServiceTest {
     private BranchRepository branchRepository;
     @Mock
     private SubmissionRepository submissionRepository;
+    @Mock
+    private SubmissionReviewRepository submissionReviewRepository;
+    @Mock
+    private com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService aiAnalysisService;
 
     private SubmissionService submissionService;
 
@@ -57,7 +62,9 @@ class SubmissionServiceTest {
                 productRepository,
                 supermarketRepository,
                 branchRepository,
-                submissionRepository
+                submissionRepository,
+                submissionReviewRepository,
+                aiAnalysisService
         );
     }
 

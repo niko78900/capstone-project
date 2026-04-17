@@ -2,6 +2,7 @@ package com.niko.capstone.supermarket_api.api.v1.submissions;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
@@ -56,6 +57,7 @@ public class SubmissionService {
     private final BranchRepository branchRepository;
     private final SubmissionRepository submissionRepository;
     private final SubmissionReviewRepository submissionReviewRepository;
+    private final AiAnalysisService aiAnalysisService;
 
     @Value("${app.uploads.directory:uploads}")
     private String uploadsDirectory;
@@ -100,6 +102,7 @@ public class SubmissionService {
         submission.setNotes(normalizeOptional(request.notes()));
 
         SubmissionEntity saved = submissionRepository.save(submission);
+        aiAnalysisService.analyzeSubmissionAsync(saved.getId());
         return toResponse(saved);
     }
 
@@ -135,6 +138,7 @@ public class SubmissionService {
         submission.setNotes(normalizeOptional(request.notes()));
 
         SubmissionEntity saved = submissionRepository.save(submission);
+        aiAnalysisService.analyzeSubmissionAsync(saved.getId());
         return toResponse(saved);
     }
 
