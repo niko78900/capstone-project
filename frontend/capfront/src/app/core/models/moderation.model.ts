@@ -7,6 +7,7 @@ export interface ModerationSubmissionDto {
   status: SubmissionStatus;
   payload: unknown;
   notes: string | null;
+  reviewReason: string | null;
   submittedByUserId: number;
   submittedByEmail: string;
   createdAt: string;

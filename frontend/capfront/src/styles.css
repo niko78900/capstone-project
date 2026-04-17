@@ -211,6 +211,31 @@ body.dark-theme .mat-mdc-form-field .mat-mdc-form-field-icon-prefix .mat-icon {
   color: #9db4d6;
 }
 
+body.dark-theme .decision-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  background: #111b2e;
+  border: 1px solid #314560;
+  box-shadow: 0 18px 42px rgba(2, 6, 23, 0.68);
+  color: #e2e8f0;
+}
+
+body.dark-theme .decision-dialog-panel .mat-mdc-dialog-title,
+body.dark-theme .decision-dialog-panel .mat-mdc-dialog-content,
+body.dark-theme .decision-dialog-panel .mat-mdc-dialog-actions {
+  color: #e2e8f0;
+}
+
+body.dark-theme .decision-dialog-panel .mat-mdc-dialog-content p {
+  color: #a9b8cf;
+}
+
+body.dark-theme .decision-dialog-panel .mat-mdc-button:not(:disabled) {
+  color: #dbeafe;
+}
+
+body.dark-theme .decision-dialog-panel .mat-mdc-button:disabled {
+  color: #6b7a92;
+}
+
 * {
   box-sizing: border-box;
 }

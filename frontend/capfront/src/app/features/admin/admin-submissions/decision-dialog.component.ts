@@ -21,7 +21,7 @@ export interface DecisionDialogData {
       <p>Ref {{ data.submissionRef }}</p>
       <mat-form-field appearance="outline" class="reason-field">
         <mat-label>{{ data.mode === 'reject' ? 'Reason (required)' : 'Reason (optional)' }}</mat-label>
-        <textarea matInput rows="4" formControlName="reason"></textarea>
+        <textarea matInput rows="4" [formControl]="form.controls.reason"></textarea>
         @if (form.controls.reason.hasError('required')) {
           <mat-error>Reason is required when rejecting a submission.</mat-error>
         }

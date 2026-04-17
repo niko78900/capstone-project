@@ -160,9 +160,10 @@
             </p>
           }
 
-          @if (submission.notes) {
-            <p class="notes"><strong>User notes:</strong> {{ submission.notes }}</p>
-          }
+          <div class="notes-block">
+            <p class="notes"><strong>Submitter note:</strong> {{ submission.notes || '-' }}</p>
+            <p class="notes"><strong>Moderator decision note:</strong> {{ submission.reviewReason || '-' }}</p>
+          </div>
 
           @if (evidenceImageUrl(submission); as evidenceImageUrl) {
             <div class="evidence-preview">

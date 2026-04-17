@@ -389,6 +389,7 @@ export class AdminSubmissionsPageComponent {
     const submissionRef = this.submissionReference(submission);
     const dialogRef = this.dialog.open(DecisionDialogComponent, {
       width: '420px',
+      panelClass: 'decision-dialog-panel',
       data: { mode, submissionId: submission.id, submissionRef },
     });
 

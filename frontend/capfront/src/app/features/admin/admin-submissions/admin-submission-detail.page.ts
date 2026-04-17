@@ -182,6 +182,7 @@ export class AdminSubmissionDetailPageComponent {
   private openDecisionDialog(mode: 'approve' | 'reject', submission: ModerationSubmissionDto): void {
     const dialogRef = this.dialog.open(DecisionDialogComponent, {
       width: '420px',
+      panelClass: 'decision-dialog-panel',
       data: {
         mode,
         submissionId: submission.id,

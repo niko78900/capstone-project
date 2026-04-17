@@ -31,6 +31,7 @@ describe('AdminSubmissionDetailPageComponent', () => {
       imageUrl: '/uploads/evidence-banana.jpg',
     },
     notes: 'Looks fresh',
+    reviewReason: null,
     submittedByUserId: 2,
     submittedByEmail: 'user@example.com',
     createdAt: '2026-04-15T13:20:00Z',
