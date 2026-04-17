@@ -1,14 +1,22 @@
 package com.niko.capstone.supermarket_api.api.v1.moderation;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
 import com.niko.capstone.supermarket_api.api.v1.common.util.NameNormalizer;
+import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationAiSummaryDto;
+import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDetailDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionDecisionResponse;
+import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionHistoryEntryDto;
+import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionHistoryResponse;
+import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionPayloadPatchResponse;
+import com.niko.capstone.supermarket_api.api.v1.rewards.RewardsService;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.NutritionSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
@@ -19,8 +27,10 @@ import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionType;
 import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
 import com.niko.capstone.supermarket_api.domain.model.CategoryEntity;
+import com.niko.capstone.supermarket_api.domain.model.ContributorStatsEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductNutritionEntity;
+import com.niko.capstone.supermarket_api.domain.model.SubmissionEditEntity;
 import com.niko.capstone.supermarket_api.domain.model.SubmissionEntity;
 import com.niko.capstone.supermarket_api.domain.model.SubmissionReviewEntity;
 import com.niko.capstone.supermarket_api.domain.model.SupermarketEntity;
@@ -28,17 +38,28 @@ import com.niko.capstone.supermarket_api.domain.model.UserEntity;
 import com.niko.capstone.supermarket_api.domain.model.VerifiedPriceEntity;
 import com.niko.capstone.supermarket_api.domain.repository.BranchRepository;
 import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ContributorStatsRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductNutritionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
+import com.niko.capstone.supermarket_api.domain.repository.SubmissionEditRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionReviewRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
 import com.niko.capstone.supermarket_api.domain.repository.VerifiedPriceRepository;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +70,7 @@ public class ModerationService {
     private final ObjectMapper objectMapper;
     private final SubmissionRepository submissionRepository;
     private final SubmissionReviewRepository submissionReviewRepository;
+    private final SubmissionEditRepository submissionEditRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
@@ -56,13 +78,136 @@ public class ModerationService {
     private final SupermarketRepository supermarketRepository;
     private final BranchRepository branchRepository;
     private final VerifiedPriceRepository verifiedPriceRepository;
+    private final ContributorStatsRepository contributorStatsRepository;
+    private final RewardsService rewardsService;
+    private final AiAnalysisService aiAnalysisService;
 
     @Transactional(readOnly = true)
-    public List<ModerationSubmissionDto> listSubmissions(SubmissionStatus status) {
-        return submissionRepository.findByStatusOrderByCreatedAtAsc(status)
+    public List<ModerationSubmissionDto> listSubmissions(
+            SubmissionStatus status,
+            SubmissionType type,
+            String q,
+            Integer page,
+            Integer size,
+            String sort
+    ) {
+        Specification<SubmissionEntity> spec = Specification.where((Specification<SubmissionEntity>) null);
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+        if (type != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("type"), type));
+        }
+        if (q != null && !q.isBlank()) {
+            String like = "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+            spec = spec.and((root, query, cb) -> {
+                Expression<String> idString = cb.concat("", root.get("id").as(String.class));
+                Predicate byEmail = cb.like(cb.lower(root.get("user").get("email")), like);
+                Predicate byId = cb.like(cb.lower(idString), like);
+                Predicate byPayload = cb.like(cb.lower(root.get("payload")), like);
+                return cb.or(byEmail, byId, byPayload);
+            });
+        }
+
+        Pageable pageable = buildPageable(page, size, sort);
+        return submissionRepository.findAll(spec, pageable)
                 .stream()
                 .map(this::toModerationDto)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ModerationSubmissionDetailDto getSubmissionDetail(Long submissionId) {
+        SubmissionEntity submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new NotFoundException("Submission not found"));
+        return toModerationDetailDto(submission);
+    }
+
+    @Transactional
+    public SubmissionPayloadPatchResponse patchSubmissionPayload(
+            Long submissionId,
+            String adminEmail,
+            Object replacementPayload,
+            String editReason,
+            Instant expectedUpdatedAt
+    ) {
+        UserEntity admin = findUserByEmail(adminEmail);
+        SubmissionEntity submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new NotFoundException("Submission not found"));
+        assertPending(submission);
+
+        if (expectedUpdatedAt != null && !expectedUpdatedAt.equals(submission.getUpdatedAt())) {
+            throw new ConflictException("Submission has been updated by another moderator");
+        }
+
+        Object beforePayload = readPayloadValue(submission.getPayload());
+        String afterPayloadJson = writeJson(replacementPayload);
+        int changedFieldCount = countChangedFields(
+                toJsonNode(beforePayload),
+                toJsonNode(replacementPayload)
+        );
+
+        submission.setPayload(afterPayloadJson);
+        submission.setUpdatedAt(Instant.now());
+        submissionRepository.save(submission);
+
+        SubmissionEditEntity edit = new SubmissionEditEntity();
+        edit.setSubmission(submission);
+        edit.setAdminUser(admin);
+        edit.setBeforePayload(writeJson(beforePayload));
+        edit.setAfterPayload(afterPayloadJson);
+        edit.setReason(normalizeOptional(editReason));
+        edit.setChangedFieldCount(changedFieldCount);
+        submissionEditRepository.save(edit);
+
+        ModerationSubmissionDetailDto detail = toModerationDetailDto(submission);
+        return new SubmissionPayloadPatchResponse(detail, changedFieldCount);
+    }
+
+    @Transactional(readOnly = true)
+    public SubmissionHistoryResponse history(Long submissionId) {
+        SubmissionEntity submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new NotFoundException("Submission not found"));
+        List<SubmissionHistoryEntryDto> entries = new ArrayList<>();
+
+        List<SubmissionEditEntity> edits = submissionEditRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId);
+        for (SubmissionEditEntity edit : edits) {
+            entries.add(new SubmissionHistoryEntryDto(
+                    "EDIT",
+                    edit.getAdminUser().getEmail(),
+                    "PATCH_PAYLOAD",
+                    normalizeOptional(edit.getReason()),
+                    edit.getChangedFieldCount(),
+                    readPayloadValue(edit.getBeforePayload()),
+                    readPayloadValue(edit.getAfterPayload()),
+                    edit.getCreatedAt()
+            ));
+        }
+
+        List<SubmissionReviewEntity> reviews = submissionReviewRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId);
+        for (SubmissionReviewEntity review : reviews) {
+            entries.add(new SubmissionHistoryEntryDto(
+                    "REVIEW",
+                    review.getAdminUser().getEmail(),
+                    review.getAction().name(),
+                    normalizeOptional(review.getReason()),
+                    null,
+                    null,
+                    null,
+                    review.getCreatedAt()
+            ));
+        }
+
+        entries.sort((a, b) -> a.createdAt().compareTo(b.createdAt()));
+        return new SubmissionHistoryResponse(submission.getId(), entries);
+    }
+
+    @Transactional
+    public ModerationAiSummaryDto refreshAiReview(Long submissionId) {
+        SubmissionEntity submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new NotFoundException("Submission not found"));
+        assertPending(submission);
+        return aiAnalysisService.analyzeSubmissionForModeration(submissionId);
     }
 
     @Transactional
@@ -89,6 +234,7 @@ public class ModerationService {
         review.setAction(SubmissionReviewAction.APPROVED);
         review.setReason(normalizeOptional(reason));
         submissionReviewRepository.save(review);
+        rewardsService.recordDecision(submission, review);
 
         return new SubmissionDecisionResponse(
                 submission.getId(),
@@ -116,6 +262,7 @@ public class ModerationService {
         review.setAction(SubmissionReviewAction.REJECTED);
         review.setReason(normalizeOptional(reason));
         submissionReviewRepository.save(review);
+        rewardsService.recordDecision(submission, review);
 
         return new SubmissionDecisionResponse(
                 submission.getId(),
@@ -250,6 +397,54 @@ public class ModerationService {
         );
     }
 
+    private ModerationSubmissionDetailDto toModerationDetailDto(SubmissionEntity submission) {
+        Integer contributorScore = contributorStatsRepository.findById(submission.getUser().getId())
+                .map(ContributorStatsEntity::getScore)
+                .orElse(0);
+        return new ModerationSubmissionDetailDto(
+                submission.getId(),
+                submission.getType(),
+                submission.getStatus(),
+                readPayloadValue(submission.getPayload()),
+                submission.getNotes(),
+                latestReviewReason(submission.getId()),
+                submission.getUser().getId(),
+                submission.getUser().getEmail(),
+                contributorScore,
+                submission.getCreatedAt(),
+                submission.getUpdatedAt(),
+                aiAnalysisService.latestSummaryForSubmission(submission.getId())
+        );
+    }
+
+    private Pageable buildPageable(Integer page, Integer size, String sort) {
+        int safePage = page == null || page < 0 ? 0 : page;
+        int safeSize = size == null ? 50 : Math.min(Math.max(size, 1), 200);
+        Sort safeSort = parseSort(sort);
+        return PageRequest.of(safePage, safeSize, safeSort);
+    }
+
+    private Sort parseSort(String sort) {
+        String defaultField = "createdAt";
+        Sort.Direction defaultDirection = Sort.Direction.DESC;
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(defaultDirection, defaultField);
+        }
+        String[] parts = sort.split(",", 2);
+        String requestedField = parts[0].trim();
+        String field = switch (requestedField) {
+            case "createdAt", "updatedAt", "id" -> requestedField;
+            default -> defaultField;
+        };
+        Sort.Direction direction = defaultDirection;
+        if (parts.length > 1) {
+            direction = "asc".equalsIgnoreCase(parts[1].trim())
+                    ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+        }
+        return Sort.by(direction, field);
+    }
+
     private void assertPending(SubmissionEntity submission) {
         if (submission.getStatus() != SubmissionStatus.PENDING) {
             throw new ConflictException("Submission has already been reviewed");
@@ -318,5 +513,50 @@ public class ModerationService {
         } catch (JsonProcessingException ex) {
             return objectMapper.createObjectNode();
         }
+    }
+
+    private String writeJson(Object payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException ex) {
+            throw new UnprocessableEntityException("Invalid payload JSON");
+        }
+    }
+
+    private JsonNode toJsonNode(Object payload) {
+        return objectMapper.valueToTree(payload);
+    }
+
+    private int countChangedFields(JsonNode before, JsonNode after) {
+        if (before == null && after == null) {
+            return 0;
+        }
+        if (before == null || before.isNull()) {
+            return after == null || after.isNull() ? 0 : 1;
+        }
+        if (after == null || after.isNull()) {
+            return 1;
+        }
+        if (before.isObject() && after.isObject()) {
+            Set<String> keys = new HashSet<>();
+            before.fieldNames().forEachRemaining(keys::add);
+            after.fieldNames().forEachRemaining(keys::add);
+            int sum = 0;
+            for (String key : keys) {
+                sum += countChangedFields(before.get(key), after.get(key));
+            }
+            return sum;
+        }
+        if (before.isArray() && after.isArray()) {
+            if (before.size() != after.size()) {
+                return 1;
+            }
+            int sum = 0;
+            for (int i = 0; i < before.size(); i++) {
+                sum += countChangedFields(before.get(i), after.get(i));
+            }
+            return sum;
+        }
+        return before.equals(after) ? 0 : 1;
     }
 }
