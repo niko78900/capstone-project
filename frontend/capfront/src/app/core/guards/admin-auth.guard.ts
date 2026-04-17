@@ -10,7 +10,11 @@ export const adminAuthGuard: CanActivateFn = (_route, state) => {
     return true;
   }
 
+  const reason = session.isAuthenticated() ? 'forbidden' : 'authRequired';
   return router.createUrlTree(['/admin/login'], {
-    queryParams: { redirect: state.url },
+    queryParams: {
+      redirect: state.url,
+      reason,
+    },
   });
 };

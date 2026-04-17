@@ -7,6 +7,10 @@
 
     <mat-card-content>
       <form [formGroup]="form" (ngSubmit)="submit()" class="form">
+        @if (noticeMessage(); as notice) {
+          <p class="server-notice">{{ notice }}</p>
+        }
+
         <mat-form-field appearance="outline">
           <mat-label>Email</mat-label>
           <input matInput type="email" formControlName="email" />

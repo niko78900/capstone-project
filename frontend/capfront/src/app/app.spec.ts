@@ -1,12 +1,37 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
+import { AuthService } from './core/services/auth.service';
+import { AuthSessionService } from './core/services/auth-session.service';
+import { ThemeService } from './core/services/theme.service';
 
 describe('App', () => {
   beforeEach(async () => {
+    const sessionSignal = signal(null);
+    const isAdminSignal = signal(false);
+    const isDarkSignal = signal(false);
+
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: { logout: jasmine.createSpy('logout') } },
+        {
+          provide: AuthSessionService,
+          useValue: {
+            session: sessionSignal.asReadonly(),
+            isAdmin: isAdminSignal.asReadonly(),
+          },
+        },
+        {
+          provide: ThemeService,
+          useValue: {
+            isDark: isDarkSignal.asReadonly(),
+            toggle: jasmine.createSpy('toggle'),
+          },
+        },
+      ],
     }).compileComponents();
   });
 

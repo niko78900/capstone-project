@@ -62,7 +62,46 @@ describe('authInterceptor', () => {
     req.flush({ message: 'Authentication required' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(clearSpy).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/admin/login']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/admin/login'], {
+      queryParams: {
+        reason: 'sessionExpired',
+        redirect: '/admin/submissions',
+      },
+    });
+    httpMock.verify();
+  });
+
+  it('does not force redirect on admin login 401', () => {
+    const clearSpy = jasmine.createSpy('clear');
+    const navigateSpy = jasmine.createSpy('navigate');
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        {
+          provide: AuthSessionService,
+          useValue: { token: null, clear: clearSpy },
+        },
+        {
+          provide: Router,
+          useValue: { url: '/admin/login', navigate: navigateSpy },
+        },
+      ],
+    });
+
+    const http = TestBed.inject(HttpClient);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    http.post('/api/v1/auth/login', { email: 'admin@example.com', password: 'wrong' }).subscribe({
+      error: () => undefined,
+    });
+
+    const req = httpMock.expectOne('/api/v1/auth/login');
+    req.flush({ message: 'Invalid email or password' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(clearSpy).not.toHaveBeenCalled();
+    expect(navigateSpy).not.toHaveBeenCalled();
     httpMock.verify();
   });
 });

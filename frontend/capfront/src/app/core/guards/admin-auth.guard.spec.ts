@@ -10,7 +10,7 @@ describe('adminAuthGuard', () => {
         provideRouter([]),
         {
           provide: AuthSessionService,
-          useValue: { isAdmin: () => true },
+          useValue: { isAdmin: () => true, isAuthenticated: () => true },
         },
       ],
     });
@@ -27,7 +27,7 @@ describe('adminAuthGuard', () => {
         provideRouter([]),
         {
           provide: AuthSessionService,
-          useValue: { isAdmin: () => false },
+          useValue: { isAdmin: () => false, isAuthenticated: () => true },
         },
       ],
     });
@@ -37,8 +37,29 @@ describe('adminAuthGuard', () => {
     );
 
     const router = TestBed.inject(Router);
-    expect(router.serializeUrl(result as ReturnType<Router['createUrlTree']>)).toContain(
-      '/admin/login',
+    const serialized = router.serializeUrl(result as ReturnType<Router['createUrlTree']>);
+    expect(serialized).toContain('/admin/login');
+    expect(serialized).toContain('reason=forbidden');
+  });
+
+  it('redirects unauthenticated users with authRequired reason', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthSessionService,
+          useValue: { isAdmin: () => false, isAuthenticated: () => false },
+        },
+      ],
+    });
+
+    const result = TestBed.runInInjectionContext(() =>
+      adminAuthGuard({} as never, { url: '/admin' } as never),
     );
+
+    const router = TestBed.inject(Router);
+    const serialized = router.serializeUrl(result as ReturnType<Router['createUrlTree']>);
+    expect(serialized).toContain('/admin/login');
+    expect(serialized).toContain('reason=authRequired');
   });
 });

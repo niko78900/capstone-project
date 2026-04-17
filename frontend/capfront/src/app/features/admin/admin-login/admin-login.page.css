@@ -44,6 +44,15 @@ mat-card {
   margin: 0;
 }
 
+.server-notice {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+  padding: 8px 10px;
+}
+
 :host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-form-field .mat-mdc-text-field-wrapper {
   background: rgba(15, 28, 50, 0.72);
 }

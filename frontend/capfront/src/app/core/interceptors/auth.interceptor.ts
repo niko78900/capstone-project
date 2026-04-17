@@ -9,6 +9,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const router = inject(Router);
 
   const token = session.token;
+  const isAuthLoginRequest = request.url.includes('/auth/login');
   const withAuth = token
     ? request.clone({
         setHeaders: {
@@ -19,10 +20,15 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   return next(withAuth).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === 401) {
+      if (error instanceof HttpErrorResponse && error.status === 401 && !isAuthLoginRequest) {
         session.clear();
         if (router.url.startsWith('/admin')) {
-          void router.navigate(['/admin/login']);
+          void router.navigate(['/admin/login'], {
+            queryParams: {
+              reason: 'sessionExpired',
+              redirect: router.url,
+            },
+          });
         }
       }
       return throwError(() => error);

@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { convertToParamMap, ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminLoginPageComponent } from './admin-login.page';
@@ -11,7 +11,7 @@ describe('AdminLoginPageComponent', () => {
   let authService: jasmine.SpyObj<AuthService>;
   let router: jasmine.SpyObj<Router>;
 
-  beforeEach(async () => {
+  async function createComponent(reason?: string): Promise<void> {
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['login', 'logout']);
     router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
 
@@ -24,8 +24,9 @@ describe('AdminLoginPageComponent', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: {
-              queryParamMap: convertToParamMap({}),
+              queryParamMap: convertToParamMap(reason ? { reason } : {}),
             },
+            queryParamMap: of(convertToParamMap(reason ? { reason } : {})),
           },
         },
       ],
@@ -34,17 +35,26 @@ describe('AdminLoginPageComponent', () => {
     fixture = TestBed.createComponent(AdminLoginPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  }
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
   });
 
-  it('shows validation errors when form is empty', () => {
+  it('shows validation errors when form is empty', async () => {
+    await createComponent();
+
     component.submit();
     fixture.detectChanges();
+
     expect(component.form.invalid).toBeTrue();
     expect(component.form.controls.email.touched).toBeTrue();
     expect(component.form.controls.password.touched).toBeTrue();
   });
 
-  it('renders server message on API login failure', () => {
+  it('renders server message on API login failure', async () => {
+    await createComponent();
+
     authService.login.and.returnValue(
       throwError(
         () =>
@@ -62,7 +72,9 @@ describe('AdminLoginPageComponent', () => {
     expect(component.serverMessage()).toBe('Invalid email or password');
   });
 
-  it('navigates to submissions page when admin login succeeds', () => {
+  it('navigates to admin dashboard when admin login succeeds', async () => {
+    await createComponent();
+
     authService.login.and.returnValue(
       of({
         accessToken: 'token',
@@ -75,6 +87,12 @@ describe('AdminLoginPageComponent', () => {
     component.form.setValue({ email: 'admin@example.com', password: 'password123' });
     component.submit();
 
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/submissions');
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
+  });
+
+  it('shows reason notice when redirected due expired session', async () => {
+    await createComponent('sessionExpired');
+
+    expect(component.noticeMessage()).toContain('session expired');
   });
 });
