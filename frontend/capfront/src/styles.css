@@ -76,6 +76,62 @@ body.dark-theme .mat-button-toggle-checked {
   background: #123c69;
 }
 
+body.dark-theme .mat-mdc-form-field .mat-mdc-text-field-wrapper {
+  background: rgba(15, 28, 50, 0.72);
+}
+
+body.dark-theme .mat-mdc-form-field .mdc-text-field__input,
+body.dark-theme .mat-mdc-form-field .mat-mdc-input-element {
+  -webkit-text-fill-color: #e2e8f0;
+  caret-color: #93c5fd;
+  color: #e2e8f0;
+}
+
+body.dark-theme .mat-mdc-form-field .mdc-floating-label,
+body.dark-theme .mat-mdc-form-field .mat-mdc-form-field-required-marker {
+  color: #a9b8cf !important;
+}
+
+body.dark-theme .mat-mdc-form-field:hover .mdc-floating-label,
+body.dark-theme .mat-mdc-form-field.mat-focused .mdc-floating-label,
+body.dark-theme .mat-mdc-form-field:hover .mat-mdc-form-field-required-marker,
+body.dark-theme .mat-mdc-form-field.mat-focused .mat-mdc-form-field-required-marker {
+  color: #dbeafe !important;
+}
+
+body.dark-theme .mat-mdc-form-field .mdc-notched-outline__leading,
+body.dark-theme .mat-mdc-form-field .mdc-notched-outline__notch,
+body.dark-theme .mat-mdc-form-field .mdc-notched-outline__trailing {
+  border-color: #4a5b75 !important;
+}
+
+body.dark-theme .mat-mdc-form-field:hover .mdc-notched-outline__leading,
+body.dark-theme .mat-mdc-form-field:hover .mdc-notched-outline__notch,
+body.dark-theme .mat-mdc-form-field:hover .mdc-notched-outline__trailing,
+body.dark-theme .mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
+body.dark-theme .mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
+body.dark-theme .mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
+  border-color: #93c5fd !important;
+}
+
+body.dark-theme .mat-mdc-form-field .mat-mdc-select-value,
+body.dark-theme .mat-mdc-form-field .mat-mdc-select-arrow {
+  color: #e2e8f0;
+}
+
+body.dark-theme .mat-mdc-select-panel {
+  background: #0f1a30;
+  color: #e2e8f0;
+}
+
+body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+body.dark-theme .mat-mdc-option:hover:not(.mdc-list-item--disabled) {
+  background: rgba(148, 163, 184, 0.16);
+}
+
 * {
   box-sizing: border-box;
 }

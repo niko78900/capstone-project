@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { filter, map, startWith } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
@@ -10,7 +11,14 @@ import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatButtonModule, MatToolbarModule],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatButtonModule,
+    MatIconModule,
+    MatToolbarModule,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -32,11 +40,14 @@ export class App {
   readonly isAdmin = this.authSession.isAdmin;
   readonly isDarkTheme = this.theme.isDark;
   readonly isLoginRoute = computed(() => this.currentUrl().startsWith('/admin/login'));
+  readonly isAdminRoute = computed(() =>
+    this.currentUrl().startsWith('/admin') && !this.currentUrl().startsWith('/admin/login'),
+  );
   readonly themeToggleLabel = computed(() =>
     this.isDarkTheme() ? 'Light theme' : 'Dark theme',
   );
   readonly adminActionLabel = computed(() =>
-    this.isAdmin() ? 'Admin Dashboard' : 'Admin Login',
+    this.isAdmin() ? 'Admin Console' : 'Admin Login',
   );
 
   toggleTheme(): void {

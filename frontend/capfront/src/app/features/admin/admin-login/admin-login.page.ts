@@ -57,7 +57,7 @@ export class AdminLoginPageComponent {
           }
 
           const redirect = this.route.snapshot.queryParamMap.get('redirect');
-          void this.router.navigateByUrl(redirect || '/admin/submissions');
+          void this.router.navigateByUrl(redirect || '/admin');
         },
         error: (error: unknown) => {
           const apiError = mapApiError(error);

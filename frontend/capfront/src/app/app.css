@@ -4,6 +4,7 @@
 }
 
 .topbar {
+  backdrop-filter: blur(6px);
   background: var(--topbar-bg);
   color: var(--topbar-text);
   display: flex;
@@ -12,6 +13,9 @@
   min-height: 64px;
   line-height: 1.2;
   padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .brand {
@@ -24,6 +28,22 @@
 .nav-links {
   display: flex;
   gap: 4px;
+}
+
+.admin-topbar {
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-tag {
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.35px;
+  margin-left: 8px;
+  padding: 5px 10px;
+  text-transform: uppercase;
 }
 
 .active-link {
@@ -45,6 +65,18 @@
   font-weight: 600;
 }
 
+.home-link-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.home-link-button .mat-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+}
+
 .theme-toggle {
   border-color: rgba(255, 255, 255, 0.35);
   color: var(--topbar-text);
@@ -56,8 +88,58 @@
   padding: 20px 16px 28px;
 }
 
+.admin-shell {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: 1340px;
+  min-height: calc(100vh - 64px);
+}
+
+.admin-sidebar {
+  border-right: 1px solid var(--border);
+  display: grid;
+  gap: 8px;
+  height: 100%;
+  padding: 16px 10px;
+  position: sticky;
+  top: 64px;
+}
+
+.side-link {
+  align-items: center;
+  border-radius: 10px;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: flex-start;
+  min-height: 42px;
+  text-align: left;
+}
+
+.side-link .mat-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+}
+
+.admin-sidebar .active-link {
+  background: var(--surface-muted);
+  text-decoration: none;
+}
+
+.admin-content {
+  margin: 0;
+  max-width: none;
+  padding: 20px 22px 30px;
+}
+
 :host-context(body.dark-theme) .theme-toggle {
   border-color: rgba(148, 163, 184, 0.45);
+}
+
+:host-context(body.dark-theme) .topbar-tag {
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(148, 163, 184, 0.4);
 }
 
 @media (max-width: 740px) {
@@ -66,5 +148,29 @@
     flex-wrap: wrap;
     padding-bottom: 8px;
     padding-top: 8px;
+  }
+
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    border-right: 0;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-x: auto;
+    position: static;
+    top: auto;
+  }
+
+  .side-link {
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .admin-content {
+    padding: 16px 14px 24px;
   }
 }
