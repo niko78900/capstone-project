@@ -47,6 +47,18 @@ class AdminAuthorizationIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void anonymousUser_shouldAccessPublicCatalogEndpoints() throws Exception {
+        mockMvc.perform(get("/api/v1/products"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/products/1"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/supermarkets"))
+                .andExpect(status().isOk());
+    }
+
     private String readToken(MvcResult result) throws Exception {
         JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
         return json.get("accessToken").asText();
