@@ -8,7 +8,6 @@
   background: var(--topbar-bg);
   color: var(--topbar-text);
   display: flex;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   gap: 12px;
   min-height: 64px;
   line-height: 1.2;
@@ -85,9 +84,11 @@
 }
 
 .admin-sidebar {
+  align-content: start;
   border-right: 1px solid var(--border);
   display: grid;
   gap: 8px;
+  grid-auto-rows: max-content;
   height: 100%;
   padding: 16px 10px;
   position: sticky;

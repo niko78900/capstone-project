@@ -1,8 +1,7 @@
 @import '@angular/material/prebuilt-themes/azure-blue.css';
 
 :root {
-  --app-font-family:
-    'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --app-font-family: Arial, Helvetica, sans-serif;
   --app-bg: linear-gradient(180deg, #f4f7fb 0%, #eef3f9 100%);
   --app-text: #0f172a;
   --topbar-bg: #0c4a6e;
@@ -41,7 +40,11 @@ body {
 .mat-toolbar,
 .mat-mdc-button-base,
 .mat-mdc-form-field,
+.mat-button-toggle,
+.mat-button-toggle-label-content,
 .mat-mdc-select-panel,
+.mat-mdc-select-value-text,
+.mat-mdc-select-min-line,
 .mat-mdc-option .mdc-list-item__primary-text,
 .mat-mdc-card-title,
 .mat-mdc-card-subtitle,
@@ -90,6 +93,15 @@ body.dark-theme .mat-button-toggle-appearance-standard {
 
 body.dark-theme .mat-button-toggle-checked {
   background: #123c69;
+}
+
+body.dark-theme .mat-button-toggle-checked .mat-pseudo-checkbox-minimal {
+  color: #67e8f9 !important;
+}
+
+body.dark-theme .mat-button-toggle-checked .mat-pseudo-checkbox-minimal::after {
+  border-color: #67e8f9 !important;
+  border-width: 0 0 2px 2px;
 }
 
 body.dark-theme .mat-mdc-form-field .mat-mdc-text-field-wrapper {
@@ -150,11 +162,11 @@ body.dark-theme .mat-mdc-option .mdc-list-item__primary-text {
 }
 
 body.dark-theme .mat-mdc-option .mat-pseudo-checkbox {
-  color: #bae6fd;
+  color: #67e8f9;
 }
 
 body.dark-theme .mat-mdc-option .mat-pseudo-checkbox::after {
-  border-color: currentcolor !important;
+  border-color: #67e8f9 !important;
 }
 
 body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
@@ -163,8 +175,13 @@ body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disa
 }
 
 body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mat-pseudo-checkbox {
-  color: #e0f2fe !important;
+  color: #67e8f9 !important;
   opacity: 1;
+}
+
+body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mat-pseudo-checkbox::after {
+  border-color: #67e8f9 !important;
+  border-width: 0 0 2px 2px;
 }
 
 body.dark-theme
