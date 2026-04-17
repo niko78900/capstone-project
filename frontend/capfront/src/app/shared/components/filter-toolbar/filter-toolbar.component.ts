@@ -52,7 +52,11 @@ import { Component, input } from '@angular/core';
     .controls {
       display: grid;
       gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+    }
+
+    .controls > * {
+      min-width: 0;
     }
   `,
 })

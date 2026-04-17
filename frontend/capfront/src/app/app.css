@@ -65,18 +65,6 @@
   font-weight: 600;
 }
 
-.home-link-button {
-  align-items: center;
-  display: inline-flex;
-  gap: 6px;
-}
-
-.home-link-button .mat-icon {
-  font-size: 18px;
-  height: 18px;
-  width: 18px;
-}
-
 .theme-toggle {
   border-color: rgba(255, 255, 255, 0.35);
   color: var(--topbar-text);

@@ -1,12 +1,8 @@
 @if (isAdminRoute()) {
   <mat-toolbar class="topbar admin-topbar">
-    <div class="brand" routerLink="/admin">Skopje Price Compass</div>
+    <div class="brand" routerLink="/products">Skopje Price Compass</div>
     <span class="topbar-tag">Admin Console</span>
     <span class="spacer"></span>
-    <a mat-button class="home-link-button" routerLink="/products">
-      <mat-icon aria-hidden="true">home</mat-icon>
-      <span>Homepage</span>
-    </a>
     <button mat-stroked-button class="theme-toggle" (click)="toggleTheme()">
       {{ themeToggleLabel() }}
     </button>
