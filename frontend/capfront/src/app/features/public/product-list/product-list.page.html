@@ -1,50 +1,70 @@
 <section class="page">
-  <header class="header">
-    <h1>Product Catalog</h1>
-    <p>Search products and review latest verified supermarket prices.</p>
-  </header>
+  <app-page-header
+    eyebrow="Public Catalog"
+    title="Browse Products"
+    subtitle="Search the current product catalog and view the best verified supermarket price for each item."
+  />
 
-  <mat-form-field appearance="outline" class="search-field">
-    <mat-label>Search by product or brand</mat-label>
-    <input matInput [formControl]="searchControl" />
-    <span matSuffix class="search-icon" aria-hidden="true">&#128269;</span>
-  </mat-form-field>
+  <app-filter-toolbar title="Catalog Search" [subtitle]="resultsSummary()">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search by product or brand</mat-label>
+      <input matInput [formControl]="searchControl" />
+      @if (hasQuery()) {
+        <button mat-icon-button matSuffix type="button" aria-label="Clear search" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix>search</mat-icon>
+      }
+    </mat-form-field>
+
+    <div class="search-help">
+      <p class="hint-title">How to use this page</p>
+      <p class="hint-copy">This web catalog is read-only. Open a product for verified prices and nutrition details.</p>
+    </div>
+  </app-filter-toolbar>
 
   @if (loading()) {
     <app-loading-state message="Loading products..." />
   }
 
   @if (errorMessage(); as errorMessage) {
-    <app-empty-state title="Request failed" [message]="errorMessage" />
+    <app-empty-state icon="cloud_off" title="Catalog request failed" [message]="errorMessage" />
   }
 
   @if (!loading() && !errorMessage() && products().length === 0) {
     <app-empty-state
+      icon="inventory_2"
       title="No products found"
-      message="Try a broader search query or clear the search input."
-    />
+      [message]="hasQuery()
+        ? 'Try a broader search phrase or clear the search input.'
+        : 'The catalog is currently empty.'"
+    >
+      @if (hasQuery()) {
+        <button mat-stroked-button type="button" (click)="clearSearch()">Clear search</button>
+      }
+    </app-empty-state>
   }
 
-  <div class="grid">
+  <section class="grid" aria-live="polite">
     @for (product of products(); track product.id) {
       <mat-card class="product-card" appearance="outlined">
-        <mat-card-header>
-          <mat-card-title>{{ product.name }}</mat-card-title>
-          <mat-card-subtitle>
-            {{ product.brand || 'Unbranded' }} &bull; {{ product.category }}
-          </mat-card-subtitle>
-        </mat-card-header>
         <mat-card-content>
-          <p class="price">{{ formatPrice(product) }}</p>
-          <p class="subtle">
-            {{ product.bestPriceSupermarket || 'No supermarket data yet' }}
-          </p>
+          <p class="category">{{ product.category }}</p>
+          <h2 class="name">{{ product.name }}</h2>
+          <p class="brand">{{ product.brand || 'Unbranded' }}</p>
+
+          <div class="price-block" [class.price-block-empty]="product.bestPrice == null">
+            <p class="price-label">Best verified price</p>
+            <p class="price-value">{{ formatPrice(product) }}</p>
+            <p class="price-hint">{{ priceHint(product) }}</p>
+          </div>
         </mat-card-content>
+
         <mat-card-actions>
           <a mat-button color="primary" [routerLink]="['/products', product.id]">View details</a>
         </mat-card-actions>
       </mat-card>
     }
-  </div>
+  </section>
 </section>
-

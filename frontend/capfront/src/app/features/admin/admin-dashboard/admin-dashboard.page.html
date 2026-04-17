@@ -1,0 +1,72 @@
+<section class="page">
+  <app-page-header
+    eyebrow="Admin"
+    title="Dashboard Overview"
+    subtitle="Track moderation workload and jump directly into review queues."
+  >
+    <button header-actions mat-stroked-button routerLink="/admin/submissions" [queryParams]="{ status: 'PENDING' }">
+      Review pending
+    </button>
+  </app-page-header>
+
+  @if (loading()) {
+    <app-loading-state message="Loading moderation summary..." />
+  }
+
+  @if (errorMessage(); as errorMessage) {
+    <app-empty-state icon="warning" title="Could not load dashboard" [message]="errorMessage" />
+  }
+
+  @if (!loading() && !errorMessage()) {
+    <section class="stats-grid">
+      <app-stat-card label="Pending" [value]="summary().pending" tone="pending" hint="Awaiting admin review" />
+      <app-stat-card label="Approved" [value]="summary().approved" tone="approved" hint="Accepted submissions" />
+      <app-stat-card label="Rejected" [value]="summary().rejected" tone="rejected" hint="Declined submissions" />
+      <app-stat-card label="Total" [value]="summary().total" hint="Across all moderation states" />
+    </section>
+
+    <section class="quick-actions">
+      <a mat-flat-button color="primary" routerLink="/admin/submissions" [queryParams]="{ status: 'PENDING' }">
+        Open pending queue
+      </a>
+      <a mat-stroked-button routerLink="/admin/submissions" [queryParams]="{ status: 'APPROVED' }">
+        View approved history
+      </a>
+      <a mat-stroked-button routerLink="/admin/submissions" [queryParams]="{ status: 'REJECTED' }">
+        View rejected history
+      </a>
+    </section>
+
+    <section class="pending-panel">
+      <div class="panel-head">
+        <h2>Latest Pending Submissions</h2>
+        <a mat-button routerLink="/admin/submissions" [queryParams]="{ status: 'PENDING' }">See all pending</a>
+      </div>
+
+      @if (recentPending().length === 0) {
+        <app-empty-state
+          icon="task_alt"
+          title="No pending submissions"
+          message="Everything in the queue has already been processed."
+        />
+      } @else {
+        <div class="pending-list">
+          @for (submission of recentPending(); track submission.id) {
+            <mat-card class="pending-item" appearance="outlined">
+              <p class="ref">Ref {{ submissionReference(submission) }} | {{ submission.type }}</p>
+              <p class="meta">{{ submission.submittedByEmail }} | {{ displayDate(submission.createdAt) }}</p>
+              <a
+                mat-button
+                color="primary"
+                routerLink="/admin/submissions"
+                [queryParams]="{ status: 'PENDING', q: submissionReference(submission) }"
+              >
+                Open review
+              </a>
+            </mat-card>
+          }
+        </div>
+      }
+    </section>
+  }
+</section>

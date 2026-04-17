@@ -1,10 +1,16 @@
 <section class="page">
-  <header class="header">
-    <h1>Submission Moderation</h1>
-    <p>Review user-submitted product and price changes.</p>
-  </header>
+  <app-page-header
+    eyebrow="Admin"
+    title="Moderation Queue"
+    subtitle="Review crowd submissions with side-by-side change previews. Submission editing is not supported by the current API."
+  >
+    <button header-actions mat-stroked-button type="button" (click)="statusControl.setValue(statusControl.value, { emitEvent: true })">
+      Refresh
+    </button>
+  </app-page-header>
 
   <section class="status-filter" aria-label="Submission status filter">
+    <p class="status-label">Status</p>
     <mat-button-toggle-group [formControl]="statusControl">
       @for (status of statuses; track status) {
         <mat-button-toggle [value]="status">{{ status }}</mat-button-toggle>
@@ -12,23 +18,70 @@
     </mat-button-toggle-group>
   </section>
 
+  <app-filter-toolbar
+    title="Filters"
+    [subtitle]="'Showing ' + visibleSubmissions().length + ' of ' + submissions().length + ' submission(s)'"
+  >
+    <mat-form-field appearance="outline">
+      <mat-label>Search by email or reference</mat-label>
+      <input matInput [formControl]="searchControl" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Submission type</mat-label>
+      <mat-select [formControl]="typeControl">
+        @for (submissionType of submissionTypes; track submissionType) {
+          <mat-option [value]="submissionType">{{ typeLabel(submissionType) }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Sort by</mat-label>
+      <mat-select [formControl]="sortControl">
+        <mat-option value="NEWEST">Newest first</mat-option>
+        <mat-option value="OLDEST">Oldest first</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="toolbar-actions">
+      @if (hasActiveClientFilters()) {
+        <button mat-stroked-button type="button" (click)="clearClientFilters()">Clear filters</button>
+      } @else {
+        <p class="toolbar-hint">Add search or filter criteria to narrow the queue.</p>
+      }
+    </div>
+  </app-filter-toolbar>
+
   @if (loading()) {
     <app-loading-state message="Loading submissions..." />
   }
 
   @if (errorMessage(); as errorMessage) {
-    <app-empty-state title="Unable to load submissions" [message]="errorMessage" />
+    <app-empty-state icon="warning" title="Unable to load submissions" [message]="errorMessage">
+      <button mat-stroked-button type="button" (click)="statusControl.setValue(statusControl.value, { emitEvent: true })">
+        Try again
+      </button>
+    </app-empty-state>
   }
 
-  @if (!loading() && !errorMessage() && submissions().length === 0) {
+  @if (!loading() && !errorMessage() && visibleSubmissions().length === 0) {
     <app-empty-state
+      icon="rule"
       title="No submissions"
-      message="No submissions matched the selected status."
-    />
+      [message]="hasActiveClientFilters()
+        ? 'No submissions match the current filters. Clear filters or switch status.'
+        : 'No submissions matched the selected status.'"
+    >
+      @if (hasActiveClientFilters()) {
+        <button mat-stroked-button type="button" (click)="clearClientFilters()">Clear filters</button>
+      }
+    </app-empty-state>
   }
 
   <div class="cards">
-    @for (submission of submissions(); track submission.id) {
+    @for (submission of visibleSubmissions(); track submission.id) {
       <mat-card
         appearance="outlined"
         class="submission-card"
@@ -37,12 +90,13 @@
         [class.submission-card-rejected]="submission.status === 'REJECTED'"
       >
         <mat-card-header class="submission-head">
-          <div>
-            <mat-card-title>Ref {{ submissionReference(submission) }} &bull; {{ submission.type }}</mat-card-title>
+          <div class="head-main">
+            <mat-card-title>Ref {{ submissionReference(submission) }} - {{ submission.type }}</mat-card-title>
             <mat-card-subtitle>
-              {{ submission.submittedByEmail }} &bull; {{ displayDate(submission.createdAt) }}
+              {{ submission.submittedByEmail }} | Created {{ displayDate(submission.createdAt) }}
             </mat-card-subtitle>
           </div>
+
           <span
             class="status-chip"
             [class.status-pending]="submission.status === 'PENDING'"
@@ -54,12 +108,27 @@
         </mat-card-header>
 
         <mat-card-content>
+          @if (submission.status === 'PENDING') {
+            <p class="pending-callout">
+              Pending review. Compare carefully before approving or rejecting.
+            </p>
+          } @else {
+            <p class="context-note">
+              Final decision recorded {{ displayDate(submission.updatedAt) }}.
+            </p>
+          }
+
           @if (submission.notes) {
-            <p class="notes"><strong>Notes:</strong> {{ submission.notes }}</p>
+            <p class="notes"><strong>User notes:</strong> {{ submission.notes }}</p>
           }
 
           <div class="payload-toolbar">
-            <p class="payload-title">Change preview</p>
+            <div>
+              <p class="payload-title">Change preview</p>
+              @if (detailRows(submission); as rows) {
+                <p class="change-summary">{{ changedRowCount(rows) }} changed field(s)</p>
+              }
+            </div>
             <button
               mat-stroked-button
               type="button"
@@ -81,8 +150,6 @@
               @if (rows.length === 0) {
                 <p class="context-note">No descriptive preview is available for this payload.</p>
               } @else {
-                <p class="change-summary">{{ changedRowCount(rows) }} changed field(s)</p>
-
                 <div class="diff-wrap">
                   <div class="diff-table">
                     <div class="diff-head">Field</div>
@@ -116,18 +183,20 @@
             <button
               mat-flat-button
               color="primary"
+              type="button"
               (click)="onApprove(submission)"
-              [disabled]="processingSubmissionId() === submission.id"
+              [disabled]="processingSubmissionId() !== null"
             >
-              Approve
+              {{ isProcessingDecision(submission.id, 'approve') ? 'Approving...' : 'Approve' }}
             </button>
             <button
               mat-stroked-button
               color="warn"
+              type="button"
               (click)="onReject(submission)"
-              [disabled]="processingSubmissionId() === submission.id"
+              [disabled]="processingSubmissionId() !== null"
             >
-              Reject
+              {{ isProcessingDecision(submission.id, 'reject') ? 'Rejecting...' : 'Reject' }}
             </button>
           </mat-card-actions>
         }

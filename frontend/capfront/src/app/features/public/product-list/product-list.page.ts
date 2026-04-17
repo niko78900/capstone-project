@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -12,7 +12,9 @@ import { mapApiError } from '../../../core/models/api-error.model';
 import { ProductSummaryDto } from '../../../core/models/catalog.model';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterToolbarComponent } from '../../../shared/components/filter-toolbar/filter-toolbar.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-product-list-page',
@@ -25,7 +27,9 @@ import { LoadingStateComponent } from '../../../shared/components/loading-state/
     MatIconModule,
     MatInputModule,
     EmptyStateComponent,
+    FilterToolbarComponent,
     LoadingStateComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './product-list.page.html',
   styleUrl: './product-list.page.css',
@@ -40,15 +44,26 @@ export class ProductListPageComponent {
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
 
+  readonly hasQuery = computed(() => this.searchControl.value.trim().length > 0);
+  readonly resultsSummary = computed(() => {
+    const count = this.products().length;
+    if (count === 0) {
+      return this.hasQuery() ? 'No matching products' : 'No products';
+    }
+    const noun = count === 1 ? 'product' : 'products';
+    return `${count} ${noun} shown`;
+  });
+
   constructor() {
     this.searchControl.valueChanges
       .pipe(
         startWith(this.searchControl.value),
-        debounceTime(300),
+        debounceTime(260),
         distinctUntilChanged(),
         switchMap((query) => {
           this.loading.set(true);
           this.errorMessage.set(null);
+
           return this.catalogService.getProducts(query).pipe(
             catchError((error: unknown) => {
               const apiError = mapApiError(error);
@@ -63,10 +78,21 @@ export class ProductListPageComponent {
       .subscribe((products) => this.products.set(products));
   }
 
+  clearSearch(): void {
+    this.searchControl.setValue('');
+  }
+
   formatPrice(product: ProductSummaryDto): string {
     if (product.bestPrice == null) {
       return 'No verified price';
     }
     return `${product.bestPrice.toFixed(2)} ${product.currency ?? 'MKD'}`;
+  }
+
+  priceHint(product: ProductSummaryDto): string {
+    if (product.bestPrice == null) {
+      return 'Awaiting verified submissions';
+    }
+    return product.bestPriceSupermarket ?? 'Verified in catalog';
   }
 }

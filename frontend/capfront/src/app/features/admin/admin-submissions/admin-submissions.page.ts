@@ -1,19 +1,30 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { catchError, filter, finalize, of, startWith, switchMap } from 'rxjs';
 import { ProductDetailDto } from '../../../core/models/catalog.model';
 import { mapApiError } from '../../../core/models/api-error.model';
-import { ModerationSubmissionDto, SubmissionStatus } from '../../../core/models/moderation.model';
+import {
+  ModerationSubmissionDto,
+  SubmissionStatus,
+  SubmissionType,
+} from '../../../core/models/moderation.model';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { ModerationService } from '../../../core/services/moderation.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { FilterToolbarComponent } from '../../../shared/components/filter-toolbar/filter-toolbar.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { DecisionDialogComponent } from './decision-dialog.component';
 
 interface SubmissionDiffRow {
@@ -24,15 +35,17 @@ interface SubmissionDiffRow {
   changed: boolean;
 }
 
+type SubmissionTypeFilter = 'ALL' | SubmissionType;
+type SubmissionSortOrder = 'NEWEST' | 'OLDEST';
 type PayloadRecord = Record<string, unknown>;
 
 const CATEGORY_NAMES: Record<number, string> = {
-  1: 'Fruits & Vegetables',
+  1: 'Fruits and Vegetables',
   2: 'Bakery',
-  3: 'Dairy & Eggs',
-  4: 'Meat & Fish',
-  5: 'Pasta & Rice',
-  6: 'Canned & Jarred',
+  3: 'Dairy and Eggs',
+  4: 'Meat and Fish',
+  5: 'Pasta and Rice',
+  6: 'Canned and Jarred',
   7: 'Snacks',
   8: 'Beverages',
   9: 'Frozen',
@@ -46,14 +59,21 @@ const CATEGORY_NAMES: Record<number, string> = {
     MatButtonModule,
     MatButtonToggleModule,
     MatCardModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
     MatSnackBarModule,
     EmptyStateComponent,
+    FilterToolbarComponent,
     LoadingStateComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './admin-submissions.page.html',
   styleUrl: './admin-submissions.page.css',
 })
 export class AdminSubmissionsPageComponent {
+  private readonly route = inject(ActivatedRoute);
   private readonly moderationService = inject(ModerationService);
   private readonly catalogService = inject(CatalogService);
   private readonly destroyRef = inject(DestroyRef);
@@ -63,16 +83,85 @@ export class AdminSubmissionsPageComponent {
   private readonly requestedProductDetails = new Set<number>();
 
   readonly statusControl = new FormControl<SubmissionStatus>('PENDING', { nonNullable: true });
+  readonly searchControl = new FormControl('', { nonNullable: true });
+  readonly typeControl = new FormControl<SubmissionTypeFilter>('ALL', { nonNullable: true });
+  readonly sortControl = new FormControl<SubmissionSortOrder>('NEWEST', { nonNullable: true });
+
   readonly submissions = signal<ModerationSubmissionDto[]>([]);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly processingSubmissionId = signal<number | null>(null);
+  readonly processingAction = signal<'approve' | 'reject' | null>(null);
   readonly payloadModeBySubmission = signal<Record<number, 'details' | 'json'>>({});
   readonly productDetailsById = signal<Record<number, ProductDetailDto | null>>({});
+  readonly searchQuery = signal('');
+  readonly selectedType = signal<SubmissionTypeFilter>('ALL');
+  readonly selectedSort = signal<SubmissionSortOrder>('NEWEST');
 
   readonly statuses: SubmissionStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
+  readonly submissionTypes: SubmissionTypeFilter[] = ['ALL', 'PRODUCT', 'PRICE', 'NUTRITION'];
+
+  readonly hasActiveClientFilters = computed(
+    () =>
+      this.searchQuery().trim().length > 0 ||
+      this.selectedType() !== 'ALL' ||
+      this.selectedSort() !== 'NEWEST',
+  );
+
+  readonly visibleSubmissions = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const selectedType = this.selectedType();
+    const sortOrder = this.selectedSort();
+
+    const filtered = this.submissions().filter((submission) => {
+      if (selectedType !== 'ALL' && submission.type !== selectedType) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      const searchable = [
+        submission.submittedByEmail,
+        submission.type,
+        this.submissionReference(submission),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return searchable.includes(query);
+    });
+
+    return [...filtered].sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
+      return sortOrder === 'NEWEST' ? bTime - aTime : aTime - bTime;
+    });
+  });
 
   constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const requestedStatus = this.normalizeStatus((params.get('status') ?? '').toUpperCase());
+      if (requestedStatus != null && requestedStatus !== this.statusControl.value) {
+        this.statusControl.setValue(requestedStatus);
+      }
+
+      const requestedQuery = params.get('q') ?? '';
+      if (requestedQuery !== this.searchControl.value) {
+        this.searchControl.setValue(requestedQuery);
+      }
+
+      const requestedType = this.normalizeTypeFilter((params.get('type') ?? '').toUpperCase());
+      if (requestedType != null && requestedType !== this.typeControl.value) {
+        this.typeControl.setValue(requestedType);
+      }
+
+      const requestedSort = this.normalizeSortOrder((params.get('sort') ?? '').toUpperCase());
+      if (requestedSort != null && requestedSort !== this.sortControl.value) {
+        this.sortControl.setValue(requestedSort);
+      }
+    });
+
     this.statusControl.valueChanges
       .pipe(
         startWith(this.statusControl.value),
@@ -83,6 +172,18 @@ export class AdminSubmissionsPageComponent {
         this.submissions.set(submissions);
         this.prefetchComparisonContext(submissions);
       });
+
+    this.searchControl.valueChanges
+      .pipe(startWith(this.searchControl.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((query) => this.searchQuery.set(query));
+
+    this.typeControl.valueChanges
+      .pipe(startWith(this.typeControl.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((type) => this.selectedType.set(type));
+
+    this.sortControl.valueChanges
+      .pipe(startWith(this.sortControl.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((sort) => this.selectedSort.set(sort));
   }
 
   displayDate(raw: string): string {
@@ -99,6 +200,13 @@ export class AdminSubmissionsPageComponent {
     } catch {
       return String(payload);
     }
+  }
+
+  typeLabel(type: SubmissionTypeFilter): string {
+    if (type === 'ALL') {
+      return 'All types';
+    }
+    return type.charAt(0) + type.slice(1).toLowerCase();
   }
 
   isJsonMode(submissionId: number): boolean {
@@ -137,11 +245,13 @@ export class AdminSubmissionsPageComponent {
 
     const detail = this.productDetailsById()[productId];
     if (detail === undefined) {
-      return 'Loading current product snapshot for before/after comparison...';
+      return 'Loading current product snapshot for before and after comparison.';
     }
+
     if (detail === null) {
-      return 'Current product snapshot unavailable. Showing submitted values and placeholders.';
+      return 'Current product snapshot is unavailable. Review submitted values with caution.';
     }
+
     return null;
   }
 
@@ -151,6 +261,16 @@ export class AdminSubmissionsPageComponent {
 
   onReject(submission: ModerationSubmissionDto): void {
     this.openDecisionDialog('reject', submission);
+  }
+
+  clearClientFilters(): void {
+    this.searchControl.setValue('');
+    this.typeControl.setValue('ALL');
+    this.sortControl.setValue('NEWEST');
+  }
+
+  isProcessingDecision(submissionId: number, mode: 'approve' | 'reject'): boolean {
+    return this.processingSubmissionId() === submissionId && this.processingAction() === mode;
   }
 
   submissionReference(submission: ModerationSubmissionDto): string {
@@ -186,17 +306,23 @@ export class AdminSubmissionsPageComponent {
         filter((reason) => reason !== undefined),
         switchMap((reason) => {
           this.processingSubmissionId.set(submission.id);
+          this.processingAction.set(mode);
+
           const request$ =
             mode === 'approve'
               ? this.moderationService.approve(submission.id, reason)
               : this.moderationService.reject(submission.id, reason);
+
           return request$.pipe(
             catchError((error: unknown) => {
               const apiError = mapApiError(error);
-              this.snackBar.open(apiError.message, 'Dismiss', { duration: 4000 });
+              this.snackBar.open(apiError.message, 'Dismiss', { duration: 4200 });
               return of(null);
             }),
-            finalize(() => this.processingSubmissionId.set(null)),
+            finalize(() => {
+              this.processingSubmissionId.set(null);
+              this.processingAction.set(null);
+            }),
           );
         }),
         takeUntilDestroyed(this.destroyRef),
@@ -205,29 +331,32 @@ export class AdminSubmissionsPageComponent {
         if (!response) {
           return;
         }
-        const verb = response.action === 'APPROVED' ? 'approved' : 'rejected';
-        this.snackBar.open(`Submission ${submissionRef} ${verb}.`, 'Dismiss', {
-          duration: 3000,
+
+        const actionLabel = response.action === 'APPROVED' ? 'approved' : 'rejected';
+        this.snackBar.open(`Submission ${submissionRef} ${actionLabel}.`, 'Dismiss', {
+          duration: 2800,
         });
+
         this.statusControl.setValue(this.statusControl.value, { emitEvent: true });
       });
   }
 
   private prefetchComparisonContext(submissions: ModerationSubmissionDto[]): void {
-    const ids = new Set<number>();
+    const productIds = new Set<number>();
+
     for (const submission of submissions) {
       const productId = this.referenceProductId(submission);
       if (productId != null && productId > 0) {
-        ids.add(productId);
+        productIds.add(productId);
       }
     }
 
-    for (const productId of ids) {
+    for (const productId of productIds) {
       if (this.requestedProductDetails.has(productId)) {
         continue;
       }
-      this.requestedProductDetails.add(productId);
 
+      this.requestedProductDetails.add(productId);
       this.catalogService
         .getProductDetail(productId)
         .pipe(
@@ -275,7 +404,7 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'brand',
         'Brand',
-        isCreate ? '-' : this.asText(current?.brand, 'Unbranded') ?? beforeFallback,
+        isCreate ? '-' : this.asText(current?.brand, 'Unbranded'),
         this.asText(payload['brand'], 'Unbranded'),
         { canCompare, forceChanged: isCreate },
       ),
@@ -295,7 +424,7 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'barcode',
         'Barcode',
-        isCreate ? '-' : this.asText(current?.barcode, 'Not set') ?? beforeFallback,
+        isCreate ? '-' : this.asText(current?.barcode, 'Not set'),
         this.asText(payload['barcode'], 'Not set'),
         { canCompare, forceChanged: isCreate },
       ),
@@ -306,9 +435,7 @@ export class AdminSubmissionsPageComponent {
         'supermarket',
         'Supermarket',
         currentPriceForSelectedMarket?.supermarketName ?? (isCreate ? '-' : 'No current price'),
-        submittedSupermarketId == null
-            ? 'Unknown supermarket'
-            : `#${submittedSupermarketId}`,
+        submittedSupermarketId == null ? 'Unknown supermarket' : `#${submittedSupermarketId}`,
         { canCompare, forceChanged: isCreate },
       ),
     );
@@ -318,11 +445,10 @@ export class AdminSubmissionsPageComponent {
         'price',
         'Price',
         currentPriceForSelectedMarket
-            ? this.formatMoney(
-                currentPriceForSelectedMarket.price,
-                currentPriceForSelectedMarket.currency,
-              )
-            : (isCreate ? '-' : 'No current price'),
+          ? this.formatMoney(currentPriceForSelectedMarket.price, currentPriceForSelectedMarket.currency)
+          : isCreate
+            ? '-'
+            : 'No current price',
         this.formatMoney(submittedPrice, currentPriceForSelectedMarket?.currency ?? 'MKD'),
         { canCompare, forceChanged: isCreate },
       ),
@@ -332,7 +458,7 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'imageUrl',
         'Image',
-        isCreate ? '-' : this.asText(current?.imageUrl, 'No image') ?? beforeFallback,
+        isCreate ? '-' : this.asText(current?.imageUrl, 'No image'),
         this.asText(payload['imageUrl'], 'No image'),
         { canCompare, forceChanged: isCreate },
       ),
@@ -343,6 +469,7 @@ export class AdminSubmissionsPageComponent {
 
     if (submittedNutrition != null) {
       const nutritionComparable = canCompare && currentNutrition != null;
+
       rows.push(
         this.makeRow(
           'calories',
@@ -351,11 +478,12 @@ export class AdminSubmissionsPageComponent {
             ? '-'
             : currentNutrition
               ? this.formatMeasure(currentNutrition.calories, 'kcal')
-              : this.asText(beforeFallback, '-'),
+              : beforeFallback,
           this.formatMeasure(submittedNutrition['calories'], 'kcal'),
           { canCompare: nutritionComparable, forceChanged: isCreate },
         ),
       );
+
       rows.push(
         this.makeRow(
           'proteinG',
@@ -364,11 +492,12 @@ export class AdminSubmissionsPageComponent {
             ? '-'
             : currentNutrition
               ? this.formatMeasure(currentNutrition.proteinG, 'g')
-              : this.asText(beforeFallback, '-'),
+              : beforeFallback,
           this.formatMeasure(submittedNutrition['proteinG'], 'g'),
           { canCompare: nutritionComparable, forceChanged: isCreate },
         ),
       );
+
       rows.push(
         this.makeRow(
           'carbsG',
@@ -377,11 +506,12 @@ export class AdminSubmissionsPageComponent {
             ? '-'
             : currentNutrition
               ? this.formatMeasure(currentNutrition.carbsG, 'g')
-              : this.asText(beforeFallback, '-'),
+              : beforeFallback,
           this.formatMeasure(submittedNutrition['carbsG'], 'g'),
           { canCompare: nutritionComparable, forceChanged: isCreate },
         ),
       );
+
       rows.push(
         this.makeRow(
           'fatG',
@@ -390,7 +520,7 @@ export class AdminSubmissionsPageComponent {
             ? '-'
             : currentNutrition
               ? this.formatMeasure(currentNutrition.fatG, 'g')
-              : this.asText(beforeFallback, '-'),
+              : beforeFallback,
           this.formatMeasure(submittedNutrition['fatG'], 'g'),
           { canCompare: nutritionComparable, forceChanged: isCreate },
         ),
@@ -420,7 +550,8 @@ export class AdminSubmissionsPageComponent {
     const supermarketId = this.asNumber(payload['supermarketId']);
     const current = productId == null ? null : this.productDetailsById()[productId] ?? null;
     const currentPrice =
-      current?.prices.find((entry) => supermarketId != null && entry.supermarketId === supermarketId) ?? null;
+      current?.prices.find((entry) => supermarketId != null && entry.supermarketId === supermarketId) ??
+      null;
 
     const rows: SubmissionDiffRow[] = [];
 
@@ -448,22 +579,9 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'price',
         'Price',
-        currentPrice
-          ? this.formatMoney(currentPrice.price, currentPrice.currency)
-          : 'No verified price',
+        currentPrice ? this.formatMoney(currentPrice.price, currentPrice.currency) : 'No verified price',
         this.formatMoney(this.asNumber(payload['price']), currentPrice?.currency ?? 'MKD'),
         { canCompare: currentPrice != null },
-      ),
-    );
-
-    const branchId = this.asNumber(payload['branchId']);
-    rows.push(
-      this.makeRow(
-        'branch',
-        'Branch',
-        'Any branch',
-        branchId == null ? 'Any branch' : `#${branchId}`,
-        { canCompare: true },
       ),
     );
 
@@ -583,10 +701,7 @@ export class AdminSubmissionsPageComponent {
     return null;
   }
 
-  private snapshotPlaceholder(
-    productId: number | null,
-    detail: ProductDetailDto | null,
-  ): string {
+  private snapshotPlaceholder(productId: number | null, detail: ProductDetailDto | null): string {
     if (productId == null) {
       return '-';
     }
@@ -612,11 +727,12 @@ export class AdminSubmissionsPageComponent {
     options: { canCompare?: boolean; forceChanged?: boolean } = {},
   ): SubmissionDiffRow {
     const canCompare = options.canCompare ?? true;
-    const changed = options.forceChanged === true
-      ? true
-      : (canCompare
+    const changed =
+      options.forceChanged === true
+        ? true
+        : canCompare
           ? this.normalizeComparison(before) !== this.normalizeComparison(after)
-          : false);
+          : false;
 
     return {
       key,
@@ -653,10 +769,12 @@ export class AdminSubmissionsPageComponent {
     if (typeof value === 'number' && Number.isFinite(value)) {
       return value;
     }
+
     if (typeof value === 'string' && value.trim().length > 0) {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : null;
     }
+
     return null;
   }
 
@@ -717,5 +835,26 @@ export class AdminSubmissionsPageComponent {
   private compactId(id: number): string {
     const safe = Number.isFinite(id) && id > 0 ? Math.floor(id) : 0;
     return safe.toString(36).toUpperCase().padStart(4, '0');
+  }
+
+  private normalizeStatus(value: string): SubmissionStatus | null {
+    if (value === 'PENDING' || value === 'APPROVED' || value === 'REJECTED') {
+      return value;
+    }
+    return null;
+  }
+
+  private normalizeTypeFilter(value: string): SubmissionTypeFilter | null {
+    if (value === 'ALL' || value === 'PRODUCT' || value === 'PRICE' || value === 'NUTRITION') {
+      return value;
+    }
+    return null;
+  }
+
+  private normalizeSortOrder(value: string): SubmissionSortOrder | null {
+    if (value === 'NEWEST' || value === 'OLDEST') {
+      return value;
+    }
+    return null;
   }
 }

@@ -1,71 +1,122 @@
 <section class="page">
-  <a mat-button routerLink="/products">← Back to catalog</a>
+  <app-page-header eyebrow="Public Catalog" [title]="detail()?.name ?? 'Product Detail'" [subtitle]="subtitle()">
+    <a header-actions mat-stroked-button routerLink="/products">Back to catalog</a>
+  </app-page-header>
 
   @if (loading()) {
     <app-loading-state message="Loading product details..." />
   }
 
   @if (errorMessage(); as errorMessage) {
-    <app-empty-state title="Could not load product" [message]="errorMessage" />
+    <app-empty-state icon="warning" title="Could not load product" [message]="errorMessage" />
   }
 
   @if (!loading() && !errorMessage() && detail(); as detail) {
-    <mat-card appearance="outlined">
-      <mat-card-title>{{ detail.name }}</mat-card-title>
-      <mat-card-subtitle>
-        {{ detail.brand || 'Unbranded' }} • {{ detail.category }}
-      </mat-card-subtitle>
-      <mat-card-content>
-        @if (detail.barcode) {
-          <p><strong>Barcode:</strong> {{ detail.barcode }}</p>
+    <section class="hero">
+      <mat-card class="image-card" appearance="outlined">
+        @if (detail.imageUrl) {
+          <img [src]="detail.imageUrl" [alt]="detail.name" />
+        } @else {
+          <div class="image-placeholder">
+            <mat-icon aria-hidden="true">image_not_supported</mat-icon>
+            <p>No product image available</p>
+          </div>
         }
+      </mat-card>
 
-        <mat-divider />
+      <mat-card class="summary-card" appearance="outlined">
+        <mat-card-content>
+          <div class="summary-grid">
+            <div>
+              <p class="label">Category</p>
+              <p class="value">{{ detail.category }}</p>
+            </div>
+            <div>
+              <p class="label">Brand</p>
+              <p class="value">{{ detail.brand || 'Unbranded' }}</p>
+            </div>
+            <div>
+              <p class="label">Barcode</p>
+              <p class="value">{{ detail.barcode || 'Not set' }}</p>
+            </div>
+            <div>
+              <p class="label">Verified prices</p>
+              <p class="value">{{ detail.prices.length }}</p>
+            </div>
+          </div>
 
-        <section class="nutrition">
-          <h3>Nutrition</h3>
+          @if (bestPrice(); as bestPrice) {
+            <div class="best-price">
+              <p class="best-price-label">Best verified offer</p>
+              <p class="best-price-value">{{ formatMoney(bestPrice.price, bestPrice.currency) }}</p>
+              <p class="best-price-meta">
+                {{ bestPrice.supermarketName }} | Observed {{ formatTimestamp(bestPrice.observedAt) }}
+              </p>
+            </div>
+          } @else {
+            <div class="best-price best-price-empty">
+              <p class="best-price-label">Verified offers</p>
+              <p class="best-price-value">No verified prices yet</p>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <section class="sections">
+      <mat-card class="panel" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Nutrition per serving</mat-card-title>
+          <mat-card-subtitle>Values shown as provided by verified records.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
           @if (detail.nutrition) {
-            <ul>
-              <li>Calories: {{ detail.nutrition.calories ?? '-' }}</li>
-              <li>Protein (g): {{ detail.nutrition.proteinG ?? '-' }}</li>
-              <li>Carbs (g): {{ detail.nutrition.carbsG ?? '-' }}</li>
-              <li>Fat (g): {{ detail.nutrition.fatG ?? '-' }}</li>
-              <li>Serving size: {{ detail.nutrition.servingSize ?? '-' }}</li>
-            </ul>
+            <dl class="nutrition-grid">
+              @for (row of nutritionRows(detail.nutrition); track row.label) {
+                <div class="nutrition-item">
+                  <dt>{{ row.label }}</dt>
+                  <dd>{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
           } @else {
-            <p>No nutrition data available.</p>
+            <p class="panel-empty">No nutrition data is available for this product.</p>
           }
-        </section>
+        </mat-card-content>
+      </mat-card>
 
-        <mat-divider />
-
-        <section class="prices">
-          <h3>Verified Prices</h3>
-          @if (detail.prices.length === 0) {
-            <p>No verified prices yet.</p>
+      <mat-card class="panel" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Verified Prices</mat-card-title>
+          <mat-card-subtitle>Sorted from lowest to highest price.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (sortedPrices().length === 0) {
+            <p class="panel-empty">No verified prices yet.</p>
           } @else {
-            <table mat-table [dataSource]="detail.prices" class="prices-table">
-              <ng-container matColumnDef="supermarket">
-                <th mat-header-cell *matHeaderCellDef>Supermarket</th>
-                <td mat-cell *matCellDef="let row">{{ row.supermarketName }}</td>
-              </ng-container>
-
-              <ng-container matColumnDef="price">
-                <th mat-header-cell *matHeaderCellDef>Price</th>
-                <td mat-cell *matCellDef="let row">{{ row.price }} {{ row.currency }}</td>
-              </ng-container>
-
-              <ng-container matColumnDef="observedAt">
-                <th mat-header-cell *matHeaderCellDef>Observed</th>
-                <td mat-cell *matCellDef="let row">{{ formatTimestamp(row.observedAt) }}</td>
-              </ng-container>
-
-              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-            </table>
+            <div class="price-table-wrap">
+              <table class="price-table">
+                <thead>
+                  <tr>
+                    <th>Supermarket</th>
+                    <th>Price</th>
+                    <th>Observed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (price of sortedPrices(); track price.supermarketId + '-' + price.observedAt) {
+                    <tr [class]="priceRowClass(price)">
+                      <td>{{ price.supermarketName }}</td>
+                      <td>{{ formatMoney(price.price, price.currency) }}</td>
+                      <td>{{ formatTimestamp(price.observedAt) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           }
-        </section>
-      </mat-card-content>
-    </mat-card>
+        </mat-card-content>
+      </mat-card>
+    </section>
   }
 </section>

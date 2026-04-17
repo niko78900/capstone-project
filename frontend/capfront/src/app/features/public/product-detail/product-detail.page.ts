@@ -1,17 +1,21 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatTableModule } from '@angular/material/table';
+import { MatIconModule } from '@angular/material/icon';
 import { catchError, of, switchMap } from 'rxjs';
 import { mapApiError } from '../../../core/models/api-error.model';
-import { ProductDetailDto } from '../../../core/models/catalog.model';
+import { ProductDetailDto, ProductNutritionDto, ProductPriceDto } from '../../../core/models/catalog.model';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+
+interface NutritionRow {
+  label: string;
+  value: string;
+}
 
 @Component({
   selector: 'app-product-detail-page',
@@ -19,10 +23,10 @@ import { LoadingStateComponent } from '../../../shared/components/loading-state/
     RouterLink,
     MatButtonModule,
     MatCardModule,
-    MatDividerModule,
-    MatTableModule,
+    MatIconModule,
     EmptyStateComponent,
     LoadingStateComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './product-detail.page.html',
   styleUrl: './product-detail.page.css',
@@ -36,7 +40,30 @@ export class ProductDetailPageComponent {
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
 
-  readonly displayedColumns = ['supermarket', 'price', 'observedAt'];
+  readonly subtitle = computed(() => {
+    const detail = this.detail();
+    if (!detail) {
+      return 'Read-only public product profile';
+    }
+    const brand = detail.brand || 'Unbranded';
+    return `${brand} | ${detail.category}`;
+  });
+
+  readonly sortedPrices = computed(() => {
+    const detail = this.detail();
+    if (!detail) {
+      return [];
+    }
+
+    return [...detail.prices].sort((a, b) => {
+      if (a.price !== b.price) {
+        return a.price - b.price;
+      }
+      return new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime();
+    });
+  });
+
+  readonly bestPrice = computed(() => this.sortedPrices()[0] ?? null);
 
   constructor() {
     this.route.paramMap
@@ -44,9 +71,10 @@ export class ProductDetailPageComponent {
         switchMap((params) => {
           this.loading.set(true);
           this.errorMessage.set(null);
+
           const id = Number(params.get('id'));
           if (!Number.isFinite(id) || id < 1) {
-            this.errorMessage.set('Invalid product id');
+            this.errorMessage.set('Invalid product id.');
             this.loading.set(false);
             return of(null);
           }
@@ -67,11 +95,44 @@ export class ProductDetailPageComponent {
       });
   }
 
+  nutritionRows(nutrition: ProductNutritionDto | null): NutritionRow[] {
+    if (!nutrition) {
+      return [];
+    }
+
+    return [
+      { label: 'Calories', value: this.formatMeasure(nutrition.calories, 'kcal') },
+      { label: 'Protein', value: this.formatMeasure(nutrition.proteinG, 'g') },
+      { label: 'Carbs', value: this.formatMeasure(nutrition.carbsG, 'g') },
+      { label: 'Fat', value: this.formatMeasure(nutrition.fatG, 'g') },
+      { label: 'Serving', value: nutrition.servingSize || '100 g' },
+    ];
+  }
+
   formatTimestamp(raw: string): string {
     const date = new Date(raw);
     if (Number.isNaN(date.getTime())) {
       return raw;
     }
     return date.toLocaleString();
+  }
+
+  formatMoney(price: number, currency: string): string {
+    return `${price.toFixed(2)} ${currency}`;
+  }
+
+  priceRowClass(price: ProductPriceDto): string {
+    const best = this.bestPrice();
+    if (best && best.supermarketId === price.supermarketId && best.price === price.price) {
+      return 'price-row-best';
+    }
+    return '';
+  }
+
+  private formatMeasure(value: number | null, unit: string): string {
+    if (value == null || !Number.isFinite(value)) {
+      return '-';
+    }
+    return `${value} ${unit}`;
   }
 }
