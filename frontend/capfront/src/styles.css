@@ -1,6 +1,8 @@
 @import '@angular/material/prebuilt-themes/azure-blue.css';
 
 :root {
+  --app-font-family:
+    'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
   --app-bg: linear-gradient(180deg, #f4f7fb 0%, #eef3f9 100%);
   --app-text: #0f172a;
   --topbar-bg: #0c4a6e;
@@ -30,9 +32,23 @@ body {
 body {
   background: var(--app-bg);
   color: var(--app-text);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--app-font-family);
   margin: 0;
   transition: background-color 180ms ease, color 180ms ease;
+}
+
+.mat-typography,
+.mat-toolbar,
+.mat-mdc-button-base,
+.mat-mdc-form-field,
+.mat-mdc-select-panel,
+.mat-mdc-option .mdc-list-item__primary-text,
+.mat-mdc-card-title,
+.mat-mdc-card-subtitle,
+.mat-mdc-card-content,
+.mdc-text-field__input,
+.mat-mdc-input-element {
+  font-family: var(--app-font-family) !important;
 }
 
 body.dark-theme {
@@ -99,19 +115,18 @@ body.dark-theme .mat-mdc-form-field.mat-focused .mat-mdc-form-field-required-mar
   color: #dbeafe !important;
 }
 
-body.dark-theme .mat-mdc-form-field .mdc-notched-outline__leading,
-body.dark-theme .mat-mdc-form-field .mdc-notched-outline__notch,
-body.dark-theme .mat-mdc-form-field .mdc-notched-outline__trailing {
-  border-color: #4a5b75 !important;
+body.dark-theme .mat-mdc-form-field .mdc-notched-outline {
+  display: none;
 }
 
-body.dark-theme .mat-mdc-form-field:hover .mdc-notched-outline__leading,
-body.dark-theme .mat-mdc-form-field:hover .mdc-notched-outline__notch,
-body.dark-theme .mat-mdc-form-field:hover .mdc-notched-outline__trailing,
-body.dark-theme .mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
-body.dark-theme .mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
-body.dark-theme .mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
-  border-color: #93c5fd !important;
+body.dark-theme .mat-mdc-form-field .mat-mdc-text-field-wrapper {
+  border: 1px solid #4a5b75;
+  border-radius: 6px;
+}
+
+body.dark-theme .mat-mdc-form-field:hover .mat-mdc-text-field-wrapper,
+body.dark-theme .mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
+  border-color: #93c5fd;
 }
 
 body.dark-theme .mat-mdc-form-field .mat-mdc-select-value,
@@ -120,16 +135,63 @@ body.dark-theme .mat-mdc-form-field .mat-mdc-select-arrow {
 }
 
 body.dark-theme .mat-mdc-select-panel {
-  background: #0f1a30;
+  background: #13233f;
+  border: 1px solid #3a4f74;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.55);
   color: #e2e8f0;
 }
 
-body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
-  background: rgba(59, 130, 246, 0.2);
+body.dark-theme .mat-mdc-option {
+  color: #dbeafe;
 }
 
-body.dark-theme .mat-mdc-option:hover:not(.mdc-list-item--disabled) {
-  background: rgba(148, 163, 184, 0.16);
+body.dark-theme .mat-mdc-option .mdc-list-item__primary-text {
+  color: inherit;
+}
+
+body.dark-theme .mat-mdc-option .mat-pseudo-checkbox {
+  color: #bae6fd;
+}
+
+body.dark-theme .mat-mdc-option .mat-pseudo-checkbox::after {
+  border-color: currentcolor !important;
+}
+
+body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+  background: rgba(59, 130, 246, 0.3);
+  color: #eff6ff;
+}
+
+body.dark-theme .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mat-pseudo-checkbox {
+  color: #e0f2fe !important;
+  opacity: 1;
+}
+
+body.dark-theme
+  .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled)
+  .mdc-list-item__primary-text {
+  color: #eff6ff !important;
+}
+
+body.dark-theme .mat-mdc-option:hover:not(.mdc-list-item--disabled),
+body.dark-theme .mat-mdc-option.mat-mdc-option-active:not(.mdc-list-item--disabled) {
+  background: rgba(148, 163, 184, 0.22);
+  color: #f8fbff;
+}
+
+body.dark-theme .mat-mdc-option.mat-mdc-option-active:not(.mdc-list-item--disabled) .mdc-list-item__primary-text,
+body.dark-theme .mat-mdc-option:hover:not(.mdc-list-item--disabled) .mdc-list-item__primary-text {
+  color: #f8fbff !important;
+}
+
+body.dark-theme .mat-mdc-form-field .mat-mdc-input-element::placeholder {
+  color: #9db0cb;
+  opacity: 1;
+}
+
+body.dark-theme .mat-mdc-form-field .mat-mdc-form-field-icon-suffix .mat-icon,
+body.dark-theme .mat-mdc-form-field .mat-mdc-form-field-icon-prefix .mat-icon {
+  color: #9db4d6;
 }
 
 * {
