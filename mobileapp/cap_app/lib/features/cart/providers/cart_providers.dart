@@ -21,7 +21,11 @@ class RecentCartItemsNotifier extends AsyncNotifier<List<RecentCartItem>> {
   @override
   Future<List<RecentCartItem>> build() async {
     final prefs = await SharedPreferences.getInstance();
-    final decoded = RecentCartItem.decodeList(prefs.getString(_storageKey));
+    // decodeList can return an immutable empty list for missing storage.
+    // Keep a mutable copy because we sort and trim it before exposing state.
+    final decoded = [
+      ...RecentCartItem.decodeList(prefs.getString(_storageKey)),
+    ];
     decoded.sort((a, b) => b.lastAddedAt.compareTo(a.lastAddedAt));
     return decoded.take(_maxItems).toList();
   }
