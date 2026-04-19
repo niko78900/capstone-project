@@ -24,19 +24,30 @@
         <section class="summary-head">
           <div class="status-wrap">
             <span class="status-chip" [class]="statusChipClass(submission.status)">{{ submission.status }}</span>
-            <p class="summary-meta">
-              Updated {{ displayDate(submission.updatedAt) }}
-            </p>
+            <p class="summary-meta">Updated {{ displayDate(submission.updatedAt) }}</p>
+            @if (submission.aiSummary; as aiSummary) {
+              <p class="summary-meta">
+                AI {{ aiSummary.status }} | {{ aiSummary.warnings.length }} warning(s) | {{ aiSummary.flags.length }} flag(s)
+              </p>
+            }
           </div>
 
-          @if (submission.status === 'PENDING') {
-            <div class="actions">
+          <div class="actions">
+            @if (submission.status === 'PENDING') {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="onRefreshAiReview()"
+                [disabled]="aiRefreshing() || patching() || processingDecision()"
+              >
+                {{ aiRefreshing() ? 'Refreshing AI...' : 'Refresh AI hints' }}
+              </button>
               <button
                 mat-flat-button
                 color="primary"
                 type="button"
                 (click)="onApprove()"
-                [disabled]="processingDecision()"
+                [disabled]="processingDecision() || patching()"
               >
                 {{ processingDecision() ? 'Processing...' : 'Approve' }}
               </button>
@@ -45,17 +56,13 @@
                 color="warn"
                 type="button"
                 (click)="onReject()"
-                [disabled]="processingDecision()"
+                [disabled]="processingDecision() || patching()"
               >
                 Reject
               </button>
-            </div>
-          }
+            }
+          </div>
         </section>
-
-        <p class="limitation-note">
-          Submission editing before approval is not available in the current moderation API. Admin workflow supports approve or reject only.
-        </p>
 
         <div class="notes-block">
           <p class="notes"><strong>Submitter note:</strong> {{ submission.notes || '-' }}</p>
@@ -63,6 +70,165 @@
         </div>
       </mat-card-content>
     </mat-card>
+
+    @if (submission.status === 'PENDING') {
+      <mat-card class="editor-card" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Edit Payload Before Approval</mat-card-title>
+          <mat-card-subtitle>Patch updates are allowed only while the submission is pending.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="editForm" class="editor-grid">
+            @if (isProductType()) {
+              <mat-form-field appearance="outline">
+                <mat-label>Category</mat-label>
+                <mat-select formControlName="categoryId">
+                  @for (category of categoryOptions; track category.id) {
+                    <mat-option [value]="category.id">{{ category.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Source product id</mat-label>
+                <input matInput type="number" formControlName="sourceProductId" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="name" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Brand</mat-label>
+                <input matInput formControlName="brand" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Barcode</mat-label>
+                <input matInput formControlName="barcode" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Supermarket</mat-label>
+                <mat-select formControlName="supermarketId">
+                  @for (supermarket of supermarkets(); track supermarket.id) {
+                    <mat-option [value]="supermarket.id">{{ supermarket.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Price</mat-label>
+                <input matInput type="number" min="0.01" step="0.01" formControlName="price" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Image URL</mat-label>
+                <input matInput formControlName="imageUrl" />
+              </mat-form-field>
+            }
+
+            @if (isPriceType()) {
+              <mat-form-field appearance="outline">
+                <mat-label>Product id</mat-label>
+                <input matInput type="number" formControlName="productId" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Supermarket</mat-label>
+                <mat-select formControlName="supermarketId">
+                  @for (supermarket of supermarkets(); track supermarket.id) {
+                    <mat-option [value]="supermarket.id">{{ supermarket.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Branch id</mat-label>
+                <input matInput type="number" formControlName="branchId" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Price</mat-label>
+                <input matInput type="number" min="0.01" step="0.01" formControlName="price" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Observed at</mat-label>
+                <input matInput type="datetime-local" formControlName="observedAt" />
+              </mat-form-field>
+            }
+
+            @if (isNutritionType()) {
+              <mat-form-field appearance="outline">
+                <mat-label>Product id</mat-label>
+                <input matInput type="number" formControlName="productId" />
+              </mat-form-field>
+            }
+
+            @if (isProductType() || isNutritionType()) {
+              <mat-form-field appearance="outline">
+                <mat-label>Calories</mat-label>
+                <input matInput type="number" min="0" step="0.1" formControlName="calories" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Protein (g)</mat-label>
+                <input matInput type="number" min="0" step="0.1" formControlName="proteinG" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Carbs (g)</mat-label>
+                <input matInput type="number" min="0" step="0.1" formControlName="carbsG" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Fat (g)</mat-label>
+                <input matInput type="number" min="0" step="0.1" formControlName="fatG" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Serving size</mat-label>
+                <input matInput formControlName="servingSize" />
+              </mat-form-field>
+            }
+
+            <mat-form-field appearance="outline" class="wide">
+              <mat-label>Edit reason (optional)</mat-label>
+              <textarea matInput rows="3" formControlName="editReason"></textarea>
+            </mat-form-field>
+          </form>
+
+          @if (patchMessage(); as patchMessage) {
+            <p class="patch-message">{{ patchMessage }}</p>
+          }
+
+          @if (patchFieldErrorEntries().length > 0) {
+            <div class="patch-field-errors" role="alert" aria-live="assertive">
+              <p class="patch-field-errors-title">Field validation issues</p>
+              <ul>
+                @for (entry of patchFieldErrorEntries(); track entry.field) {
+                  <li><strong>{{ entry.field }}:</strong> {{ entry.message }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <div class="editor-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="onPatchPayload()"
+              [disabled]="patching() || processingDecision()"
+            >
+              {{ patching() ? 'Saving patch...' : 'Save payload patch' }}
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
 
     @if (imagePreviewUrl(); as imagePreviewUrl) {
       <mat-card class="evidence-card" appearance="outlined">
@@ -117,6 +283,37 @@
               </table>
             </div>
           }
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="history-card" appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Review History</mat-card-title>
+        <mat-card-subtitle>Payload edits and moderation decisions for this submission.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (historyLoading()) {
+          <app-loading-state message="Loading review history..." />
+        } @else if (historyError(); as historyError) {
+          <app-empty-state icon="warning" title="History unavailable" [message]="historyError" />
+        } @else if (submissionHistory().length === 0) {
+          <app-empty-state icon="history" title="No history entries" message="No edit or decision entries were recorded." />
+        } @else {
+          <div class="history-list">
+            @for (entry of submissionHistory(); track entry.createdAt + '-' + entry.action) {
+              <div class="history-item">
+                <p class="history-title">{{ historyLabel(entry) }} - {{ entry.action }}</p>
+                <p class="history-meta">{{ entry.actorEmail }} | {{ displayDate(entry.createdAt) }}</p>
+                @if (entry.reason) {
+                  <p class="history-note">Reason: {{ entry.reason }}</p>
+                }
+                @if (entry.changedFieldCount != null) {
+                  <p class="history-note">Changed fields: {{ entry.changedFieldCount }}</p>
+                }
+              </div>
+            }
+          </div>
         }
       </mat-card-content>
     </mat-card>

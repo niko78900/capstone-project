@@ -2,9 +2,9 @@
   <app-page-header
     eyebrow="Admin"
     title="Moderation Queue"
-    subtitle="Review crowd submissions with side-by-side change previews. Submission editing is not supported by the current API."
+    subtitle="Review crowd submissions with server-driven filtering and side-by-side change previews."
   >
-    <button header-actions mat-stroked-button type="button" (click)="statusControl.setValue(statusControl.value, { emitEvent: true })">
+    <button header-actions mat-stroked-button type="button" (click)="refreshCurrentPage()">
       Refresh
     </button>
   </app-page-header>
@@ -20,7 +20,7 @@
 
   <app-filter-toolbar
     title="Filters"
-    [subtitle]="'Showing ' + visibleSubmissions().length + ' of ' + submissions().length + ' submission(s)'"
+    [subtitle]="'Showing ' + pagedSubmissions().length + ' of ' + totalResults() + ' submission(s)'"
   >
     <div class="filter-field">
       <p class="filter-field-label">Search</p>
@@ -77,13 +77,13 @@
 
   @if (errorMessage(); as errorMessage) {
     <app-empty-state icon="warning" title="Unable to load submissions" [message]="errorMessage">
-      <button mat-stroked-button type="button" (click)="statusControl.setValue(statusControl.value, { emitEvent: true })">
+      <button mat-stroked-button type="button" (click)="refreshCurrentPage()">
         Try again
       </button>
     </app-empty-state>
   }
 
-  @if (!loading() && !errorMessage() && visibleSubmissions().length === 0) {
+  @if (!loading() && !errorMessage() && totalResults() === 0) {
     <app-empty-state
       icon="rule"
       title="No submissions"
@@ -97,7 +97,7 @@
     </app-empty-state>
   }
 
-  @if (!loading() && !errorMessage() && visibleSubmissions().length > 0) {
+  @if (!loading() && !errorMessage() && totalResults() > 0) {
     <section class="pagination-toolbar" aria-label="Submissions pagination">
       <p class="pagination-summary">{{ paginationSummary() }}</p>
       <div class="pagination-actions">
@@ -139,6 +139,13 @@
         </mat-card-header>
 
         <mat-card-content>
+          <div class="ai-hints">
+            <p class="ai-status">{{ aiStatusLabel(submission.id) }}</p>
+            @if (hasAiWarnings(submission.id)) {
+              <p class="ai-warnings">{{ aiWarningLabel(submission.id) }}</p>
+            }
+          </div>
+
           <div class="card-toolbar">
             <a
               mat-stroked-button

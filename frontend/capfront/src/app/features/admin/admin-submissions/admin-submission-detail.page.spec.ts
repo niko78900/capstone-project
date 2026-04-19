@@ -1,10 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { ModerationService } from '../../../core/services/moderation.service';
 import { AdminSubmissionDetailPageComponent } from './admin-submission-detail.page';
@@ -16,7 +17,7 @@ describe('AdminSubmissionDetailPageComponent', () => {
   let catalogService: jasmine.SpyObj<CatalogService>;
   let dialog: jasmine.SpyObj<MatDialog>;
 
-  const submission = {
+  const detail = {
     id: 10,
     type: 'PRODUCT' as const,
     status: 'PENDING' as const,
@@ -34,44 +35,52 @@ describe('AdminSubmissionDetailPageComponent', () => {
     reviewReason: null,
     submittedByUserId: 2,
     submittedByEmail: 'user@example.com',
+    contributorScore: 12,
     createdAt: '2026-04-15T13:20:00Z',
     updatedAt: '2026-04-15T13:20:00Z',
+    aiSummary: null,
   };
 
   beforeEach(async () => {
     moderationService = jasmine.createSpyObj<ModerationService>('ModerationService', [
-      'getSubmissions',
+      'getSubmission',
+      'getSubmissionHistory',
+      'patchSubmissionPayload',
+      'refreshAiReview',
       'approve',
       'reject',
     ]);
-    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', ['getProductDetail']);
+    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', [
+      'getProductDetail',
+      'getSupermarkets',
+    ]);
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
-    moderationService.getSubmissions.and.callFake((status) => {
-      if (status === 'PENDING') {
-        return of([submission]);
-      }
-      return of([]);
-    });
-
-    moderationService.approve.and.returnValue(
+    moderationService.getSubmission.and.returnValue(of(detail));
+    moderationService.getSubmissionHistory.and.returnValue(
       of({
         submissionId: 10,
-        status: 'APPROVED',
-        action: 'APPROVED',
-        reason: null,
-        reviewedAt: new Date().toISOString(),
+        entries: [],
       }),
     );
-
-    moderationService.reject.and.returnValue(
+    moderationService.patchSubmissionPayload.and.returnValue(
       of({
-        submissionId: 10,
-        status: 'REJECTED',
-        action: 'REJECTED',
-        reason: 'Incorrect payload',
-        reviewedAt: new Date().toISOString(),
+        submission: detail,
+        changedFieldCount: 1,
+      }),
+    );
+    moderationService.refreshAiReview.and.returnValue(
+      of({
+        analysisId: 11,
+        analysisType: 'REVIEW',
+        status: 'COMPLETED',
+        model: 'gpt-4.1-mini',
+        promptVersion: 'v1',
+        confidence: 0.88,
+        flags: [],
+        warnings: ['Potential outlier price'],
+        updatedAt: '2026-04-17T10:00:00Z',
       }),
     );
 
@@ -87,6 +96,7 @@ describe('AdminSubmissionDetailPageComponent', () => {
         prices: [],
       }),
     );
+    catalogService.getSupermarkets.and.returnValue(of([{ id: 2, name: 'Tinex' }]));
 
     await TestBed.configureTestingModule({
       imports: [AdminSubmissionDetailPageComponent],
@@ -97,7 +107,7 @@ describe('AdminSubmissionDetailPageComponent', () => {
           provide: ActivatedRoute,
           useValue: {
             paramMap: of(convertToParamMap({ id: '10' })),
-            queryParamMap: of(convertToParamMap({ status: 'PENDING' })),
+            queryParamMap: of(convertToParamMap({ status: 'PENDING', page: '0', size: '10' })),
           },
         },
         { provide: ModerationService, useValue: moderationService },
@@ -112,19 +122,96 @@ describe('AdminSubmissionDetailPageComponent', () => {
     fixture.detectChanges();
   });
 
-  it('loads and renders full submission detail', () => {
+  it('loads direct submission detail and history', () => {
+    expect(moderationService.getSubmission).toHaveBeenCalledWith(10);
+    expect(moderationService.getSubmissionHistory).toHaveBeenCalledWith(10);
     expect(component.submission()?.id).toBe(10);
-    expect(component.payloadFields().length).toBeGreaterThan(0);
-    expect(fixture.nativeElement.textContent).toContain('Submitted Fields');
   });
 
-  it('approves the submission from detail view', () => {
+  it('patches payload from typed form', () => {
+    component.editForm.patchValue({
+      name: 'Edited Banana 2',
+      barcode: '1000000000001',
+      categoryId: 1,
+      supermarketId: 2,
+      price: 70,
+    });
+
+    component.onPatchPayload();
+
+    expect(moderationService.patchSubmissionPayload).toHaveBeenCalled();
+  });
+
+  it('refreshes ai review hints', () => {
+    component.onRefreshAiReview();
+    expect(moderationService.refreshAiReview).toHaveBeenCalledWith(10);
+  });
+
+  it('rejects with a required reason from decision dialog', () => {
     dialog.open.and.returnValue({
-      afterClosed: () => of('ready'),
+      afterClosed: () => of('incorrect values'),
     } as never);
 
-    component.onApprove();
+    component.onReject();
 
-    expect(moderationService.approve).toHaveBeenCalledWith(10, 'ready');
+    expect(moderationService.reject).toHaveBeenCalledWith(10, 'incorrect values');
+  });
+
+  it('shows field-level patch errors from backend validation', () => {
+    moderationService.patchSubmissionPayload.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 400,
+            error: {
+              status: 400,
+              message: 'Validation failed',
+              fieldErrors: [{ field: 'payload.price', message: 'must be greater than zero' }],
+            },
+          }),
+      ),
+    );
+
+    component.editForm.patchValue({
+      name: 'Edited Banana 2',
+      barcode: '1000000000001',
+      categoryId: 1,
+      supermarketId: 2,
+      price: 70,
+    });
+
+    component.onPatchPayload();
+
+    expect(component.patchFieldErrorEntries().length).toBe(1);
+    expect(component.patchFieldErrorEntries()[0].field).toBe('payload.price');
+  });
+
+  it('handles optimistic concurrency conflicts by reloading latest detail', () => {
+    moderationService.patchSubmissionPayload.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: {
+              status: 409,
+              message: 'Conflict',
+              fieldErrors: [],
+            },
+          }),
+      ),
+    );
+
+    component.editForm.patchValue({
+      name: 'Edited Banana 2',
+      barcode: '1000000000001',
+      categoryId: 1,
+      supermarketId: 2,
+      price: 70,
+    });
+
+    component.onPatchPayload();
+
+    expect(component.patchMessage()).toContain('updated by another moderator');
+    expect(moderationService.getSubmission).toHaveBeenCalledTimes(2);
   });
 });

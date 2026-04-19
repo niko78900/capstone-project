@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../config/api.config';
-import { ProductDetailDto, ProductSummaryDto } from '../models/catalog.model';
+import { ProductDetailDto, ProductSummaryDto, SupermarketDto } from '../models/catalog.model';
 
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
@@ -15,5 +15,9 @@ export class CatalogService {
 
   getProductDetail(id: number): Observable<ProductDetailDto> {
     return this.http.get<ProductDetailDto>(`${API_BASE}/products/${id}`);
+  }
+
+  getSupermarkets(): Observable<SupermarketDto[]> {
+    return this.http.get<SupermarketDto[]>(`${API_BASE}/supermarkets`);
   }
 }

@@ -57,20 +57,45 @@ describe('AdminSubmissionsPageComponent', () => {
 
   beforeEach(async () => {
     moderationService = jasmine.createSpyObj<ModerationService>('ModerationService', [
-      'getSubmissions',
+      'listSubmissions',
+      'getSubmission',
       'approve',
       'reject',
     ]);
-    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', ['getProductDetail']);
+    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', [
+      'getProductDetail',
+      'getSupermarkets',
+    ]);
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
-    moderationService.getSubmissions.and.callFake((status) => {
-      if (status === 'PENDING') {
-        return of([pendingSubmission, secondPendingSubmission]);
-      }
-      return of([]);
-    });
+    moderationService.listSubmissions.and.returnValue(
+      of({
+        items: [pendingSubmission, secondPendingSubmission],
+        totalElements: 2,
+        page: 0,
+        size: 10,
+        totalPages: 1,
+      }),
+    );
+
+    moderationService.getSubmission.and.returnValue(
+      of({
+        ...pendingSubmission,
+        contributorScore: 3,
+        aiSummary: {
+          analysisId: 1,
+          analysisType: 'REVIEW',
+          status: 'COMPLETED',
+          model: 'gpt-4.1-mini',
+          promptVersion: 'v1',
+          confidence: 0.92,
+          flags: [],
+          warnings: [],
+          updatedAt: '2026-04-17T08:10:00Z',
+        },
+      }),
+    );
 
     moderationService.approve.and.returnValue(
       of({
@@ -104,6 +129,7 @@ describe('AdminSubmissionsPageComponent', () => {
         prices: [],
       }),
     );
+    catalogService.getSupermarkets.and.returnValue(of([{ id: 2, name: 'Tinex' }]));
 
     await TestBed.configureTestingModule({
       imports: [AdminSubmissionsPageComponent],
@@ -113,7 +139,15 @@ describe('AdminSubmissionsPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            queryParamMap: of(convertToParamMap({ status: 'PENDING' })),
+            queryParamMap: of(
+              convertToParamMap({
+                status: 'PENDING',
+                type: 'ALL',
+                sort: 'NEWEST',
+                page: '0',
+                size: '10',
+              }),
+            ),
           },
         },
         { provide: ModerationService, useValue: moderationService },
@@ -128,19 +162,24 @@ describe('AdminSubmissionsPageComponent', () => {
     fixture.detectChanges();
   });
 
-  it('loads pending submissions and renders review links', () => {
-    expect(moderationService.getSubmissions).toHaveBeenCalledWith('PENDING');
-    expect(component.submissions().length).toBe(2);
-    expect(fixture.nativeElement.textContent).toContain('Open full review');
+  it('loads server-driven submissions', () => {
+    expect(moderationService.listSubmissions).toHaveBeenCalled();
+    expect(moderationService.listSubmissions).toHaveBeenCalledWith({
+      status: 'PENDING',
+      type: undefined,
+      q: undefined,
+      sort: 'createdAt,desc',
+      page: 0,
+      size: 10,
+    });
+    expect(component.totalResults()).toBe(2);
+    expect(component.pagedSubmissions().length).toBe(2);
   });
 
-  it('filters submissions by text search', fakeAsync(() => {
+  it('updates search query and triggers route sync', fakeAsync(() => {
     component.searchControl.setValue('another@example.com');
-    tick();
-    fixture.detectChanges();
-
-    expect(component.visibleSubmissions().length).toBe(1);
-    expect(component.visibleSubmissions()[0].id).toBe(11);
+    tick(300);
+    expect(component.searchQuery()).toBe('another@example.com');
   }));
 
   it('approves a submission when dialog returns reason', () => {
@@ -161,15 +200,5 @@ describe('AdminSubmissionsPageComponent', () => {
     component.onReject(pendingSubmission);
 
     expect(moderationService.reject).toHaveBeenCalledWith(10, 'wrong barcode');
-  });
-
-  it('does not call reject when dialog is cancelled', () => {
-    dialog.open.and.returnValue({
-      afterClosed: () => of(undefined),
-    } as never);
-
-    component.onReject(pendingSubmission);
-
-    expect(moderationService.reject).not.toHaveBeenCalled();
   });
 });

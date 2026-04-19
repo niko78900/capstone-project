@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -11,11 +11,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { catchError, filter, finalize, of, startWith, switchMap } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  finalize,
+  forkJoin,
+  of,
+  switchMap,
+} from 'rxjs';
 import { ProductDetailDto } from '../../../core/models/catalog.model';
 import { mapApiError } from '../../../core/models/api-error.model';
 import {
+  ModerationAiSummary,
   ModerationSubmissionDto,
+  SubmissionSortToken,
   SubmissionStatus,
   SubmissionType,
 } from '../../../core/models/moderation.model';
@@ -75,6 +86,7 @@ const CATEGORY_NAMES: Record<number, string> = {
 })
 export class AdminSubmissionsPageComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly moderationService = inject(ModerationService);
   private readonly catalogService = inject(CatalogService);
   private readonly destroyRef = inject(DestroyRef);
@@ -82,6 +94,7 @@ export class AdminSubmissionsPageComponent {
   private readonly snackBar = inject(MatSnackBar);
 
   private readonly requestedProductDetails = new Set<number>();
+  private syncingFromRoute = false;
 
   readonly statusControl = new FormControl<SubmissionStatus>('PENDING', { nonNullable: true });
   readonly searchControl = new FormControl('', { nonNullable: true });
@@ -90,12 +103,15 @@ export class AdminSubmissionsPageComponent {
   readonly pageSizeControl = new FormControl(10, { nonNullable: true });
 
   readonly submissions = signal<ModerationSubmissionDto[]>([]);
+  readonly totalResults = signal(0);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly processingSubmissionId = signal<number | null>(null);
   readonly processingAction = signal<'approve' | 'reject' | null>(null);
   readonly payloadModeBySubmission = signal<Record<number, 'details' | 'json'>>({});
   readonly productDetailsById = signal<Record<number, ProductDetailDto | null>>({});
+  readonly aiSummaryBySubmissionId = signal<Record<number, ModerationAiSummary | null>>({});
+  readonly supermarketNameById = signal<Record<number, string>>({});
   readonly searchQuery = signal('');
   readonly selectedType = signal<SubmissionTypeFilter>('ALL');
   readonly selectedSort = signal<SubmissionSortOrder>('NEWEST');
@@ -113,125 +129,90 @@ export class AdminSubmissionsPageComponent {
       this.selectedSort() !== 'NEWEST',
   );
 
-  readonly visibleSubmissions = computed(() => {
-    const query = this.searchQuery().trim().toLowerCase();
-    const selectedType = this.selectedType();
-    const sortOrder = this.selectedSort();
-
-    const filtered = this.submissions().filter((submission) => {
-      if (selectedType !== 'ALL' && submission.type !== selectedType) {
-        return false;
-      }
-
-      if (!query) {
-        return true;
-      }
-
-      const searchable = [
-        submission.submittedByEmail,
-        submission.type,
-        this.submissionReference(submission),
-      ]
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(query);
-    });
-
-    return [...filtered].sort((a, b) => {
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
-      return sortOrder === 'NEWEST' ? bTime - aTime : aTime - bTime;
-    });
-  });
-
   readonly totalPages = computed(() => {
-    const totalItems = this.visibleSubmissions().length;
+    const totalItems = this.totalResults();
     const pageSize = this.selectedPageSize();
     return totalItems === 0 ? 1 : Math.ceil(totalItems / pageSize);
   });
 
-  readonly pagedSubmissions = computed(() => {
-    const submissions = this.visibleSubmissions();
-    const pageSize = this.selectedPageSize();
-    const totalPages = this.totalPages();
-    const safeIndex = Math.min(this.pageIndex(), totalPages - 1);
-    const start = safeIndex * pageSize;
-    return submissions.slice(start, start + pageSize);
-  });
+  readonly pagedSubmissions = computed(() => this.submissions());
 
   readonly paginationSummary = computed(() => {
-    const total = this.visibleSubmissions().length;
+    const total = this.totalResults();
     if (total === 0) {
       return '0 results';
     }
+    const page = this.pageIndex();
     const pageSize = this.selectedPageSize();
-    const page = Math.min(this.pageIndex(), this.totalPages() - 1);
     const start = page * pageSize + 1;
-    const end = Math.min(total, start + pageSize - 1);
+    const end = Math.min(total, start + this.pagedSubmissions().length - 1);
     return `${start}-${end} of ${total}`;
   });
 
   constructor() {
+    this.loadSupermarkets();
+
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const requestedStatus = this.normalizeStatus((params.get('status') ?? '').toUpperCase());
-      if (requestedStatus != null && requestedStatus !== this.statusControl.value) {
-        this.statusControl.setValue(requestedStatus);
-      }
-
-      const requestedQuery = params.get('q') ?? '';
-      if (requestedQuery !== this.searchControl.value) {
-        this.searchControl.setValue(requestedQuery);
-      }
-
-      const requestedType = this.normalizeTypeFilter((params.get('type') ?? '').toUpperCase());
-      if (requestedType != null && requestedType !== this.typeControl.value) {
-        this.typeControl.setValue(requestedType);
-      }
-
-      const requestedSort = this.normalizeSortOrder((params.get('sort') ?? '').toUpperCase());
-      if (requestedSort != null && requestedSort !== this.sortControl.value) {
-        this.sortControl.setValue(requestedSort);
-      }
+      this.applyQueryState(params);
+      this.loadSubmissionsFromServer();
     });
 
-    this.statusControl.valueChanges
+    this.searchControl.valueChanges
       .pipe(
-        startWith(this.statusControl.value),
-        switchMap((status) => this.loadSubmissions(status)),
+        debounceTime(260),
+        distinctUntilChanged(),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((submissions) => {
-        this.submissions.set(submissions);
-        this.prefetchComparisonContext(submissions);
-        this.pageIndex.set(0);
-      });
-
-    this.searchControl.valueChanges
-      .pipe(startWith(this.searchControl.value), takeUntilDestroyed(this.destroyRef))
       .subscribe((query) => {
         this.searchQuery.set(query);
+        if (this.syncingFromRoute) {
+          return;
+        }
         this.pageIndex.set(0);
+        this.pushRouteState();
+      });
+
+    this.statusControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.syncingFromRoute) {
+          return;
+        }
+        this.pageIndex.set(0);
+        this.pushRouteState();
       });
 
     this.typeControl.valueChanges
-      .pipe(startWith(this.typeControl.value), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((type) => {
         this.selectedType.set(type);
+        if (this.syncingFromRoute) {
+          return;
+        }
         this.pageIndex.set(0);
+        this.pushRouteState();
       });
 
     this.sortControl.valueChanges
-      .pipe(startWith(this.sortControl.value), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((sort) => {
         this.selectedSort.set(sort);
+        if (this.syncingFromRoute) {
+          return;
+        }
         this.pageIndex.set(0);
+        this.pushRouteState();
       });
 
     this.pageSizeControl.valueChanges
-      .pipe(startWith(this.pageSizeControl.value), takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((pageSize) => {
         this.selectedPageSize.set(pageSize);
+        if (this.syncingFromRoute) {
+          return;
+        }
         this.pageIndex.set(0);
+        this.pushRouteState();
       });
   }
 
@@ -241,6 +222,10 @@ export class AdminSubmissionsPageComponent {
       return raw;
     }
     return date.toLocaleString();
+  }
+
+  refreshCurrentPage(): void {
+    this.loadSubmissionsFromServer();
   }
 
   formatPayload(payload: unknown): string {
@@ -267,6 +252,31 @@ export class AdminSubmissionsPageComponent {
       const nextMode = current[submissionId] === 'json' ? 'details' : 'json';
       return { ...current, [submissionId]: nextMode };
     });
+  }
+
+  aiSummary(submissionId: number): ModerationAiSummary | null {
+    return this.aiSummaryBySubmissionId()[submissionId] ?? null;
+  }
+
+  hasAiWarnings(submissionId: number): boolean {
+    const summary = this.aiSummary(submissionId);
+    return Boolean(summary && (summary.warnings.length > 0 || summary.flags.length > 0));
+  }
+
+  aiStatusLabel(submissionId: number): string {
+    const summary = this.aiSummary(submissionId);
+    if (!summary) {
+      return 'AI: no hint';
+    }
+    return `AI: ${summary.status}`;
+  }
+
+  aiWarningLabel(submissionId: number): string {
+    const summary = this.aiSummary(submissionId);
+    if (!summary) {
+      return 'No warnings';
+    }
+    return `${summary.warnings.length} warning(s), ${summary.flags.length} flag(s)`;
   }
 
   detailRows(submission: ModerationSubmissionDto): SubmissionDiffRow[] {
@@ -316,15 +326,25 @@ export class AdminSubmissionsPageComponent {
     this.searchControl.setValue('');
     this.typeControl.setValue('ALL');
     this.sortControl.setValue('NEWEST');
+    this.pageIndex.set(0);
+    this.pushRouteState();
   }
 
   goToPreviousPage(): void {
+    if (!this.canGoToPreviousPage()) {
+      return;
+    }
     this.pageIndex.update((current) => (current > 0 ? current - 1 : current));
+    this.pushRouteState();
   }
 
   goToNextPage(): void {
+    if (!this.canGoToNextPage()) {
+      return;
+    }
     const maxIndex = this.totalPages() - 1;
     this.pageIndex.update((current) => (current < maxIndex ? current + 1 : current));
+    this.pushRouteState();
   }
 
   canGoToPreviousPage(): boolean {
@@ -340,12 +360,16 @@ export class AdminSubmissionsPageComponent {
     q: string;
     type: SubmissionTypeFilter;
     sort: SubmissionSortOrder;
+    page: number;
+    size: number;
   } {
     return {
       status: this.statusControl.value,
       q: this.searchControl.value,
       type: this.typeControl.value,
       sort: this.sortControl.value,
+      page: this.pageIndex(),
+      size: this.pageSizeControl.value,
     };
   }
 
@@ -372,17 +396,118 @@ export class AdminSubmissionsPageComponent {
     return `${typePrefix}-${dateKey}-${compactId}`;
   }
 
-  private loadSubmissions(status: SubmissionStatus) {
+  private applyQueryState(params: ParamMap): void {
+    const requestedStatus =
+      this.normalizeStatus((params.get('status') ?? '').toUpperCase()) ?? 'PENDING';
+    const requestedQuery = params.get('q') ?? '';
+    const requestedType =
+      this.normalizeTypeFilter((params.get('type') ?? '').toUpperCase()) ?? 'ALL';
+    const requestedSort =
+      this.normalizeSortOrder((params.get('sort') ?? '').toUpperCase()) ?? 'NEWEST';
+    const requestedPageRaw = Number(params.get('page') ?? '0');
+    const requestedSizeRaw = Number(params.get('size') ?? '10');
+    const requestedPage =
+      Number.isFinite(requestedPageRaw) && requestedPageRaw >= 0
+        ? Math.floor(requestedPageRaw)
+        : 0;
+    const requestedSize = this.pageSizeOptions.includes(requestedSizeRaw)
+      ? requestedSizeRaw
+      : 10;
+
+    this.syncingFromRoute = true;
+    this.statusControl.setValue(requestedStatus, { emitEvent: false });
+    this.searchControl.setValue(requestedQuery, { emitEvent: false });
+    this.typeControl.setValue(requestedType, { emitEvent: false });
+    this.sortControl.setValue(requestedSort, { emitEvent: false });
+    this.pageSizeControl.setValue(requestedSize, { emitEvent: false });
+    this.syncingFromRoute = false;
+
+    this.searchQuery.set(requestedQuery);
+    this.selectedType.set(requestedType);
+    this.selectedSort.set(requestedSort);
+    this.selectedPageSize.set(requestedSize);
+    this.pageIndex.set(requestedPage);
+  }
+
+  private pushRouteState(): void {
+    if (this.syncingFromRoute) {
+      return;
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParams: {
+        status: this.statusControl.value,
+        q: this.searchControl.value.trim().length > 0 ? this.searchControl.value.trim() : null,
+        type: this.typeControl.value,
+        sort: this.sortControl.value,
+        page: this.pageIndex(),
+        size: this.pageSizeControl.value,
+      },
+    });
+  }
+
+  private loadSubmissionsFromServer(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
-    return this.moderationService.getSubmissions(status).pipe(
-      catchError((error: unknown) => {
-        const apiError = mapApiError(error);
-        this.errorMessage.set(apiError.message);
-        return of([]);
-      }),
-      finalize(() => this.loading.set(false)),
-    );
+
+    const status = this.statusControl.value;
+    const type = this.typeControl.value === 'ALL' ? undefined : this.typeControl.value;
+    const q = this.normalizedServerQuery(this.searchControl.value);
+    const sort: SubmissionSortToken =
+      this.sortControl.value === 'NEWEST' ? 'createdAt,desc' : 'createdAt,asc';
+    const page = this.pageIndex();
+    const size = this.pageSizeControl.value;
+
+    this.moderationService
+      .listSubmissions({ status, type, q, sort, page, size })
+      .pipe(
+        catchError((error: unknown) => {
+          const apiError = mapApiError(error);
+          this.errorMessage.set(apiError.message);
+          return of({
+            items: [],
+            totalElements: 0,
+            page,
+            size,
+            totalPages: 0,
+          });
+        }),
+        finalize(() => this.loading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((response) => {
+        // Keep the requested page in bounds after server-side filtering changes total pages.
+        const maxPage = response.totalPages > 0 ? response.totalPages - 1 : 0;
+        if (page > maxPage) {
+          this.pageIndex.set(maxPage);
+          this.pushRouteState();
+          return;
+        }
+
+        this.submissions.set(response.items);
+        this.totalResults.set(response.totalElements);
+        this.prefetchComparisonContext(response.items);
+        this.loadAiHints(response.items);
+      });
+  }
+
+  private normalizedServerQuery(raw: string): string | undefined {
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) {
+      return undefined;
+    }
+
+    // Support admin reference search (PRD/PRC/NTR/SUB-YYYYMMDD-<base36Id>) by converting it back to numeric id.
+    const refMatch = /^(PRD|PRC|NTR|SUB)-\d{8}-([0-9A-Z]+)$/i.exec(trimmed);
+    if (refMatch) {
+      const parsedId = Number.parseInt(refMatch[2], 36);
+      if (Number.isFinite(parsedId) && parsedId > 0) {
+        return String(parsedId);
+      }
+    }
+    return trimmed;
   }
 
   private openDecisionDialog(mode: 'approve' | 'reject', submission: ModerationSubmissionDto): void {
@@ -429,8 +554,7 @@ export class AdminSubmissionsPageComponent {
         this.snackBar.open(`Submission ${submissionRef} ${actionLabel}.`, 'Dismiss', {
           duration: 2800,
         });
-
-        this.statusControl.setValue(this.statusControl.value, { emitEvent: true });
+        this.loadSubmissionsFromServer();
       });
   }
 
@@ -460,6 +584,47 @@ export class AdminSubmissionsPageComponent {
           this.productDetailsById.update((current) => ({ ...current, [productId]: detail }));
         });
     }
+  }
+
+  private loadAiHints(submissions: ModerationSubmissionDto[]): void {
+    const current = this.aiSummaryBySubmissionId();
+    const missingIds = submissions
+      .map((submission) => submission.id)
+      .filter((submissionId) => !Object.prototype.hasOwnProperty.call(current, submissionId));
+
+    if (missingIds.length === 0) {
+      return;
+    }
+
+    forkJoin(
+      missingIds.map((submissionId) =>
+        this.moderationService.getSubmission(submissionId).pipe(catchError(() => of(null))),
+      ),
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((details) => {
+        const next = { ...this.aiSummaryBySubmissionId() };
+        details.forEach((detail, index) => {
+          next[missingIds[index]] = detail?.aiSummary ?? null;
+        });
+        this.aiSummaryBySubmissionId.set(next);
+      });
+  }
+
+  private loadSupermarkets(): void {
+    this.catalogService
+      .getSupermarkets()
+      .pipe(
+        catchError(() => of([])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((supermarkets) => {
+        const map: Record<number, string> = {};
+        for (const supermarket of supermarkets) {
+          map[supermarket.id] = supermarket.name;
+        }
+        this.supermarketNameById.set(map);
+      });
   }
 
   private buildProductRows(submission: ModerationSubmissionDto): SubmissionDiffRow[] {
@@ -528,7 +693,7 @@ export class AdminSubmissionsPageComponent {
         'supermarket',
         'Supermarket',
         currentPriceForSelectedMarket?.supermarketName ?? (isCreate ? '-' : 'No current price'),
-        submittedSupermarketId == null ? 'Unknown supermarket' : `#${submittedSupermarketId}`,
+        this.supermarketName(submittedSupermarketId),
         { canCompare, forceChanged: isCreate },
       ),
     );
@@ -812,6 +977,13 @@ export class AdminSubmissionsPageComponent {
     return CATEGORY_NAMES[categoryId] ?? `Category #${categoryId}`;
   }
 
+  private supermarketName(supermarketId: number | null): string {
+    if (supermarketId == null) {
+      return 'Unknown supermarket';
+    }
+    return this.supermarketNameById()[supermarketId] ?? `Supermarket #${supermarketId}`;
+  }
+
   private makeRow(
     key: string,
     label: string,
@@ -898,7 +1070,7 @@ export class AdminSubmissionsPageComponent {
   }
 
   private supermarketFallback(supermarketId: number | null): string {
-    return supermarketId == null ? 'Unknown supermarket' : `Supermarket #${supermarketId}`;
+    return this.supermarketName(supermarketId);
   }
 
   private typePrefix(type: ModerationSubmissionDto['type']): string {

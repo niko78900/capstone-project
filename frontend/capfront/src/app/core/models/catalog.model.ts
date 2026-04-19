@@ -6,6 +6,11 @@ export interface ProductNutritionDto {
   servingSize: string | null;
 }
 
+export interface SupermarketDto {
+  id: number;
+  name: string;
+}
+
 export interface ProductSummaryDto {
   id: number;
   name: string;

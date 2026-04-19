@@ -1,15 +1,24 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { catchError, filter, finalize, forkJoin, map, of, switchMap } from 'rxjs';
-import { ProductDetailDto } from '../../../core/models/catalog.model';
-import { mapApiError } from '../../../core/models/api-error.model';
-import { ModerationSubmissionDto, SubmissionStatus } from '../../../core/models/moderation.model';
+import { catchError, filter, finalize, map, of, switchMap } from 'rxjs';
+import { ProductDetailDto, SupermarketDto } from '../../../core/models/catalog.model';
+import { fieldErrorMap, mapApiError } from '../../../core/models/api-error.model';
+import {
+  ModerationSubmissionDetail,
+  SubmissionHistoryEntry,
+  SubmissionStatus,
+  SubmissionType,
+} from '../../../core/models/moderation.model';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { ModerationService } from '../../../core/services/moderation.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -23,20 +32,44 @@ interface FlattenedPayloadField {
   value: string;
 }
 
+interface PatchFieldErrorEntry {
+  field: string;
+  message: string;
+}
+
 interface QueueReturnParams {
   status: SubmissionStatus;
   q: string;
   type: string;
   sort: string;
+  page: number;
+  size: number;
 }
+
+const CATEGORY_NAMES: Record<number, string> = {
+  1: 'Fruits and Vegetables',
+  2: 'Bakery',
+  3: 'Dairy and Eggs',
+  4: 'Meat and Fish',
+  5: 'Pasta and Rice',
+  6: 'Canned and Jarred',
+  7: 'Snacks',
+  8: 'Beverages',
+  9: 'Frozen',
+  10: 'Household',
+};
 
 @Component({
   selector: 'app-admin-submission-detail-page',
   imports: [
     RouterLink,
+    ReactiveFormsModule,
     MatButtonModule,
     MatCardModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
+    MatSelectModule,
     MatSnackBarModule,
     EmptyStateComponent,
     LoadingStateComponent,
@@ -52,19 +85,55 @@ export class AdminSubmissionDetailPageComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly formBuilder = inject(FormBuilder);
 
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly processingDecision = signal(false);
+  readonly patching = signal(false);
   readonly showJson = signal(false);
-  readonly submission = signal<ModerationSubmissionDto | null>(null);
+  readonly historyLoading = signal(false);
+  readonly historyError = signal<string | null>(null);
+  readonly aiRefreshing = signal(false);
+  readonly patchMessage = signal<string | null>(null);
+  readonly patchFieldErrors = signal<Record<string, string>>({});
+  readonly submission = signal<ModerationSubmissionDetail | null>(null);
   readonly sourceProduct = signal<ProductDetailDto | null | undefined>(undefined);
+  readonly submissionHistory = signal<SubmissionHistoryEntry[]>([]);
+  readonly supermarkets = signal<SupermarketDto[]>([]);
   readonly submissionId = signal<number | null>(null);
   readonly returnQueryParams = signal<QueueReturnParams>({
     status: 'PENDING',
     q: '',
     type: 'ALL',
     sort: 'NEWEST',
+    page: 0,
+    size: 10,
+  });
+
+  readonly categoryOptions = Object.entries(CATEGORY_NAMES).map(([id, name]) => ({
+    id: Number(id),
+    name,
+  }));
+
+  readonly editForm = this.formBuilder.group({
+    editReason: ['', [Validators.maxLength(1000)]],
+    categoryId: [null as number | null],
+    sourceProductId: [null as number | null],
+    name: [''],
+    brand: [''],
+    barcode: [''],
+    supermarketId: [null as number | null],
+    price: [null as number | null],
+    imageUrl: [''],
+    productId: [null as number | null],
+    branchId: [null as number | null],
+    observedAt: [''],
+    calories: [null as number | null],
+    proteinG: [null as number | null],
+    carbsG: [null as number | null],
+    fatG: [null as number | null],
+    servingSize: ['100 g'],
   });
 
   readonly title = computed(() => {
@@ -72,7 +141,7 @@ export class AdminSubmissionDetailPageComponent {
     if (!submission) {
       return 'Submission Review';
     }
-    return `Ref ${this.submissionReference(submission)} • ${submission.type}`;
+    return `Ref ${this.submissionReference(submission)} - ${submission.type}`;
   });
 
   readonly subtitle = computed(() => {
@@ -80,12 +149,14 @@ export class AdminSubmissionDetailPageComponent {
     if (!submission) {
       return 'Review and moderate this submission.';
     }
-    return `${submission.submittedByEmail} • Created ${this.displayDate(submission.createdAt)}`;
+    return `${submission.submittedByEmail} - Created ${this.displayDate(submission.createdAt)}`;
   });
 
-  readonly payloadFields = computed(() =>
-    this.flattenPayload(this.submission()?.payload ?? null),
-  );
+  readonly payloadFields = computed(() => this.flattenPayload(this.submission()?.payload ?? null));
+  readonly canEditPayload = computed(() => this.submission()?.status === 'PENDING');
+  readonly isProductType = computed(() => this.submission()?.type === 'PRODUCT');
+  readonly isPriceType = computed(() => this.submission()?.type === 'PRICE');
+  readonly isNutritionType = computed(() => this.submission()?.type === 'NUTRITION');
 
   readonly imagePreviewUrl = computed(() => {
     const payload = this.asRecord(this.submission()?.payload);
@@ -97,6 +168,8 @@ export class AdminSubmissionDetailPageComponent {
   });
 
   constructor() {
+    this.loadSupermarkets();
+
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const statusRaw = (params.get('status') ?? 'PENDING').toUpperCase();
       const status =
@@ -108,6 +181,8 @@ export class AdminSubmissionDetailPageComponent {
         q: params.get('q') ?? '',
         type: params.get('type') ?? 'ALL',
         sort: params.get('sort') ?? 'NEWEST',
+        page: Number(params.get('page') ?? '0') || 0,
+        size: Number(params.get('size') ?? '10') || 10,
       });
     });
 
@@ -120,7 +195,10 @@ export class AdminSubmissionDetailPageComponent {
       .subscribe((submission) => {
         this.submission.set(submission);
         this.showJson.set(false);
+        this.patchMessage.set(null);
+        this.patchFieldErrors.set({});
         this.prefetchProductContext(submission);
+        this.populateEditForm(submission);
       });
   }
 
@@ -144,7 +222,7 @@ export class AdminSubmissionDetailPageComponent {
     return date.toLocaleString();
   }
 
-  submissionReference(submission: ModerationSubmissionDto): string {
+  submissionReference(submission: ModerationSubmissionDetail): string {
     const typePrefix = this.typePrefix(submission.type);
     const dateKey = this.dateKey(submission.createdAt);
     const compactId = this.compactId(submission.id);
@@ -163,6 +241,21 @@ export class AdminSubmissionDetailPageComponent {
     }
   }
 
+  fieldError(field: string): string | null {
+    return this.patchFieldErrors()[field] ?? null;
+  }
+
+  patchFieldErrorEntries(): PatchFieldErrorEntry[] {
+    return Object.entries(this.patchFieldErrors()).map(([field, message]) => ({
+      field,
+      message,
+    }));
+  }
+
+  historyLabel(entry: SubmissionHistoryEntry): string {
+    return entry.kind === 'EDIT' ? 'Payload edit' : 'Moderation decision';
+  }
+
   onApprove(): void {
     const submission = this.submission();
     if (!submission || submission.status !== 'PENDING') {
@@ -179,7 +272,94 @@ export class AdminSubmissionDetailPageComponent {
     this.openDecisionDialog('reject', submission);
   }
 
-  private openDecisionDialog(mode: 'approve' | 'reject', submission: ModerationSubmissionDto): void {
+  onRefreshAiReview(): void {
+    const submission = this.submission();
+    if (!submission || submission.status !== 'PENDING' || this.aiRefreshing()) {
+      return;
+    }
+
+    this.aiRefreshing.set(true);
+    this.moderationService
+      .refreshAiReview(submission.id)
+      .pipe(
+        catchError((error: unknown) => {
+          const apiError = mapApiError(error);
+          this.snackBar.open(apiError.message, 'Dismiss', { duration: 3600 });
+          return of(null);
+        }),
+        finalize(() => this.aiRefreshing.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((summary) => {
+        if (!summary) {
+          return;
+        }
+        this.submission.update((current) => (current ? { ...current, aiSummary: summary } : current));
+        this.snackBar.open('AI moderation hints refreshed.', 'Dismiss', { duration: 2600 });
+      });
+  }
+
+  onPatchPayload(): void {
+    const submission = this.submission();
+    if (!submission || submission.status !== 'PENDING' || this.patching()) {
+      return;
+    }
+
+    const validationError = this.validateEditForm(submission.type);
+    if (validationError) {
+      this.patchMessage.set(validationError);
+      return;
+    }
+
+    const payload = this.buildPatchedPayload(submission.type);
+    if (!payload) {
+      this.patchMessage.set('Unable to build payload for submission patch.');
+      return;
+    }
+
+    const editReason = this.trimToNull(this.editForm.controls.editReason.value ?? '');
+    this.patching.set(true);
+    this.patchMessage.set(null);
+    this.patchFieldErrors.set({});
+
+    this.moderationService
+      .patchSubmissionPayload(submission.id, {
+        payload,
+        editReason,
+        expectedUpdatedAt: submission.updatedAt,
+      })
+      .pipe(
+        catchError((error: unknown) => {
+          const apiError = mapApiError(error);
+          this.patchFieldErrors.set(fieldErrorMap(apiError));
+          if (apiError.status === 409) {
+            this.patchMessage.set(
+              'Submission was updated by another moderator. Reloaded latest version.',
+            );
+            this.reloadSubmission();
+          } else {
+            this.patchMessage.set(apiError.message);
+          }
+          return of(null);
+        }),
+        finalize(() => this.patching.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((result) => {
+        if (!result) {
+          return;
+        }
+        this.submission.set(result.submission);
+        this.populateEditForm(result.submission);
+        this.patchMessage.set(`Patch saved (${result.changedFieldCount} changed field(s)).`);
+        this.loadHistory(result.submission.id);
+      });
+  }
+
+  private openDecisionDialog(
+    mode: 'approve' | 'reject',
+    submission: ModerationSubmissionDetail,
+  ): void {
     const dialogRef = this.dialog.open(DecisionDialogComponent, {
       width: '420px',
       panelClass: 'decision-dialog-panel',
@@ -215,24 +395,19 @@ export class AdminSubmissionDetailPageComponent {
           if (!result) {
             return of(null);
           }
-          const actionText = result.action === 'APPROVED' ? 'approved' : 'rejected';
-          this.snackBar.open(`Submission ${this.submissionReference(submission)} ${actionText}.`, 'Dismiss', {
-            duration: 2800,
-          });
 
-          const id = this.submissionId();
-          if (id == null) {
-            return of(null);
-          }
-          return this.loadSubmission(id);
+          const actionText = result.action === 'APPROVED' ? 'approved' : 'rejected';
+          this.snackBar.open(
+            `Submission ${this.submissionReference(submission)} ${actionText}.`,
+            'Dismiss',
+            { duration: 2800 },
+          );
+
+          return this.reloadSubmission();
         }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((updatedSubmission) => {
-        if (updatedSubmission) {
-          this.submission.set(updatedSubmission);
-        }
-      });
+      .subscribe();
   }
 
   private loadSubmission(id: number) {
@@ -247,29 +422,197 @@ export class AdminSubmissionDetailPageComponent {
     this.errorMessage.set(null);
     this.submissionId.set(id);
 
-    return forkJoin({
-      pending: this.moderationService.getSubmissions('PENDING'),
-      approved: this.moderationService.getSubmissions('APPROVED'),
-      rejected: this.moderationService.getSubmissions('REJECTED'),
-    }).pipe(
-      map(({ pending, approved, rejected }) => [...pending, ...approved, ...rejected]),
-      map((submissions) => submissions.find((submission) => submission.id === id) ?? null),
+    return this.moderationService.getSubmission(id).pipe(
       catchError((error: unknown) => {
         const apiError = mapApiError(error);
         this.errorMessage.set(apiError.message);
         return of(null);
       }),
-      map((submission) => {
-        if (!submission && !this.errorMessage()) {
-          this.errorMessage.set('Submission not found.');
+      switchMap((submission) => {
+        if (!submission) {
+          return of(null);
         }
-        return submission;
+        this.loadHistory(submission.id);
+        return of(submission);
       }),
       finalize(() => this.loading.set(false)),
     );
   }
 
-  private prefetchProductContext(submission: ModerationSubmissionDto | null): void {
+  private reloadSubmission() {
+    const id = this.submissionId();
+    if (id == null) {
+      return of(null);
+    }
+    return this.loadSubmission(id).pipe(
+      map((submission) => {
+        this.submission.set(submission);
+        this.prefetchProductContext(submission);
+        this.populateEditForm(submission);
+        return submission;
+      }),
+    );
+  }
+
+  private loadHistory(submissionId: number): void {
+    this.historyLoading.set(true);
+    this.historyError.set(null);
+    this.moderationService
+      .getSubmissionHistory(submissionId)
+      .pipe(
+        catchError((error: unknown) => {
+          const apiError = mapApiError(error);
+          this.historyError.set(apiError.message);
+          return of({ submissionId, entries: [] });
+        }),
+        finalize(() => this.historyLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((history) => {
+        this.submissionHistory.set(history.entries);
+      });
+  }
+
+  private loadSupermarkets(): void {
+    this.catalogService
+      .getSupermarkets()
+      .pipe(
+        catchError(() => of([])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((rows) => this.supermarkets.set(rows));
+  }
+
+  private populateEditForm(submission: ModerationSubmissionDetail | null): void {
+    if (!submission) {
+      this.editForm.reset();
+      return;
+    }
+
+    const payload = this.asRecord(submission.payload) ?? {};
+    const nutrition = this.asRecord(payload['nutrition']);
+
+    this.editForm.patchValue(
+      {
+        editReason: '',
+        categoryId: this.asNumber(payload['categoryId']),
+        sourceProductId: this.asNumber(payload['sourceProductId']),
+        name: this.asText(payload['name'], ''),
+        brand: this.asText(payload['brand'], ''),
+        barcode: this.asText(payload['barcode'], ''),
+        supermarketId: this.asNumber(payload['supermarketId']),
+        price: this.asNumber(payload['price']),
+        imageUrl: this.asText(payload['imageUrl'], ''),
+        productId: this.asNumber(payload['productId']),
+        branchId: this.asNumber(payload['branchId']),
+        observedAt: this.toDateInputValue(this.asText(payload['observedAt'], '')),
+        calories: this.asNumber(nutrition?.['calories']),
+        proteinG: this.asNumber(nutrition?.['proteinG']),
+        carbsG: this.asNumber(nutrition?.['carbsG']),
+        fatG: this.asNumber(nutrition?.['fatG']),
+        servingSize: this.asText(nutrition?.['servingSize'], '100 g'),
+      },
+      { emitEvent: false },
+    );
+  }
+
+  private validateEditForm(type: SubmissionType): string | null {
+    const controls = this.editForm.controls;
+    if (type === 'PRODUCT') {
+      if (!controls.name.value?.trim()) {
+        return 'Product name is required.';
+      }
+      if (!controls.barcode.value?.trim()) {
+        return 'Barcode is required.';
+      }
+      if (controls.categoryId.value == null) {
+        return 'Category is required.';
+      }
+      if (controls.supermarketId.value == null) {
+        return 'Supermarket is required.';
+      }
+      if (controls.price.value == null || controls.price.value <= 0) {
+        return 'Price must be greater than zero.';
+      }
+    }
+    if (type === 'PRICE') {
+      if (controls.productId.value == null) {
+        return 'Product id is required.';
+      }
+      if (controls.supermarketId.value == null) {
+        return 'Supermarket is required.';
+      }
+      if (controls.price.value == null || controls.price.value <= 0) {
+        return 'Price must be greater than zero.';
+      }
+    }
+    if (type === 'NUTRITION' && controls.productId.value == null) {
+      return 'Product id is required.';
+    }
+    return null;
+  }
+
+  private buildPatchedPayload(type: SubmissionType): Record<string, unknown> | null {
+    const controls = this.editForm.controls;
+
+    if (type === 'PRODUCT') {
+      const nutrition = this.buildNutritionPayload();
+      return {
+        categoryId: controls.categoryId.value,
+        sourceProductId: controls.sourceProductId.value,
+        name: controls.name.value?.trim() ?? null,
+        brand: this.trimToNull(controls.brand.value ?? ''),
+        barcode: controls.barcode.value?.trim() ?? null,
+        supermarketId: controls.supermarketId.value,
+        price: controls.price.value,
+        imageUrl: this.trimToNull(controls.imageUrl.value ?? ''),
+        nutrition,
+      };
+    }
+
+    if (type === 'PRICE') {
+      return {
+        productId: controls.productId.value,
+        supermarketId: controls.supermarketId.value,
+        branchId: controls.branchId.value,
+        price: controls.price.value,
+        observedAt: this.toIsoInstant(controls.observedAt.value ?? ''),
+      };
+    }
+
+    if (type === 'NUTRITION') {
+      return {
+        productId: controls.productId.value,
+        nutrition: this.buildNutritionPayload(),
+      };
+    }
+
+    return null;
+  }
+
+  private buildNutritionPayload(): Record<string, unknown> | null {
+    const controls = this.editForm.controls;
+    const hasValues =
+      controls.calories.value != null ||
+      controls.proteinG.value != null ||
+      controls.carbsG.value != null ||
+      controls.fatG.value != null ||
+      this.trimToNull(controls.servingSize.value ?? '') != null;
+
+    if (!hasValues) {
+      return null;
+    }
+
+    return {
+      calories: controls.calories.value,
+      proteinG: controls.proteinG.value,
+      carbsG: controls.carbsG.value,
+      fatG: controls.fatG.value,
+      servingSize: this.trimToNull(controls.servingSize.value ?? '') ?? '100 g',
+    };
+  }
+
+  private prefetchProductContext(submission: ModerationSubmissionDetail | null): void {
     if (!submission) {
       this.sourceProduct.set(undefined);
       return;
@@ -291,7 +634,7 @@ export class AdminSubmissionDetailPageComponent {
       .subscribe((detail) => this.sourceProduct.set(detail));
   }
 
-  private referenceProductId(submission: ModerationSubmissionDto): number | null {
+  private referenceProductId(submission: ModerationSubmissionDetail): number | null {
     const payload = this.asRecord(submission.payload);
     if (!payload) {
       return null;
@@ -310,7 +653,6 @@ export class AdminSubmissionDetailPageComponent {
 
   private flattenPayload(payload: unknown): FlattenedPayloadField[] {
     const fields: FlattenedPayloadField[] = [];
-
     const walk = (value: unknown, path: string): void => {
       if (value == null) {
         fields.push({ key: path, label: this.toFieldLabel(path), value: '-' });
@@ -322,10 +664,7 @@ export class AdminSubmissionDetailPageComponent {
           fields.push({ key: path, label: this.toFieldLabel(path), value: '[]' });
           return;
         }
-
-        value.forEach((entry, index) => {
-          walk(entry, `${path}[${index}]`);
-        });
+        value.forEach((entry, index) => walk(entry, `${path}[${index}]`));
         return;
       }
 
@@ -335,7 +674,6 @@ export class AdminSubmissionDetailPageComponent {
           fields.push({ key: path, label: this.toFieldLabel(path), value: '{}' });
           return;
         }
-
         for (const [childKey, childValue] of entries) {
           const childPath = path ? `${path}.${childKey}` : childKey;
           walk(childValue, childPath);
@@ -363,6 +701,39 @@ export class AdminSubmissionDetailPageComponent {
       .replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
+  private trimToNull(value: string): string | null {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private toDateInputValue(raw: string): string {
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private toIsoInstant(raw: string): string | null {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const date = new Date(trimmed);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    return date.toISOString();
+  }
+
   private asRecord(value: unknown): Record<string, unknown> | null {
     if (value == null || Array.isArray(value) || typeof value !== 'object') {
       return null;
@@ -375,7 +746,7 @@ export class AdminSubmissionDetailPageComponent {
       return fallback;
     }
     const text = value.trim();
-    return text.length > 0 ? text : fallback;
+    return text.length > 0 && text.toLowerCase() !== 'null' ? text : fallback;
   }
 
   private asNumber(value: unknown): number | null {
@@ -389,7 +760,7 @@ export class AdminSubmissionDetailPageComponent {
     return null;
   }
 
-  private typePrefix(type: ModerationSubmissionDto['type']): string {
+  private typePrefix(type: ModerationSubmissionDetail['type']): string {
     switch (type) {
       case 'PRODUCT':
         return 'PRD';
