@@ -85,6 +85,20 @@ Request body:
 - Uses optimistic concurrency when `expectedUpdatedAt` is supplied.
 - Saves an audit record in `submission_edits`.
 
+## Moderation List Response Contract
+
+`GET /api/v1/admin/submissions` now returns a paged envelope:
+
+```json
+{
+  "items": [/* moderation rows */],
+  "totalElements": 42,
+  "page": 0,
+  "size": 10,
+  "totalPages": 5
+}
+```
+
 ## Key Endpoints Added
 
 - `GET /api/v1/admin/submissions` (status/type/q/page/size/sort)
@@ -99,4 +113,3 @@ Request body:
 - `POST /api/v1/admin/imports/catalog/dry-run`
 - `POST /api/v1/admin/imports/catalog/commit`
 - `GET /api/v1/admin/imports/{jobId}`
-

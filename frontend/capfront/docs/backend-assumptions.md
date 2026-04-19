@@ -1,31 +1,26 @@
-# Backend Assumptions and Gaps (Angular Web)
+# Backend Assumptions and Known Constraints (Angular Web)
 
-This frontend intentionally stays within currently available backend APIs.
+This frontend consumes only existing backend endpoints and does not invent API behavior.
 
-## Moderation submission detail lookup
+## Moderation list pagination metadata
 
-- There is no `GET /api/v1/admin/submissions/{id}` endpoint.
-- Detail page (`/admin/submissions/:id`) resolves a submission by fetching:
-  - `status=PENDING`
-  - `status=APPROVED`
-  - `status=REJECTED`
-  and finding the requested id client-side.
+- `GET /api/v1/admin/submissions` returns a paged envelope.
+- Angular uses `items`, `totalElements`, `page`, `size`, and `totalPages` directly.
+- Queue total is sourced from backend metadata, not from extra list calls.
 
-## No submission edit/correct moderation endpoint
+## Moderation payload patching
 
-- Backend moderation API currently exposes only:
-  - approve
-  - reject
-- There is no edit/correct endpoint for admin pre-approval payload changes.
-- UI explicitly surfaces this limitation in moderation views.
+- Admin payload patching is used only for `PENDING` submissions.
+- Frontend sends `expectedUpdatedAt` and handles `409` conflict as stale-data reload.
+- Field validation errors are rendered when backend returns `fieldErrors`.
 
-## Evidence preview assumptions
+## Moderation evidence preview
 
-- Evidence preview uses `payload.imageUrl` when present (typically product submissions).
-- No dedicated moderation evidence endpoint exists.
+- Evidence preview relies on `payload.imageUrl` when present.
+- There is no separate dedicated moderation evidence endpoint assumed by Angular.
 
-## Public catalog list filters/sort
+## Public catalog filtering/sorting
 
-- Public products API supports search query `q`.
-- Category/sort/pagination endpoints are not currently exposed.
-- Additional sorting in web app is client-side only.
+- Public API supports search by `q`.
+- Category and supermarket filters and sort order are handled client-side on fetched results.
+- No backend-side public filtering/sorting/paging contract is assumed beyond current endpoints.

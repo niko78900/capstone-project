@@ -2,52 +2,64 @@
 
 Angular frontend for the capstone web scope:
 
-- Limited **public read-only** product browsing
-- **Admin moderation dashboard** for crowd-sourced submissions
+- Limited **public read-only** catalog browsing
+- **Admin moderation + rewards** dashboard
 
-This web app is intentionally not a second full consumer app. Consumer-first flows (cart, checkout, etc.) are handled by the mobile app scope.
+The Angular app intentionally stays admin-first on web. Consumer-heavy flows remain in mobile scope.
 
 ## Scope Implemented
 
-### Public routes
+### Public routes (no account required)
 
 - `/products`
-  - searchable catalog
-  - client-side sort options (name, price low-high, price high-low)
-  - loading/empty/error states
+  - searchable catalog (`q`)
+  - product cards with best verified price emphasis
+  - category and best-price-supermarket filters
+  - client-side sort (default/relevance, name, price asc/desc)
+  - robust loading/empty/error states
 - `/products/:id`
-  - product profile
-  - nutrition section (when available)
-  - verified prices table with best-offer emphasis
+  - full product detail
+  - best-offer hero callout
+  - nutrition highlights
+  - verified supermarket prices table (lowest highlighted)
   - loading/empty/error states
 
-### Admin routes
+### Admin routes (guarded)
 
 - `/admin/login`
   - admin-only sign-in
-  - route-reason messaging for auth required/forbidden/session expired
+  - clear route-reason notices (`authRequired`, `forbidden`, `sessionExpired`)
 - `/admin`
   - dashboard summary cards (pending/approved/rejected/total)
-  - quick moderation actions
+  - queue-health cards (oldest/newest pending, oldest age)
+  - latest pending entries + quick links
+  - top-contributors preview
 - `/admin/submissions`
-  - moderation queue
-  - status/type/text filters
-  - sort controls
-  - client-side pagination
-  - evidence thumbnail/preview for image payloads
-  - approve/reject actions
-  - loading/empty/error/success states
+  - server-driven moderation queue (status/type/search/page/size/sort query params)
+  - route-query synchronized filters
+  - pending highlighting + status chips
+  - AI hints summary when available
+  - evidence preview for image payloads
+  - side-by-side change preview with raw JSON toggle
+  - approve/reject (pending-only; reject reason required)
 - `/admin/submissions/:id`
-  - full submission review page
-  - flattened field-by-field payload view + raw JSON toggle
-  - evidence/image preview when `payload.imageUrl` exists
-  - approve/reject actions
+  - direct detail load per id
+  - typed payload editor by submission type (`PRODUCT`/`PRICE`/`NUTRITION`)
+  - optimistic concurrency patch (`expectedUpdatedAt`)
+  - conflict/validation handling with field-level feedback
+  - review history timeline
+  - manual AI review refresh
+  - evidence preview + raw/flattened payload views
+- `/admin/rewards`
+  - contributor leaderboard (windowed)
+  - current user reward stats
+  - admin recompute action
 
 ## Tech stack
 
 - Angular 20 standalone APIs
 - Angular Material
-- Reactive forms
+- Signals + reactive forms
 - HttpClient + interceptor-based auth handling
 
 ## Run locally
@@ -59,7 +71,7 @@ npm install
 npm start
 ```
 
-The dev server uses `proxy.conf.json` to forward `/api` requests to `http://localhost:8080`.
+`proxy.conf.json` forwards `/api` traffic to `http://localhost:8080`.
 
 ## Build and test
 
@@ -68,15 +80,15 @@ npm run build
 npm test -- --watch=false --browsers=ChromeHeadless
 ```
 
-If Chrome/Chromium is not available, set `CHROME_BIN` accordingly.
+If Chrome/Chromium is unavailable on your machine, set `CHROME_BIN` to a valid browser executable.
 
 ## Auth behavior (high level)
 
-- Admin routes are protected by `adminAuthGuard`.
-- Non-admin access attempts redirect to `/admin/login` with context query params.
-- Requests include bearer token when a session exists.
-- On `401` for protected admin API traffic, session is cleared and user is redirected to login with `reason=sessionExpired`.
-- Failed `/auth/login` requests do not force redirect loops.
+- Public product pages are open.
+- Admin pages are protected by `adminAuthGuard`.
+- Non-admin or unauthenticated access to admin routes redirects to `/admin/login` with context.
+- Bearer token is attached when a session exists.
+- `401` on protected admin API calls clears session and redirects to login with `reason=sessionExpired`.
 
 ## Backend endpoints used by web app
 
@@ -90,12 +102,22 @@ If Chrome/Chromium is not available, set `CHROME_BIN` accordingly.
 
 - `POST /api/v1/auth/login`
 
-### Admin moderation
+### Moderation
 
-- `GET /api/v1/admin/submissions?status=PENDING|APPROVED|REJECTED`
+- `GET /api/v1/admin/submissions?status=&type=&q=&page=&size=&sort=`
+- `GET /api/v1/admin/submissions/{id}`
+- `PATCH /api/v1/admin/submissions/{id}/payload`
+- `GET /api/v1/admin/submissions/{id}/history`
+- `POST /api/v1/admin/submissions/{id}/ai-review`
 - `POST /api/v1/admin/submissions/{id}/approve`
 - `POST /api/v1/admin/submissions/{id}/reject`
 
-## Known backend/API gaps
+### Rewards
+
+- `GET /api/v1/rewards/me`
+- `GET /api/v1/rewards/leaderboard?window=&limit=`
+- `POST /api/v1/admin/rewards/recompute`
+
+## Known assumptions / limitations
 
 See [docs/backend-assumptions.md](./docs/backend-assumptions.md).
