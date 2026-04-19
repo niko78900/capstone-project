@@ -54,13 +54,7 @@ class AccountScreen extends ConsumerWidget {
                   subtitle: const Text('Theme and notification preferences'),
                   onTap: () => context.push(AppRoutes.settings),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: Column(
-              children: [
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.add_box_outlined),
                   title: const Text('Submit New Product'),
