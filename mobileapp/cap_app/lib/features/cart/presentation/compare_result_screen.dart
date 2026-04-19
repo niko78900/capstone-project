@@ -17,7 +17,7 @@ class CompareResultScreen extends ConsumerWidget {
 
     return BackToHomeScope(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Compare Results')),
+        appBar: AppBar(title: const Text('Supermarket Comparison')),
         body: resolved == null
             ? const Center(
                 child: Padding(
@@ -34,9 +34,10 @@ class CompareResultScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Text(
-                        'Request items: ${resolved.requestItemCount} • '
-                        'Eligible: ${resolved.diagnostics.eligibleSupermarkets} • '
+                        'Requested items: ${resolved.requestItemCount} | '
+                        'Eligible: ${resolved.diagnostics.eligibleSupermarkets} | '
                         'Partial: ${resolved.diagnostics.partialSupermarkets}',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
                   ),
@@ -69,7 +70,7 @@ class _CheapestBanner extends StatelessWidget {
         child: const Padding(
           padding: EdgeInsets.all(14),
           child: Text(
-            'No single supermarket covers your full cart yet. '
+            'No single supermarket covers your full item list yet. '
             'See ranked partial options below.',
           ),
         ),
@@ -88,7 +89,7 @@ class _CheapestBanner extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '${option!.supermarketName} • ${AppFormatters.asCurrency(option!.totalCost)}',
+              '${option!.supermarketName} | ${AppFormatters.asCurrency(option!.totalCost)}',
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ],
