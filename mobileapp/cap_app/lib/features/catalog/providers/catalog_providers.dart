@@ -9,8 +9,13 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
 });
 
 final productSearchQueryProvider = StateProvider<String>((ref) => '');
+final supermarketSearchQueryProvider = StateProvider.family<String, int>(
+  (ref, supermarketId) => '',
+);
 
-final productListProvider = FutureProvider<List<ProductSummaryDto>>((ref) async {
+final productListProvider = FutureProvider<List<ProductSummaryDto>>((
+  ref,
+) async {
   ref.watch(
     authSessionProvider.select((state) => state.valueOrNull?.accessToken),
   );
@@ -19,12 +24,16 @@ final productListProvider = FutureProvider<List<ProductSummaryDto>>((ref) async 
   try {
     return await repo.getProducts(query: query);
   } catch (error) {
-    await ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+    await ref
+        .read(authSessionProvider.notifier)
+        .forceLogoutOnUnauthorized(error);
     rethrow;
   }
 });
 
-final allProductsProvider = FutureProvider<List<ProductSummaryDto>>((ref) async {
+final allProductsProvider = FutureProvider<List<ProductSummaryDto>>((
+  ref,
+) async {
   ref.watch(
     authSessionProvider.select((state) => state.valueOrNull?.accessToken),
   );
@@ -32,12 +41,40 @@ final allProductsProvider = FutureProvider<List<ProductSummaryDto>>((ref) async 
   try {
     return await repo.getProducts();
   } catch (error) {
-    await ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+    await ref
+        .read(authSessionProvider.notifier)
+        .forceLogoutOnUnauthorized(error);
     rethrow;
   }
 });
 
-final productDetailProvider = FutureProvider.family<ProductDetailDto, int>((ref, productId) async {
+final supermarketProductListProvider =
+    FutureProvider.family<List<ProductSummaryDto>, int>((
+      ref,
+      supermarketId,
+    ) async {
+      ref.watch(
+        authSessionProvider.select((state) => state.valueOrNull?.accessToken),
+      );
+      final query = ref.watch(supermarketSearchQueryProvider(supermarketId));
+      final repo = ref.watch(catalogRepositoryProvider);
+      try {
+        return await repo.getProducts(
+          query: query,
+          supermarketId: supermarketId,
+        );
+      } catch (error) {
+        await ref
+            .read(authSessionProvider.notifier)
+            .forceLogoutOnUnauthorized(error);
+        rethrow;
+      }
+    });
+
+final productDetailProvider = FutureProvider.family<ProductDetailDto, int>((
+  ref,
+  productId,
+) async {
   ref.watch(
     authSessionProvider.select((state) => state.valueOrNull?.accessToken),
   );
@@ -45,7 +82,9 @@ final productDetailProvider = FutureProvider.family<ProductDetailDto, int>((ref,
   try {
     return await repo.getProductDetail(productId);
   } catch (error) {
-    await ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+    await ref
+        .read(authSessionProvider.notifier)
+        .forceLogoutOnUnauthorized(error);
     rethrow;
   }
 });
@@ -58,7 +97,9 @@ final supermarketsProvider = FutureProvider<List<SupermarketDto>>((ref) async {
   try {
     return await repo.getSupermarkets();
   } catch (error) {
-    await ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+    await ref
+        .read(authSessionProvider.notifier)
+        .forceLogoutOnUnauthorized(error);
     rethrow;
   }
 });

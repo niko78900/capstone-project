@@ -6,17 +6,29 @@ class CatalogRepository {
 
   final ApiClient _apiClient;
 
-  Future<List<ProductSummaryDto>> getProducts({String? query}) async {
+  Future<List<ProductSummaryDto>> getProducts({
+    String? query,
+    int? supermarketId,
+  }) async {
+    final queryParameters = <String, dynamic>{};
+    if (query != null && query.trim().isNotEmpty) {
+      queryParameters['q'] = query.trim();
+    }
+    if (supermarketId != null) {
+      queryParameters['supermarketId'] = supermarketId;
+    }
+
     final raw = await _apiClient.get(
       '/api/v1/products',
-      queryParameters: {
-        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
-      },
+      queryParameters: queryParameters,
     );
     if (raw is! List) {
       return const [];
     }
-    return raw.whereType<Map>().map((item) => ProductSummaryDto.fromJson(item.cast<String, dynamic>())).toList();
+    return raw
+        .whereType<Map>()
+        .map((item) => ProductSummaryDto.fromJson(item.cast<String, dynamic>()))
+        .toList();
   }
 
   Future<ProductDetailDto> getProductDetail(int id) async {
@@ -29,6 +41,9 @@ class CatalogRepository {
     if (raw is! List) {
       return const [];
     }
-    return raw.whereType<Map>().map((item) => SupermarketDto.fromJson(item.cast<String, dynamic>())).toList();
+    return raw
+        .whereType<Map>()
+        .map((item) => SupermarketDto.fromJson(item.cast<String, dynamic>()))
+        .toList();
   }
 }

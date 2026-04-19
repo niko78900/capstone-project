@@ -6,6 +6,7 @@ import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
 import 'package:cap_app/features/cart/presentation/my_items_screen.dart';
 import 'package:cap_app/features/catalog/presentation/supermarkets_screen.dart';
+import 'package:cap_app/features/catalog/presentation/supermarket_products_screen.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
@@ -25,6 +26,7 @@ class AppRoutes {
   static const shop = '/shop';
   static const items = '/items';
   static const supermarkets = '/supermarkets';
+  static const supermarketProductsPattern = '/supermarkets/:id/products';
   static const account = '/account';
 
   // Legacy aliases kept for backward compatibility.
@@ -37,6 +39,8 @@ class AppRoutes {
   static const settings = '/settings';
 
   static String productDetail(int productId) => '/product/$productId';
+  static String supermarketProducts(int supermarketId) =>
+      '/supermarkets/$supermarketId/products';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -129,6 +133,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             return const _RouteErrorScreen(message: 'Invalid product id');
           }
           return ProductDetailScreen(productId: id);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.supermarketProductsPattern,
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '');
+          if (id == null) {
+            return const _RouteErrorScreen(message: 'Invalid supermarket id');
+          }
+          final marketName = state.extra is String
+              ? state.extra as String
+              : null;
+          return SupermarketProductsScreen(
+            supermarketId: id,
+            supermarketName: marketName,
+          );
         },
       ),
       GoRoute(

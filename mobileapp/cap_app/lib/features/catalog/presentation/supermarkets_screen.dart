@@ -60,7 +60,13 @@ class SupermarketsScreen extends ConsumerWidget {
                   )
                 else
                   ...supermarkets.map(
-                    (market) => _SupermarketCard(market: market),
+                    (market) => _SupermarketCard(
+                      market: market,
+                      onTap: () => context.push(
+                        AppRoutes.supermarketProducts(market.id),
+                        extra: market.name,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -72,21 +78,24 @@ class SupermarketsScreen extends ConsumerWidget {
 }
 
 class _SupermarketCard extends StatelessWidget {
-  const _SupermarketCard({required this.market});
+  const _SupermarketCard({required this.market, required this.onTap});
 
   final SupermarketDto market;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
+        onTap: onTap,
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           child: const Icon(Icons.storefront_outlined),
         ),
         title: Text(market.name),
         subtitle: const Text('Included in verified price comparison results'),
+        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }
