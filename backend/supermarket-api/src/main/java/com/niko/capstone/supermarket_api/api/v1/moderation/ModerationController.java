@@ -3,7 +3,7 @@ package com.niko.capstone.supermarket_api.api.v1.moderation;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationAiSummaryDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDetailDto;
-import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDto;
+import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionPageResponse;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionDecisionRequest;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionDecisionResponse;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionHistoryResponse;
@@ -12,7 +12,6 @@ import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionPayload
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionType;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,7 +31,7 @@ public class ModerationController {
     private final ModerationService moderationService;
 
     @GetMapping
-    public List<ModerationSubmissionDto> listSubmissions(
+    public ModerationSubmissionPageResponse listSubmissions(
             @RequestParam(name = "status", required = false) SubmissionStatus status,
             @RequestParam(name = "type", required = false) SubmissionType type,
             @RequestParam(name = "q", required = false) String q,

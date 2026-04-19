@@ -12,6 +12,7 @@ import com.niko.capstone.supermarket_api.api.v1.common.util.NameNormalizer;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationAiSummaryDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDetailDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDto;
+import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionPageResponse;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionDecisionResponse;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionHistoryEntryDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionHistoryResponse;
@@ -56,6 +57,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -83,7 +85,7 @@ public class ModerationService {
     private final AiAnalysisService aiAnalysisService;
 
     @Transactional(readOnly = true)
-    public List<ModerationSubmissionDto> listSubmissions(
+    public ModerationSubmissionPageResponse listSubmissions(
             SubmissionStatus status,
             SubmissionType type,
             String q,
@@ -91,29 +93,20 @@ public class ModerationService {
             Integer size,
             String sort
     ) {
-        Specification<SubmissionEntity> spec = Specification.where((Specification<SubmissionEntity>) null);
-        if (status != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
-        }
-        if (type != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("type"), type));
-        }
-        if (q != null && !q.isBlank()) {
-            String like = "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
-            spec = spec.and((root, query, cb) -> {
-                Expression<String> idString = cb.concat("", root.get("id").as(String.class));
-                Predicate byEmail = cb.like(cb.lower(root.get("user").get("email")), like);
-                Predicate byId = cb.like(cb.lower(idString), like);
-                Predicate byPayload = cb.like(cb.lower(root.get("payload")), like);
-                return cb.or(byEmail, byId, byPayload);
-            });
-        }
-
+        Specification<SubmissionEntity> spec = buildSpecification(status, type, q);
         Pageable pageable = buildPageable(page, size, sort);
-        return submissionRepository.findAll(spec, pageable)
+        Page<SubmissionEntity> pageResult = submissionRepository.findAll(spec, pageable);
+        List<ModerationSubmissionDto> items = pageResult.getContent()
                 .stream()
                 .map(this::toModerationDto)
                 .toList();
+        return new ModerationSubmissionPageResponse(
+                items,
+                pageResult.getTotalElements(),
+                pageResult.getNumber(),
+                pageResult.getSize(),
+                pageResult.getTotalPages()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -422,6 +415,37 @@ public class ModerationService {
         int safeSize = size == null ? 50 : Math.min(Math.max(size, 1), 200);
         Sort safeSort = parseSort(sort);
         return PageRequest.of(safePage, safeSize, safeSort);
+    }
+
+    private Specification<SubmissionEntity> buildSpecification(
+            SubmissionStatus status,
+            SubmissionType type,
+            String q
+    ) {
+        /*
+         * Spring Data 4+ expects a non-null Specification instance.
+         * We build one predicate list and return cb.conjunction() when no filters are present.
+         */
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (type != null) {
+                predicates.add(cb.equal(root.get("type"), type));
+            }
+            if (q != null && !q.isBlank()) {
+                String like = "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+                Expression<String> idString = cb.concat("", root.get("id").as(String.class));
+                Predicate byEmail = cb.like(cb.lower(root.get("user").get("email")), like);
+                Predicate byId = cb.like(cb.lower(idString), like);
+                Predicate byPayload = cb.like(cb.lower(root.get("payload")), like);
+                predicates.add(cb.or(byEmail, byId, byPayload));
+            }
+            return predicates.isEmpty()
+                    ? cb.conjunction()
+                    : cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     private Sort parseSort(String sort) {
