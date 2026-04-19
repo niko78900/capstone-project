@@ -43,10 +43,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   children: [
                     Align(
-                      alignment: Alignment.centerRight,
+                      alignment: Alignment.centerLeft,
                       child: Text(
                         'Skopje Price Compass',
-                        textAlign: TextAlign.right,
+                        textAlign: TextAlign.left,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -329,7 +329,7 @@ class _ShopProductView extends StatelessWidget {
             itemCount: products.length,
             itemBuilder: (context, index) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: _CatalogProductCard(product: products[index]),
               );
             },
@@ -440,65 +440,101 @@ class _CatalogProductCard extends ConsumerWidget {
       child: InkWell(
         onTap: () => context.push(AppRoutes.productDetail(product.id)),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
+          padding: const EdgeInsets.all(10),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                product.category.toUpperCase(),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                product.name,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                product.brand?.isNotEmpty == true
-                    ? product.brand!
-                    : 'Unbranded',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      bestPriceLabel,
-                      style: Theme.of(context).textTheme.bodySmall,
+              const _CatalogImageSlot(),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.category.toUpperCase(),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  FilledButton.tonalIcon(
-                    onPressed: () async {
-                      await ref
-                          .read(cartNotifierProvider.notifier)
-                          .addOrIncrement(
-                            productId: product.id,
-                            productName: product.name,
-                          );
-                      if (context.mounted) {
-                        final messenger = ScaffoldMessenger.of(context);
-                        messenger.removeCurrentSnackBar();
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text('Added ${product.name} to My Items'),
-                            duration: const Duration(milliseconds: 650),
+                    const SizedBox(height: 2),
+                    Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      product.brand?.isNotEmpty == true
+                          ? product.brand!
+                          : 'Unbranded',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            bestPriceLabel,
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add'),
-                  ),
-                ],
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: () async {
+                            await ref
+                                .read(cartNotifierProvider.notifier)
+                                .addOrIncrement(
+                                  productId: product.id,
+                                  productName: product.name,
+                                );
+                            if (context.mounted) {
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.removeCurrentSnackBar();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Added ${product.name} to My Items',
+                                  ),
+                                  duration: const Duration(milliseconds: 650),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CatalogImageSlot extends StatelessWidget {
+  const _CatalogImageSlot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 62,
+      height: 62,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        Icons.image_outlined,
+        size: 20,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
   }
