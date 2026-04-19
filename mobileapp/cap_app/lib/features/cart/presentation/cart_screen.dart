@@ -16,10 +16,10 @@ class CartScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Items'),
+        title: const Text('Cart'),
         actions: [
           IconButton(
-            tooltip: 'Clear My Items',
+            tooltip: 'Clear cart',
             onPressed: () => ref.read(cartNotifierProvider.notifier).clear(),
             icon: const Icon(Icons.delete_sweep_outlined),
           ),
@@ -30,7 +30,7 @@ class CartScreen extends ConsumerWidget {
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('Failed to load My Items: $error'),
+            child: Text('Failed to load cart: $error'),
           ),
         ),
         data: (items) {
@@ -47,7 +47,7 @@ class CartScreen extends ConsumerWidget {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(height: 12),
-                    const Text('Your item list is empty.'),
+                    const Text('Your cart is empty.'),
                     const SizedBox(height: 6),
                     const Text(
                       'Add products from Shop, then compare totals across supermarkets.',

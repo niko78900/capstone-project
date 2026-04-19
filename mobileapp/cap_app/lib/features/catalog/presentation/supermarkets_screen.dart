@@ -46,9 +46,9 @@ class SupermarketsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
                 FilledButton.icon(
-                  onPressed: () => context.go(AppRoutes.items),
+                  onPressed: () => context.push(AppRoutes.cart),
                   icon: const Icon(Icons.compare_arrows),
-                  label: const Text('Compare My Items Now'),
+                  label: const Text('Compare Cart Now'),
                 ),
                 const SizedBox(height: 16),
                 if (supermarkets.isEmpty)

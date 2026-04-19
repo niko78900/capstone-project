@@ -11,11 +11,7 @@ class CartItem {
   final String productName;
   final double quantity;
 
-  CartItem copyWith({
-    int? productId,
-    String? productName,
-    double? quantity,
-  }) {
+  CartItem copyWith({int? productId, String? productName, double? quantity}) {
     return CartItem(
       productId: productId ?? this.productId,
       productName: productName ?? this.productName,
@@ -51,7 +47,78 @@ class CartItem {
     if (decoded is! List) {
       return const [];
     }
-    return decoded.whereType<Map>().map((item) => CartItem.fromJson(item.cast<String, dynamic>())).toList();
+    return decoded
+        .whereType<Map>()
+        .map((item) => CartItem.fromJson(item.cast<String, dynamic>()))
+        .toList();
+  }
+}
+
+class RecentCartItem {
+  const RecentCartItem({
+    required this.productId,
+    required this.productName,
+    required this.lastAddedAt,
+    required this.addCount,
+  });
+
+  final int productId;
+  final String productName;
+  final DateTime lastAddedAt;
+  final int addCount;
+
+  RecentCartItem copyWith({
+    int? productId,
+    String? productName,
+    DateTime? lastAddedAt,
+    int? addCount,
+  }) {
+    return RecentCartItem(
+      productId: productId ?? this.productId,
+      productName: productName ?? this.productName,
+      lastAddedAt: lastAddedAt ?? this.lastAddedAt,
+      addCount: addCount ?? this.addCount,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'productId': productId,
+      'productName': productName,
+      'lastAddedAt': lastAddedAt.toUtc().toIso8601String(),
+      'addCount': addCount,
+    };
+  }
+
+  factory RecentCartItem.fromJson(Map<String, dynamic> json) {
+    final rawLastAddedAt = json['lastAddedAt']?.toString();
+    final parsedLastAddedAt = rawLastAddedAt == null
+        ? null
+        : DateTime.tryParse(rawLastAddedAt);
+    return RecentCartItem(
+      productId: _toInt(json['productId']),
+      productName: _toString(json['productName']),
+      lastAddedAt: (parsedLastAddedAt ?? DateTime.now()).toUtc(),
+      addCount: _toInt(json['addCount']),
+    );
+  }
+
+  static String encodeList(List<RecentCartItem> items) {
+    return jsonEncode(items.map((item) => item.toJson()).toList());
+  }
+
+  static List<RecentCartItem> decodeList(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return const [];
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      return const [];
+    }
+    return decoded
+        .whereType<Map>()
+        .map((item) => RecentCartItem.fromJson(item.cast<String, dynamic>()))
+        .toList();
   }
 }
 
@@ -65,10 +132,7 @@ class CartCompareItemRequest {
   final double quantity;
 
   Map<String, dynamic> toJson() {
-    return {
-      'productId': productId,
-      'quantity': quantity,
-    };
+    return {'productId': productId, 'quantity': quantity};
   }
 }
 
@@ -92,13 +156,19 @@ class CartComparisonResponse {
     return CartComparisonResponse(
       requestItemCount: _toInt(json['requestItemCount']),
       cheapestEligible: cheapestRaw is Map
-          ? CheapestEligibleOptionDto.fromJson(cheapestRaw.cast<String, dynamic>())
+          ? CheapestEligibleOptionDto.fromJson(
+              cheapestRaw.cast<String, dynamic>(),
+            )
           : null,
       rankedSupermarkets: rankedRaw is List
           ? rankedRaw
-              .whereType<Map>()
-              .map((item) => SupermarketCartResultDto.fromJson(item.cast<String, dynamic>()))
-              .toList()
+                .whereType<Map>()
+                .map(
+                  (item) => SupermarketCartResultDto.fromJson(
+                    item.cast<String, dynamic>(),
+                  ),
+                )
+                .toList()
           : const [],
       diagnostics: diagnosticsRaw is Map
           ? CartDiagnosticsDto.fromJson(diagnosticsRaw.cast<String, dynamic>())
@@ -166,10 +236,22 @@ class SupermarketCartResultDto {
       fullCoverage: json['fullCoverage'] == true,
       coverageRatio: _toDouble(json['coverageRatio']) ?? 0,
       missingItems: missingRaw is List
-          ? missingRaw.whereType<Map>().map((item) => MissingCartItemDto.fromJson(item.cast<String, dynamic>())).toList()
+          ? missingRaw
+                .whereType<Map>()
+                .map(
+                  (item) =>
+                      MissingCartItemDto.fromJson(item.cast<String, dynamic>()),
+                )
+                .toList()
           : const [],
       lineItems: linesRaw is List
-          ? linesRaw.whereType<Map>().map((item) => CartLineItemDto.fromJson(item.cast<String, dynamic>())).toList()
+          ? linesRaw
+                .whereType<Map>()
+                .map(
+                  (item) =>
+                      CartLineItemDto.fromJson(item.cast<String, dynamic>()),
+                )
+                .toList()
           : const [],
     );
   }

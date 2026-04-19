@@ -4,6 +4,7 @@ import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/presentation/cart_screen.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
+import 'package:cap_app/features/cart/presentation/my_items_screen.dart';
 import 'package:cap_app/features/catalog/presentation/supermarkets_screen.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
@@ -79,7 +80,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.cart,
-        redirect: (context, state) => AppRoutes.items,
+        builder: (context, state) => const CartScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -98,7 +99,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.items,
-                builder: (context, state) => const CartScreen(),
+                builder: (context, state) => const MyItemsScreen(),
               ),
             ],
           ),

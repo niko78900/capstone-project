@@ -5,11 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class MyItemsIconButton extends ConsumerWidget {
-  const MyItemsIconButton({
-    this.tooltip = 'My Items',
-    this.onPressed,
-    super.key,
-  });
+  const MyItemsIconButton({this.tooltip = 'Cart', this.onPressed, super.key});
 
   final String tooltip;
   final VoidCallback? onPressed;
@@ -28,7 +24,7 @@ class MyItemsIconButton extends ConsumerWidget {
 
     return IconButton(
       tooltip: tooltip,
-      onPressed: onPressed ?? () => context.go(AppRoutes.items),
+      onPressed: onPressed ?? () => context.push(AppRoutes.cart),
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
