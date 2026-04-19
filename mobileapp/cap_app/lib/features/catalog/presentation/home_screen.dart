@@ -142,7 +142,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const _BarcodeAssetIcon(size: 22),
+                leading: const _BarcodeAssetIcon(size: 26),
                 title: const Text('Scan barcode'),
                 subtitle: const Text(
                   'Scanner entry point is ready for integration',
@@ -242,7 +242,7 @@ class _SearchFieldActions extends StatelessWidget {
           IconButton(
             tooltip: 'Barcode tools',
             onPressed: onOpenBarcodeTools,
-            icon: const _BarcodeAssetIcon(),
+            icon: const _BarcodeAssetIcon(size: 26),
           ),
         ],
       ),
@@ -251,7 +251,7 @@ class _SearchFieldActions extends StatelessWidget {
 }
 
 class _BarcodeAssetIcon extends StatelessWidget {
-  const _BarcodeAssetIcon({this.size = 20});
+  const _BarcodeAssetIcon({this.size = 26});
 
   final double size;
 
