@@ -205,21 +205,6 @@ What is still needed:
 - Finalize capstone-facing narrative assets (workflow evidence, demo script, acceptance checklist).
 - Prepare production-hardening backlog (error budgets, observability, security review, release checklist).
 
-## Proposed Remaining Work Plan
-
-1. Stabilize mobile UX shell and scanner behavior for shopping-first flow completion.
-2. Close all known UI theme/contrast issues and verify accessibility pass.
-3. Add missing e2e tests for submission/moderation/cart-compare paths.
-4. Tighten backend validation and failure-mode consistency where gaps are found.
-5. Validate proposal rubric item-by-item with evidence links for final defense.
-6. Build concise demo script mapped to capstone requirements.
-
-## Public Repository Safety Notes
-
-- Do not commit credentials, tokens, local environment files, or private setup notes.
-- Do not commit database connection secrets or private infrastructure details.
-- Keep sensitive local helper files excluded from version control.
-
 ## Repository Navigation
 
 - Backend API: `backend/supermarket-api`
@@ -227,3 +212,4 @@ What is still needed:
 - Flutter Mobile: `mobileapp/cap_app`
 
 For detailed component-level notes, see each component folder’s local docs and source tree.
+
