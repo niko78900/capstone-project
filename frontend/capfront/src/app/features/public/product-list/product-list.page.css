@@ -11,10 +11,18 @@
   opacity: 1;
 }
 
-.filter-actions {
-  align-items: center;
-  display: flex;
-  justify-content: flex-end;
+.header-clear-filters {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--app-text) !important;
+  font-weight: 600;
+  opacity: 0.82;
+  padding-inline: 12px;
+}
+
+.header-clear-filters:hover {
+  background: var(--surface-muted);
+  opacity: 1;
 }
 
 .grid {
@@ -125,8 +133,6 @@
   color: #dbeafe;
 }
 
-@media (max-width: 720px) {
-  .filter-actions {
-    justify-content: flex-start;
-  }
+:host-context(body.dark-theme) .header-clear-filters {
+  border-color: rgba(148, 163, 184, 0.45);
 }

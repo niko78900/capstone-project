@@ -3,7 +3,19 @@
     eyebrow="Public Catalog"
     title="Browse Products"
     subtitle="Search the current product catalog and view the best verified supermarket price for each item."
-  />
+  >
+    @if (hasActiveFilters()) {
+      <button
+        header-actions
+        mat-button
+        type="button"
+        class="header-clear-filters"
+        (click)="clearFilters()"
+      >
+        Clear filters
+      </button>
+    }
+  </app-page-header>
 
   <app-filter-toolbar title="Catalog Search">
     <mat-form-field appearance="outline" class="search-field">
@@ -52,11 +64,6 @@
       </mat-select>
     </mat-form-field>
 
-    @if (hasActiveFilters()) {
-      <div class="filter-actions">
-        <button mat-stroked-button type="button" (click)="clearFilters()">Clear filters</button>
-      </div>
-    }
   </app-filter-toolbar>
 
   @if (loading()) {
