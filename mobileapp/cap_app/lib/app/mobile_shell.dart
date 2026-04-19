@@ -11,42 +11,38 @@ class MobileShellScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Contribute',
-        onPressed: () => _openContributionActions(context),
-        child: const Icon(Icons.add),
-      ),
       bottomNavigationBar: BottomAppBar(
         height: 76,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
         child: Row(
           children: [
             _ShellNavItem(
               icon: Icons.storefront_outlined,
               label: 'Shop',
               selected: navigationShell.currentIndex == 0,
-              onTap: () => _onSelectBranch(context, 0),
+              onTap: () => _onSelectBranch(0),
             ),
             _ShellNavItem(
               icon: Icons.checklist_outlined,
               label: 'My Items',
               selected: navigationShell.currentIndex == 1,
-              onTap: () => _onSelectBranch(context, 1),
+              onTap: () => _onSelectBranch(1),
             ),
-            const SizedBox(width: 64),
+            _ShellActionItem(
+              icon: Icons.add,
+              label: 'Add',
+              onTap: () => _openContributionActions(context),
+            ),
             _ShellNavItem(
               icon: Icons.local_grocery_store_outlined,
               label: 'Supermarkets',
               selected: navigationShell.currentIndex == 2,
-              onTap: () => _onSelectBranch(context, 2),
+              onTap: () => _onSelectBranch(2),
             ),
             _ShellNavItem(
               icon: Icons.person_outline,
               label: 'Account',
               selected: navigationShell.currentIndex == 3,
-              onTap: () => _onSelectBranch(context, 3),
+              onTap: () => _onSelectBranch(3),
             ),
           ],
         ),
@@ -54,7 +50,7 @@ class MobileShellScaffold extends StatelessWidget {
     );
   }
 
-  void _onSelectBranch(BuildContext context, int branchIndex) {
+  void _onSelectBranch(int branchIndex) {
     navigationShell.goBranch(
       branchIndex,
       initialLocation: branchIndex == navigationShell.currentIndex,
@@ -111,6 +107,47 @@ class MobileShellScaffold extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ShellActionItem extends StatelessWidget {
+  const _ShellActionItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: colorScheme.primary),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
