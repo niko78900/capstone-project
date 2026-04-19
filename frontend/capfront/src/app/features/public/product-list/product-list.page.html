@@ -5,10 +5,14 @@
     subtitle="Search the current product catalog and view the best verified supermarket price for each item."
   />
 
-  <app-filter-toolbar title="Catalog Search" [subtitle]="resultsSummary()">
+  <app-filter-toolbar title="Catalog Search">
     <mat-form-field appearance="outline" class="search-field">
-      <mat-label>Search by product or brand</mat-label>
-      <input matInput [formControl]="searchControl" />
+      <input
+        matInput
+        [formControl]="searchControl"
+        placeholder="Search by product or brand"
+        aria-label="Search by product or brand"
+      />
       @if (hasQuery()) {
         <button mat-icon-button matSuffix type="button" aria-label="Clear search" (click)="clearSearch()">
           <mat-icon>close</mat-icon>
@@ -17,12 +21,6 @@
         <mat-icon matSuffix>search</mat-icon>
       }
     </mat-form-field>
-
-    <div class="search-help">
-      <p class="hint-title">How to use this page</p>
-      <p class="hint-copy">This web catalog is read-only. Open a product for verified prices and nutrition details.</p>
-      <p class="hint-copy">Sort: {{ sortLabel(sortControl.value) }}</p>
-    </div>
 
     <mat-form-field appearance="outline">
       <mat-label>Sort</mat-label>
@@ -33,6 +31,32 @@
         <mat-option value="PRICE_DESC">Price (high-low)</mat-option>
       </mat-select>
     </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Category</mat-label>
+      <mat-select [formControl]="categoryControl">
+        @for (category of categoryOptions(); track category) {
+          <mat-option [value]="category">{{ category === 'ALL' ? 'All categories' : category }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Best-price supermarket</mat-label>
+      <mat-select [formControl]="supermarketControl">
+        @for (supermarket of supermarketOptions(); track supermarket) {
+          <mat-option [value]="supermarket">
+            {{ supermarket === 'ALL' ? 'All supermarkets' : supermarket }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (hasActiveFilters()) {
+      <div class="filter-actions">
+        <button mat-stroked-button type="button" (click)="clearFilters()">Clear filters</button>
+      </div>
+    }
   </app-filter-toolbar>
 
   @if (loading()) {
@@ -43,16 +67,19 @@
     <app-empty-state icon="cloud_off" title="Catalog request failed" [message]="errorMessage" />
   }
 
-  @if (!loading() && !errorMessage() && products().length === 0) {
+  @if (!loading() && !errorMessage() && sortedProducts().length === 0) {
     <app-empty-state
       icon="inventory_2"
       title="No products found"
       [message]="hasQuery()
-        ? 'Try a broader search phrase or clear the search input.'
+        ? 'Try a broader search phrase, clear search, or remove filters.'
         : 'The catalog is currently empty.'"
     >
-      @if (hasQuery()) {
+      @if (hasQuery() || hasActiveFilters()) {
         <button mat-stroked-button type="button" (click)="clearSearch()">Clear search</button>
+        @if (hasActiveFilters()) {
+          <button mat-stroked-button type="button" (click)="clearFilters()">Clear filters</button>
+        }
       }
     </app-empty-state>
   }

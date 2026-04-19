@@ -8,7 +8,15 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { catchError, debounceTime, distinctUntilChanged, finalize, of, startWith, switchMap } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { mapApiError } from '../../../core/models/api-error.model';
 import { ProductSummaryDto } from '../../../core/models/catalog.model';
 import { CatalogService } from '../../../core/services/catalog.service';
@@ -18,6 +26,7 @@ import { LoadingStateComponent } from '../../../shared/components/loading-state/
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 type ProductSortOrder = 'RELEVANCE' | 'NAME_ASC' | 'PRICE_ASC' | 'PRICE_DESC';
+type ProductFilterValue = 'ALL' | string;
 
 @Component({
   selector: 'app-product-list-page',
@@ -44,24 +53,55 @@ export class ProductListPageComponent {
 
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly sortControl = new FormControl<ProductSortOrder>('RELEVANCE', { nonNullable: true });
+  readonly categoryControl = new FormControl<ProductFilterValue>('ALL', { nonNullable: true });
+  readonly supermarketControl = new FormControl<ProductFilterValue>('ALL', { nonNullable: true });
 
   readonly products = signal<ProductSummaryDto[]>([]);
+  readonly supermarkets = signal<string[]>([]);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly selectedSort = signal<ProductSortOrder>('RELEVANCE');
+  readonly selectedCategory = signal<ProductFilterValue>('ALL');
+  readonly selectedSupermarket = signal<ProductFilterValue>('ALL');
 
   readonly hasQuery = computed(() => this.searchControl.value.trim().length > 0);
-  readonly resultsSummary = computed(() => {
-    const count = this.products().length;
-    if (count === 0) {
-      return this.hasQuery() ? 'No matching products' : 'No products';
+  readonly categoryOptions = computed(() => {
+    const categories = new Set<string>();
+    for (const product of this.products()) {
+      categories.add(product.category);
     }
-    const noun = count === 1 ? 'product' : 'products';
-    return `${count} ${noun} shown`;
+    return ['ALL', ...Array.from(categories).sort()] as ProductFilterValue[];
+  });
+
+  readonly supermarketOptions = computed(() => {
+    const names = new Set<string>(this.supermarkets());
+    for (const product of this.products()) {
+      if (product.bestPriceSupermarket) {
+        names.add(product.bestPriceSupermarket);
+      }
+    }
+    return ['ALL', ...Array.from(names).sort()] as ProductFilterValue[];
+  });
+
+  readonly filteredProducts = computed(() => {
+    const selectedCategory = this.selectedCategory();
+    const selectedSupermarket = this.selectedSupermarket();
+    return this.products().filter((product) => {
+      if (selectedCategory !== 'ALL' && product.category !== selectedCategory) {
+        return false;
+      }
+      if (
+        selectedSupermarket !== 'ALL' &&
+        (product.bestPriceSupermarket ?? '') !== selectedSupermarket
+      ) {
+        return false;
+      }
+      return true;
+    });
   });
 
   readonly sortedProducts = computed(() => {
-    const products = [...this.products()];
+    const products = [...this.filteredProducts()];
     const sort = this.selectedSort();
     switch (sort) {
       case 'NAME_ASC':
@@ -84,7 +124,21 @@ export class ProductListPageComponent {
     }
   });
 
+  readonly hasActiveFilters = computed(
+    () => this.selectedCategory() !== 'ALL' || this.selectedSupermarket() !== 'ALL',
+  );
+
   constructor() {
+    this.catalogService
+      .getSupermarkets()
+      .pipe(
+        catchError(() => of([])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((supermarkets) => {
+        this.supermarkets.set(supermarkets.map((item) => item.name));
+      });
+
     this.searchControl.valueChanges
       .pipe(
         startWith(this.searchControl.value),
@@ -110,24 +164,23 @@ export class ProductListPageComponent {
     this.sortControl.valueChanges
       .pipe(startWith(this.sortControl.value), takeUntilDestroyed(this.destroyRef))
       .subscribe((sort) => this.selectedSort.set(sort));
+
+    this.categoryControl.valueChanges
+      .pipe(startWith(this.categoryControl.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((category) => this.selectedCategory.set(category));
+
+    this.supermarketControl.valueChanges
+      .pipe(startWith(this.supermarketControl.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((supermarket) => this.selectedSupermarket.set(supermarket));
   }
 
   clearSearch(): void {
     this.searchControl.setValue('');
   }
 
-  sortLabel(sort: ProductSortOrder): string {
-    switch (sort) {
-      case 'NAME_ASC':
-        return 'Name (A-Z)';
-      case 'PRICE_ASC':
-        return 'Price (low-high)';
-      case 'PRICE_DESC':
-        return 'Price (high-low)';
-      case 'RELEVANCE':
-      default:
-        return this.hasQuery() ? 'Relevance' : 'Default order';
-    }
+  clearFilters(): void {
+    this.categoryControl.setValue('ALL');
+    this.supermarketControl.setValue('ALL');
   }
 
   formatPrice(product: ProductSummaryDto): string {

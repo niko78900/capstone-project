@@ -63,8 +63,8 @@ describe('ProductDetailPageComponent', () => {
   it('renders product detail with nutrition and prices', () => {
     expect(catalogService.getProductDetail).toHaveBeenCalledWith(1);
     expect(component.detail()?.name).toBe('Banana');
-    expect(fixture.nativeElement.textContent).toContain('Verified Prices');
-    expect(fixture.nativeElement.textContent).toContain('Nutrition per serving');
+    expect(fixture.nativeElement.textContent).toContain('Verified Supermarket Prices');
+    expect(fixture.nativeElement.textContent).toContain('Nutrition Highlights');
     expect(fixture.nativeElement.textContent).toContain('Tinex');
   });
 });

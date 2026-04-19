@@ -66,8 +66,8 @@
     <section class="sections">
       <mat-card class="panel" appearance="outlined">
         <mat-card-header>
-          <mat-card-title>Nutrition per serving</mat-card-title>
-          <mat-card-subtitle>Values shown as provided by verified records.</mat-card-subtitle>
+          <mat-card-title>Nutrition Highlights</mat-card-title>
+          <mat-card-subtitle>Shown per serving unit in catalog records (typically 100 g).</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           @if (detail.nutrition) {
@@ -87,8 +87,8 @@
 
       <mat-card class="panel" appearance="outlined">
         <mat-card-header>
-          <mat-card-title>Verified Prices</mat-card-title>
-          <mat-card-subtitle>Sorted from lowest to highest price.</mat-card-subtitle>
+          <mat-card-title>Verified Supermarket Prices</mat-card-title>
+          <mat-card-subtitle>Sorted from lowest to highest price with the best row highlighted.</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           @if (sortedPrices().length === 0) {

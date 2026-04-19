@@ -36,8 +36,14 @@ describe('ProductListPageComponent', () => {
   ];
 
   beforeEach(async () => {
-    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', ['getProducts']);
+    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', ['getProducts', 'getSupermarkets']);
     catalogService.getProducts.and.returnValue(of(items));
+    catalogService.getSupermarkets.and.returnValue(
+      of([
+        { id: 1, name: 'Tinex' },
+        { id: 2, name: 'Vero' },
+      ]),
+    );
 
     await TestBed.configureTestingModule({
       imports: [ProductListPageComponent],
@@ -84,5 +90,18 @@ describe('ProductListPageComponent', () => {
     fixture.detectChanges();
 
     expect(component.sortedProducts()[0].id).toBe(2);
+  }));
+
+  it('filters products by category and supermarket', fakeAsync(() => {
+    createComponent();
+    fixture.detectChanges();
+    tick(300);
+
+    component.categoryControl.setValue('Fruits & Vegetables');
+    component.supermarketControl.setValue('Vero');
+    fixture.detectChanges();
+
+    expect(component.sortedProducts().length).toBe(1);
+    expect(component.sortedProducts()[0].name).toBe('Apple Gala');
   }));
 });
