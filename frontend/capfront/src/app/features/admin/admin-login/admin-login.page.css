@@ -38,6 +38,14 @@ mat-card {
   font-weight: 400 !important;
 }
 
+.login-page mat-card-title {
+  color: var(--app-text);
+}
+
+.login-page mat-card-subtitle {
+  color: var(--text-muted);
+}
+
 .server-error {
   color: #b42318;
   margin: 0;
@@ -50,77 +58,4 @@ mat-card {
   color: var(--text-muted);
   margin: 0 0 4px;
   padding: 8px 10px;
-}
-
-:host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-form-field .mat-mdc-text-field-wrapper {
-  background: rgba(15, 28, 50, 0.72);
-}
-
-:host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-input-element {
-  -webkit-text-fill-color: #e2e8f0;
-  caret-color: #93c5fd;
-  color: #e2e8f0;
-}
-
-:host-context(body.dark-theme) ::ng-deep .login-page .mdc-floating-label,
-:host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-form-field-required-marker {
-  color: #a9b8cf !important;
-}
-
-:host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-form-field:hover .mdc-floating-label,
-:host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-form-field.mat-focused .mdc-floating-label,
-:host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-form-field:hover .mat-mdc-form-field-required-marker,
-:host-context(body.dark-theme) ::ng-deep .login-page .mat-mdc-form-field.mat-focused .mat-mdc-form-field-required-marker {
-  color: #dbeafe !important;
-}
-
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field
-  .mdc-notched-outline__leading,
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field
-  .mdc-notched-outline__notch,
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field
-  .mdc-notched-outline__trailing {
-  border-color: #4a5b75 !important;
-}
-
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field:hover
-  .mdc-notched-outline__leading,
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field:hover
-  .mdc-notched-outline__notch,
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field:hover
-  .mdc-notched-outline__trailing,
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field.mat-focused
-  .mdc-notched-outline__leading,
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field.mat-focused
-  .mdc-notched-outline__notch,
-:host-context(body.dark-theme)
-  ::ng-deep
-  .login-page
-  .mat-mdc-form-field.mat-focused
-  .mdc-notched-outline__trailing {
-  border-color: #93c5fd !important;
 }

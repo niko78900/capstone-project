@@ -13,7 +13,13 @@
 
         <mat-form-field appearance="outline">
           <mat-label>Email</mat-label>
-          <input matInput type="email" formControlName="email" />
+          <input
+            matInput
+            type="email"
+            formControlName="email"
+            placeholder="Email"
+            aria-label="Email"
+          />
           @if (form.controls.email.touched && form.controls.email.invalid) {
             <mat-error>Email is required and must be valid.</mat-error>
           }
@@ -24,7 +30,13 @@
 
         <mat-form-field appearance="outline">
           <mat-label>Password</mat-label>
-          <input matInput type="password" formControlName="password" />
+          <input
+            matInput
+            type="password"
+            formControlName="password"
+            placeholder="Password"
+            aria-label="Password"
+          />
           @if (form.controls.password.touched && form.controls.password.invalid) {
             <mat-error>Password must be at least 8 characters.</mat-error>
           }
