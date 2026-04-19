@@ -9,6 +9,7 @@ import { ThemeService } from './core/services/theme.service';
 describe('App', () => {
   beforeEach(async () => {
     const sessionSignal = signal(null);
+    const isAuthenticatedSignal = signal(false);
     const isAdminSignal = signal(false);
     const isDarkSignal = signal(false);
 
@@ -21,6 +22,7 @@ describe('App', () => {
           provide: AuthSessionService,
           useValue: {
             session: sessionSignal.asReadonly(),
+            isAuthenticated: isAuthenticatedSignal.asReadonly(),
             isAdmin: isAdminSignal.asReadonly(),
           },
         },
@@ -47,5 +49,6 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Skopje Price Compass');
     expect(compiled.textContent).toContain('Products');
+    expect(compiled.textContent).toContain('Log In');
   });
 });

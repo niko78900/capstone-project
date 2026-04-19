@@ -28,7 +28,7 @@
         <mat-icon aria-hidden="true">fact_check</mat-icon>
         <span>Moderation Queue</span>
       </a>
-      <a mat-button class="side-link" routerLink="/admin/rewards" routerLinkActive="active-link">
+      <a mat-button class="side-link" routerLink="/rewards" routerLinkActive="active-link">
         <mat-icon aria-hidden="true">military_tech</mat-icon>
         <span>Rewards</span>
       </a>
@@ -49,23 +49,32 @@
     } @else {
       <div class="brand" routerLink="/products">Skopje Price Compass</div>
       <nav class="nav-links">
-        <a mat-button routerLink="/products" routerLinkActive="active-link" [routerLinkActiveOptions]="{ exact: true }">
-          Products
-        </a>
-        <a
-          mat-button
-          [routerLink]="isAdmin() ? '/admin' : '/admin/login'"
-          routerLinkActive="active-link"
-        >
-          {{ adminActionLabel() }}
-        </a>
+        @for (item of navItems(); track item.link) {
+          <a
+            mat-button
+            [routerLink]="item.link"
+            routerLinkActive="active-link"
+            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          >
+            {{ item.label }}
+          </a>
+        }
       </nav>
     }
     <span class="spacer"></span>
     <button mat-stroked-button class="theme-toggle" (click)="toggleTheme()">
       {{ themeToggleLabel() }}
     </button>
-    @if (!isLoginRoute() && currentUser(); as session) {
+    @if (!isLoginRoute() && !isAuthenticated()) {
+      <a
+        mat-button
+        routerLink="/login"
+        routerLinkActive="active-link"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        Log In
+      </a>
+    } @else if (!isLoginRoute() && currentUser(); as session) {
       <span class="user-chip">{{ session.user.displayName }} ({{ session.user.role }})</span>
       <button mat-button (click)="logout()">Logout</button>
     }

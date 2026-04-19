@@ -9,6 +9,12 @@ import { AuthService } from './core/services/auth.service';
 import { AuthSessionService } from './core/services/auth-session.service';
 import { ThemeService } from './core/services/theme.service';
 
+interface NavItem {
+  label: string;
+  link: string;
+  exact?: boolean;
+}
+
 @Component({
   selector: 'app-root',
   imports: [
@@ -37,18 +43,28 @@ export class App {
   );
 
   readonly currentUser = this.authSession.session;
+  readonly isAuthenticated = this.authSession.isAuthenticated;
   readonly isAdmin = this.authSession.isAdmin;
   readonly isDarkTheme = this.theme.isDark;
-  readonly isLoginRoute = computed(() => this.currentUrl().startsWith('/admin/login'));
-  readonly isAdminRoute = computed(() =>
-    this.currentUrl().startsWith('/admin') && !this.currentUrl().startsWith('/admin/login'),
-  );
+  readonly isLoginRoute = computed(() => this.currentUrl().startsWith('/login'));
+  readonly isAdminRoute = computed(() => this.currentUrl().startsWith('/admin'));
   readonly themeToggleLabel = computed(() =>
     this.isDarkTheme() ? 'Light theme' : 'Dark theme',
   );
-  readonly adminActionLabel = computed(() =>
-    this.isAdmin() ? 'Admin Console' : 'Admin Login',
-  );
+  readonly navItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [
+      { label: 'Products', link: '/products', exact: true },
+    ];
+
+    if (this.isAuthenticated()) {
+      items.push({ label: 'Rewards', link: '/rewards', exact: true });
+      if (this.isAdmin()) {
+        items.push({ label: 'Moderation', link: '/admin/submissions' });
+      }
+    }
+
+    return items;
+  });
 
   toggleTheme(): void {
     this.theme.toggle();
@@ -56,5 +72,6 @@ export class App {
 
   logout(): void {
     this.authService.logout();
+    void this.router.navigateByUrl('/products');
   }
 }

@@ -1,18 +1,20 @@
 <section class="page">
   <app-page-header
-    eyebrow="Admin"
+    eyebrow="Rewards"
     title="Contributor Rewards"
-    subtitle="Review contributor scoring and leaderboard standings."
+    subtitle="Track contributor scoring and leaderboard standings."
   >
-    <button
-      header-actions
-      mat-stroked-button
-      type="button"
-      (click)="onRecompute()"
-      [disabled]="recomputing()"
-    >
-      {{ recomputing() ? 'Recomputing...' : 'Recompute scores' }}
-    </button>
+    @if (isAdmin()) {
+      <button
+        header-actions
+        mat-stroked-button
+        type="button"
+        (click)="onRecompute()"
+        [disabled]="recomputing()"
+      >
+        {{ recomputing() ? 'Recomputing...' : 'Recompute scores' }}
+      </button>
+    }
   </app-page-header>
 
   <section class="toolbar">
@@ -43,6 +45,7 @@
       <app-stat-card
         label="Approved"
         [value]="myStats()?.approvedTotalCount ?? 0"
+        tone="approved"
         hint="Approved submissions"
       />
       <app-stat-card
@@ -50,11 +53,6 @@
         [value]="myStats()?.rejectedCount ?? 0"
         tone="rejected"
         hint="Rejected submissions"
-      />
-      <app-stat-card
-        label="Last event"
-        [value]="displayDate(myStats()?.lastEventAt ?? null)"
-        hint="Most recent scoring event"
       />
     </section>
 

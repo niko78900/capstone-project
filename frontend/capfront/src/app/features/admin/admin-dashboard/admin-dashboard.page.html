@@ -7,7 +7,7 @@
     <button header-actions mat-stroked-button routerLink="/admin/submissions" [queryParams]="{ status: 'PENDING' }">
       Review pending
     </button>
-    <button header-actions mat-stroked-button routerLink="/admin/rewards">Rewards</button>
+    <button header-actions mat-stroked-button routerLink="/rewards">Rewards</button>
     <button header-actions mat-stroked-button type="button" (click)="refreshAll()">Refresh</button>
   </app-page-header>
 
@@ -45,7 +45,7 @@
   <section class="contributors-panel">
     <div class="panel-head">
       <h2>Top Contributors</h2>
-      <a mat-button routerLink="/admin/rewards">Open rewards dashboard</a>
+      <a mat-button routerLink="/rewards">Open rewards dashboard</a>
     </div>
 
     @if (leaderboardLoading()) {

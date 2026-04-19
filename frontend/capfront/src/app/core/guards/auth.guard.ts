@@ -2,19 +2,18 @@ import { CanActivateFn, Router } from '@angular/router';
 import { inject } from '@angular/core';
 import { AuthSessionService } from '../services/auth-session.service';
 
-export const adminAuthGuard: CanActivateFn = (_route, state) => {
+export const authGuard: CanActivateFn = (_route, state) => {
   const session = inject(AuthSessionService);
   const router = inject(Router);
 
-  if (session.isAdmin()) {
+  if (session.isAuthenticated()) {
     return true;
   }
 
-  const reason = session.isAuthenticated() ? 'forbidden' : 'authRequired';
   return router.createUrlTree(['/login'], {
     queryParams: {
       redirect: state.url,
-      reason,
+      reason: 'authRequired',
     },
   });
 };

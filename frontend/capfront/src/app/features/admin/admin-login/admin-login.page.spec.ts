@@ -72,7 +72,7 @@ describe('AdminLoginPageComponent', () => {
     expect(component.serverMessage()).toBe('Invalid email or password');
   });
 
-  it('navigates to admin dashboard when admin login succeeds', async () => {
+  it('navigates to moderation queue when admin login succeeds', async () => {
     await createComponent();
 
     authService.login.and.returnValue(
@@ -87,7 +87,25 @@ describe('AdminLoginPageComponent', () => {
     component.form.setValue({ email: 'admin@example.com', password: 'password123' });
     component.submit();
 
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/submissions');
+  });
+
+  it('navigates to products when regular user logs in', async () => {
+    await createComponent();
+
+    authService.login.and.returnValue(
+      of({
+        accessToken: 'token',
+        tokenType: 'Bearer',
+        expiresInMs: 3600000,
+        user: { id: 2, email: 'user@example.com', displayName: 'User', role: 'USER' as const },
+      }),
+    );
+
+    component.form.setValue({ email: 'user@example.com', password: 'password123' });
+    component.submit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/products');
   });
 
   it('shows reason notice when redirected due expired session', async () => {

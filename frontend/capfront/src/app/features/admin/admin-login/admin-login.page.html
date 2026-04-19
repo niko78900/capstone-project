@@ -1,8 +1,8 @@
 <section class="login-page">
   <mat-card appearance="outlined">
     <mat-card-header>
-      <mat-card-title>Admin Login</mat-card-title>
-      <mat-card-subtitle>Moderate crowd-sourced submissions</mat-card-subtitle>
+      <mat-card-title>Log In</mat-card-title>
+      <mat-card-subtitle>Access catalog, rewards, and role-based moderation tools.</mat-card-subtitle>
     </mat-card-header>
 
     <mat-card-content>
@@ -17,7 +17,6 @@
             matInput
             type="email"
             formControlName="email"
-            placeholder="Email"
             aria-label="Email"
           />
           @if (form.controls.email.touched && form.controls.email.invalid) {
@@ -34,7 +33,6 @@
             matInput
             type="password"
             formControlName="password"
-            placeholder="Password"
             aria-label="Password"
           />
           @if (form.controls.password.touched && form.controls.password.invalid) {

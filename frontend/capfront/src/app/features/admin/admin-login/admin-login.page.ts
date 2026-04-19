@@ -38,13 +38,13 @@ export class AdminLoginPageComponent {
       const reason = params.get('reason');
       switch (reason) {
         case 'sessionExpired':
-          this.noticeMessage.set('Your admin session expired. Please sign in again.');
+          this.noticeMessage.set('Your session expired. Please sign in again.');
           break;
         case 'forbidden':
-          this.noticeMessage.set('Admin permissions are required to access that page.');
+          this.noticeMessage.set('You do not have permission to access that page.');
           break;
         case 'authRequired':
-          this.noticeMessage.set('Please sign in with an admin account to continue.');
+          this.noticeMessage.set('Please sign in to continue.');
           break;
         default:
           this.noticeMessage.set(null);
@@ -73,14 +73,19 @@ export class AdminLoginPageComponent {
       .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
         next: (response) => {
-          if (response.user.role !== 'ADMIN') {
-            this.authService.logout();
-            this.serverMessage.set('This account does not have admin access.');
+          const redirect = this.route.snapshot.queryParamMap.get('redirect');
+          if (
+            redirect?.startsWith('/admin') &&
+            response.user.role !== 'ADMIN'
+          ) {
+            void this.router.navigateByUrl('/products');
             return;
           }
 
-          const redirect = this.route.snapshot.queryParamMap.get('redirect');
-          void this.router.navigateByUrl(redirect || '/admin');
+          const roleHome = response.user.role === 'ADMIN'
+            ? '/admin/submissions'
+            : '/products';
+          void this.router.navigateByUrl(redirect || roleHome);
         },
         error: (error: unknown) => {
           const apiError = mapApiError(error);

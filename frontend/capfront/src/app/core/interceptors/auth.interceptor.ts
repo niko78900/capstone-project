@@ -22,8 +22,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse && error.status === 401 && !isAuthLoginRequest) {
         session.clear();
-        if (router.url.startsWith('/admin')) {
-          void router.navigate(['/admin/login'], {
+        if (router.url.startsWith('/admin') || router.url.startsWith('/rewards')) {
+          void router.navigate(['/login'], {
             queryParams: {
               reason: 'sessionExpired',
               redirect: router.url,

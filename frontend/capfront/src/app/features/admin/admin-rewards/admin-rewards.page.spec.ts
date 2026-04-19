@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
+import { AuthSessionService } from '../../../core/services/auth-session.service';
 import { RewardsService } from '../../../core/services/rewards.service';
 import { AdminRewardsPageComponent } from './admin-rewards.page';
 
@@ -57,7 +58,14 @@ describe('AdminRewardsPageComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [AdminRewardsPageComponent],
-      providers: [provideNoopAnimations(), { provide: RewardsService, useValue: rewardsService }],
+      providers: [
+        provideNoopAnimations(),
+        { provide: RewardsService, useValue: rewardsService },
+        {
+          provide: AuthSessionService,
+          useValue: { isAdmin: () => true },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AdminRewardsPageComponent);

@@ -9,6 +9,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { catchError, finalize, forkJoin, of, startWith, switchMap } from 'rxjs';
 import { mapApiError } from '../../../core/models/api-error.model';
 import { LeaderboardEntryDto, RewardWindow } from '../../../core/models/rewards.model';
+import { AuthSessionService } from '../../../core/services/auth-session.service';
 import { RewardsService } from '../../../core/services/rewards.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
@@ -34,9 +35,11 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
 })
 export class AdminRewardsPageComponent {
   private readonly rewardsService = inject(RewardsService);
+  private readonly authSession = inject(AuthSessionService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
 
+  readonly isAdmin = this.authSession.isAdmin;
   readonly windowControl = new FormControl<RewardWindow>('ALL_TIME', { nonNullable: true });
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
@@ -73,7 +76,7 @@ export class AdminRewardsPageComponent {
   }
 
   onRecompute(): void {
-    if (this.recomputing()) {
+    if (!this.isAdmin() || this.recomputing()) {
       return;
     }
 

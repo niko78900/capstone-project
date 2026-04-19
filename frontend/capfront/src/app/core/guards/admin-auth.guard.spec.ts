@@ -38,7 +38,7 @@ describe('adminAuthGuard', () => {
 
     const router = TestBed.inject(Router);
     const serialized = router.serializeUrl(result as ReturnType<Router['createUrlTree']>);
-    expect(serialized).toContain('/admin/login');
+    expect(serialized).toContain('/login');
     expect(serialized).toContain('reason=forbidden');
   });
 
@@ -59,7 +59,7 @@ describe('adminAuthGuard', () => {
 
     const router = TestBed.inject(Router);
     const serialized = router.serializeUrl(result as ReturnType<Router['createUrlTree']>);
-    expect(serialized).toContain('/admin/login');
+    expect(serialized).toContain('/login');
     expect(serialized).toContain('reason=authRequired');
   });
 });

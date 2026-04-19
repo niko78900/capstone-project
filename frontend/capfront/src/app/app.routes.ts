@@ -1,38 +1,64 @@
 import { Routes } from '@angular/router';
 import { adminAuthGuard } from './core/guards/admin-auth.guard';
-import { AdminDashboardPageComponent } from './features/admin/admin-dashboard/admin-dashboard.page';
-import { AdminLoginPageComponent } from './features/admin/admin-login/admin-login.page';
-import { AdminRewardsPageComponent } from './features/admin/admin-rewards/admin-rewards.page';
-import { AdminSubmissionDetailPageComponent } from './features/admin/admin-submissions/admin-submission-detail.page';
-import { AdminSubmissionsPageComponent } from './features/admin/admin-submissions/admin-submissions.page';
-import { ProductDetailPageComponent } from './features/public/product-detail/product-detail.page';
-import { ProductListPageComponent } from './features/public/product-list/product-list.page';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'products' },
-  { path: 'products', component: ProductListPageComponent },
-  { path: 'products/:id', component: ProductDetailPageComponent },
-  { path: 'admin/login', component: AdminLoginPageComponent },
+  {
+    path: 'products',
+    loadComponent: () =>
+      import('./features/public/product-list/product-list.page').then(
+        (module) => module.ProductListPageComponent,
+      ),
+  },
+  {
+    path: 'products/:id',
+    loadComponent: () =>
+      import('./features/public/product-detail/product-detail.page').then(
+        (module) => module.ProductDetailPageComponent,
+      ),
+  },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/admin/admin-login/admin-login.page').then(
+        (module) => module.AdminLoginPageComponent,
+      ),
+  },
+  { path: 'admin/login', pathMatch: 'full', redirectTo: 'login' },
+  {
+    path: 'rewards',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/admin/admin-rewards/admin-rewards.page').then(
+        (module) => module.AdminRewardsPageComponent,
+      ),
+  },
   {
     path: 'admin',
     pathMatch: 'full',
     canActivate: [adminAuthGuard],
-    component: AdminDashboardPageComponent,
+    loadComponent: () =>
+      import('./features/admin/admin-dashboard/admin-dashboard.page').then(
+        (module) => module.AdminDashboardPageComponent,
+      ),
   },
   {
     path: 'admin/submissions',
     canActivate: [adminAuthGuard],
-    component: AdminSubmissionsPageComponent,
+    loadComponent: () =>
+      import('./features/admin/admin-submissions/admin-submissions.page').then(
+        (module) => module.AdminSubmissionsPageComponent,
+      ),
   },
   {
     path: 'admin/submissions/:id',
     canActivate: [adminAuthGuard],
-    component: AdminSubmissionDetailPageComponent,
+    loadComponent: () =>
+      import('./features/admin/admin-submissions/admin-submission-detail.page').then(
+        (module) => module.AdminSubmissionDetailPageComponent,
+      ),
   },
-  {
-    path: 'admin/rewards',
-    canActivate: [adminAuthGuard],
-    component: AdminRewardsPageComponent,
-  },
+  { path: 'admin/rewards', pathMatch: 'full', redirectTo: 'rewards' },
   { path: '**', redirectTo: 'products' },
 ];

@@ -62,7 +62,7 @@ describe('authInterceptor', () => {
     req.flush({ message: 'Authentication required' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(clearSpy).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/admin/login'], {
+    expect(navigateSpy).toHaveBeenCalledWith(['/login'], {
       queryParams: {
         reason: 'sessionExpired',
         redirect: '/admin/submissions',
@@ -85,7 +85,7 @@ describe('authInterceptor', () => {
         },
         {
           provide: Router,
-          useValue: { url: '/admin/login', navigate: navigateSpy },
+          useValue: { url: '/login', navigate: navigateSpy },
         },
       ],
     });
