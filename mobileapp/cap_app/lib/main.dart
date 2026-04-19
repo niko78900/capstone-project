@@ -21,22 +21,37 @@ class CapstoneApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Capstone Supermarket',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
+      theme: _buildTheme(seedColor: seedColor, brightness: Brightness.light),
+      darkTheme: _buildTheme(seedColor: seedColor, brightness: Brightness.dark),
       themeMode: themeMode,
       routerConfig: router,
     );
   }
+}
+
+ThemeData _buildTheme({
+  required Color seedColor,
+  required Brightness brightness,
+}) {
+  final colorScheme = ColorScheme.fromSeed(
+    seedColor: seedColor,
+    brightness: brightness,
+  );
+  return ThemeData(
+    colorScheme: colorScheme,
+    useMaterial3: true,
+    cardTheme: CardThemeData(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: colorScheme.surface,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: colorScheme.surface,
+      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      floatingLabelStyle: TextStyle(color: colorScheme.primary),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
 }

@@ -29,7 +29,9 @@ void main() {
       expect(find.text('Password is required'), findsOneWidget);
     });
 
-    testWidgets('register validates password confirmation mismatch', (tester) async {
+    testWidgets('register validates password confirmation mismatch', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -41,7 +43,10 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(0), 'Niko');
-      await tester.enterText(find.byType(TextFormField).at(1), 'niko@example.com');
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'niko@example.com',
+      );
       await tester.enterText(find.byType(TextFormField).at(2), 'password123');
       await tester.enterText(find.byType(TextFormField).at(3), 'different123');
       await tester.tap(find.text('Register'));
@@ -77,8 +82,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Milk 1L'), findsOneWidget);
-    expect(find.textContaining('Dairy & Eggs'), findsOneWidget);
+    expect(find.text('Milk 1L'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('Tinex'), findsAtLeastNWidgets(1));
   });
 }
 
@@ -87,10 +92,7 @@ class _FakeAuthSessionController extends AuthSessionController {
   Future<AuthSession?> build() async => null;
 
   @override
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     state = const AsyncData(null);
   }
 

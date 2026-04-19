@@ -5,6 +5,7 @@ import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
+import 'package:cap_app/shared/widgets/my_items_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,13 +22,7 @@ class ProductDetailScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Product Details'),
-          actions: [
-            IconButton(
-              tooltip: 'My Cart',
-              onPressed: () => context.push(AppRoutes.cart),
-              icon: const Icon(Icons.shopping_cart_outlined),
-            ),
-          ],
+          actions: const [MyItemsIconButton()],
         ),
         body: AsyncValueView<ProductDetailDto>(
           value: detailAsync,
@@ -73,14 +68,14 @@ class ProductDetailScreen extends ConsumerWidget {
                       messenger.removeCurrentSnackBar();
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text('Added ${detail.name} to cart'),
+                          content: Text('Added ${detail.name} to My Items'),
                           duration: const Duration(milliseconds: 600),
                         ),
                       );
                     }
                   },
-                  icon: const Icon(Icons.add_shopping_cart_outlined),
-                  label: const Text('Add to cart'),
+                  icon: const Icon(Icons.playlist_add),
+                  label: const Text('Add to My Items'),
                 ),
                 const SizedBox(height: 10),
                 FilledButton.tonalIcon(
