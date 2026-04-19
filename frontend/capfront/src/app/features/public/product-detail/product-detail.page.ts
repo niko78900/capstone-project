@@ -39,6 +39,7 @@ export class ProductDetailPageComponent {
   readonly detail = signal<ProductDetailDto | null>(null);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
+  readonly imageLoadFailed = signal(false);
 
   readonly subtitle = computed(() => {
     const detail = this.detail();
@@ -71,6 +72,7 @@ export class ProductDetailPageComponent {
         switchMap((params) => {
           this.loading.set(true);
           this.errorMessage.set(null);
+          this.imageLoadFailed.set(false);
 
           const id = Number(params.get('id'));
           if (!Number.isFinite(id) || id < 1) {
@@ -127,6 +129,10 @@ export class ProductDetailPageComponent {
       return 'price-row-best';
     }
     return '';
+  }
+
+  onImageError(): void {
+    this.imageLoadFailed.set(true);
   }
 
   private formatMeasure(value: number | null, unit: string): string {

@@ -14,8 +14,8 @@
   @if (!loading() && !errorMessage() && detail(); as detail) {
     <section class="hero">
       <mat-card class="image-card" appearance="outlined">
-        @if (detail.imageUrl) {
-          <img [src]="detail.imageUrl" [alt]="detail.name" />
+        @if (detail.imageUrl && !imageLoadFailed()) {
+          <img [src]="detail.imageUrl" [alt]="detail.name" (error)="onImageError()" />
         } @else {
           <div class="image-placeholder">
             <mat-icon aria-hidden="true">image_not_supported</mat-icon>
