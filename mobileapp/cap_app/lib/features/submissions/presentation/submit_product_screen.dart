@@ -6,7 +6,6 @@ import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
-import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -92,7 +91,6 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     return BackToHomeScope(
       child: Scaffold(
         appBar: AppBar(title: const Text('Submit Product')),
-        drawer: const MainDrawer(),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),

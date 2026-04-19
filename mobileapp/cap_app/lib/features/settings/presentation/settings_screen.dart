@@ -1,6 +1,5 @@
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
-import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,7 +22,6 @@ class SettingsScreen extends ConsumerWidget {
     return BackToHomeScope(
       child: Scaffold(
         appBar: AppBar(title: const Text('Settings')),
-        drawer: const MainDrawer(),
         body: ListView(
           children: [
             const SizedBox(height: 8),

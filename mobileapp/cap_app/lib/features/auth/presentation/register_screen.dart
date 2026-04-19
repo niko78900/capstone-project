@@ -198,7 +198,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     if (mounted) {
-      context.go(AppRoutes.home);
+      context.go(AppRoutes.shop);
     }
   }
 

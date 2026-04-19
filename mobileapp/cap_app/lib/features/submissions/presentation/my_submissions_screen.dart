@@ -4,7 +4,6 @@ import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
-import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -34,7 +33,6 @@ class MySubmissionsScreen extends ConsumerWidget {
     return BackToHomeScope(
       child: Scaffold(
         appBar: AppBar(title: const Text('My Submissions')),
-        drawer: const MainDrawer(),
         body: AsyncValueView<List<SubmissionResponse>>(
           value: submissionsAsync,
           loadingMessage: 'Loading your submissions...',
@@ -42,7 +40,7 @@ class MySubmissionsScreen extends ConsumerWidget {
             if (items.isEmpty) {
               return const Center(
                 child: Text(
-                  'No submissions yet. Use the drawer to submit products or prices.',
+                  'No submissions yet. Use the + button to submit products or prices.',
                 ),
               );
             }
@@ -85,11 +83,12 @@ class _SubmissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final statusColor = switch (item.status) {
-      SubmissionStatus.approved => Colors.green,
-      SubmissionStatus.rejected => Colors.red,
-      SubmissionStatus.pending => Colors.orange,
-      SubmissionStatus.unknown => Colors.grey,
+      SubmissionStatus.approved => colorScheme.primary,
+      SubmissionStatus.rejected => colorScheme.error,
+      SubmissionStatus.pending => colorScheme.tertiary,
+      SubmissionStatus.unknown => colorScheme.outline,
     };
 
     final typeLabel = _typeLabel(item.type);
@@ -119,7 +118,9 @@ class _SubmissionCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text('Created ${AppFormatters.asRelativeDateTime(item.createdAt)}'),
             const SizedBox(height: 8),
-            Text('Your note: ${((item.notes ?? '').trim().isEmpty) ? '-' : item.notes}'),
+            Text(
+              'Your note: ${((item.notes ?? '').trim().isEmpty) ? '-' : item.notes}',
+            ),
             const SizedBox(height: 4),
             Text(
               'Moderator note: ${((item.reviewReason ?? '').trim().isEmpty) ? '-' : item.reviewReason}',
@@ -548,13 +549,8 @@ DateTime? _dateTimeFromEpoch(num value) {
     return null;
   }
   final absolute = value.abs();
-  final milliseconds = absolute >= 100000000000
-      ? value
-      : value * 1000;
-  return DateTime.fromMillisecondsSinceEpoch(
-    milliseconds.round(),
-    isUtc: true,
-  );
+  final milliseconds = absolute >= 100000000000 ? value : value * 1000;
+  return DateTime.fromMillisecondsSinceEpoch(milliseconds.round(), isUtc: true);
 }
 
 String _formatMeasure(dynamic value, String unit) {

@@ -4,7 +4,6 @@ import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
-import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -49,7 +48,6 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
     return BackToHomeScope(
       child: Scaffold(
         appBar: AppBar(title: const Text('Submit Price')),
-        drawer: const MainDrawer(),
         body: SafeArea(
           child: RefreshIndicator(
             onRefresh: () async {
@@ -129,12 +127,16 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
                                 if (_observedAt != null)
                                   IconButton(
                                     tooltip: 'Clear date and time',
-                                    onPressed: isSubmitting ? null : _clearObservedAt,
+                                    onPressed: isSubmitting
+                                        ? null
+                                        : _clearObservedAt,
                                     icon: const Icon(Icons.close),
                                   ),
                                 IconButton(
                                   tooltip: 'Select date and time',
-                                  onPressed: isSubmitting ? null : _pickObservedAt,
+                                  onPressed: isSubmitting
+                                      ? null
+                                      : _pickObservedAt,
                                   icon: const Icon(Icons.event),
                                 ),
                               ],
@@ -532,4 +534,3 @@ class _ErrorField extends StatelessWidget {
     );
   }
 }
-

@@ -147,7 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     if (mounted && state.valueOrNull != null) {
-      context.go(AppRoutes.home);
+      context.go(AppRoutes.shop);
     }
   }
 
@@ -168,10 +168,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 }
 
 class _AuthUiError {
-  const _AuthUiError({
-    required this.message,
-    this.fieldErrors = const {},
-  });
+  const _AuthUiError({required this.message, this.fieldErrors = const {}});
 
   final String message;
   final Map<String, String> fieldErrors;
