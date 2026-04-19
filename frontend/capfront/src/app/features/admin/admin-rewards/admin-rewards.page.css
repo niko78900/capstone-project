@@ -1,0 +1,54 @@
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.toolbar .mat-mdc-form-field {
+  max-width: 260px;
+  width: 100%;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.leaderboard-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 18px var(--card-shadow);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  border-collapse: collapse;
+  min-width: 640px;
+  width: 100%;
+}
+
+.leaderboard-table th {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 10px 8px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.leaderboard-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+}

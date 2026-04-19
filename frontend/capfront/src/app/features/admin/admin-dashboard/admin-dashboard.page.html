@@ -7,22 +7,26 @@
     <button header-actions mat-stroked-button routerLink="/admin/submissions" [queryParams]="{ status: 'PENDING' }">
       Review pending
     </button>
+    <button header-actions mat-stroked-button routerLink="/admin/rewards">Rewards</button>
+    <button header-actions mat-stroked-button type="button" (click)="refreshAll()">Refresh</button>
   </app-page-header>
 
-  @if (loading()) {
+  @if (summaryLoading()) {
     <app-loading-state message="Loading moderation summary..." />
-  }
-
-  @if (errorMessage(); as errorMessage) {
-    <app-empty-state icon="warning" title="Could not load dashboard" [message]="errorMessage" />
-  }
-
-  @if (!loading() && !errorMessage()) {
+  } @else if (summaryError(); as summaryError) {
+    <app-empty-state icon="warning" title="Could not load moderation summary" [message]="summaryError" />
+  } @else {
     <section class="stats-grid">
       <app-stat-card label="Pending" [value]="summary().pending" tone="pending" hint="Awaiting admin review" />
       <app-stat-card label="Approved" [value]="summary().approved" tone="approved" hint="Accepted submissions" />
       <app-stat-card label="Rejected" [value]="summary().rejected" tone="rejected" hint="Declined submissions" />
       <app-stat-card label="Total" [value]="summary().total" hint="Across all moderation states" />
+    </section>
+
+    <section class="queue-health">
+      <app-stat-card label="Oldest Pending" [value]="queueOldestCreatedAt()" hint="Earliest pending submission timestamp" />
+      <app-stat-card label="Newest Pending" [value]="queueNewestCreatedAt()" hint="Most recent pending submission timestamp" />
+      <app-stat-card label="Oldest Age" [value]="oldestPendingAgeHours()" hint="Time waiting in pending queue" />
     </section>
 
     <section class="quick-actions">
@@ -36,7 +40,40 @@
         View rejected history
       </a>
     </section>
+  }
 
+  <section class="contributors-panel">
+    <div class="panel-head">
+      <h2>Top Contributors</h2>
+      <a mat-button routerLink="/admin/rewards">Open rewards dashboard</a>
+    </div>
+
+    @if (leaderboardLoading()) {
+      <app-loading-state message="Loading contributor rankings..." />
+    } @else if (leaderboardError(); as leaderboardError) {
+      <app-empty-state icon="warning" title="Could not load leaderboard" [message]="leaderboardError" />
+    } @else if (topContributors().length === 0) {
+      <app-empty-state
+        icon="leaderboard"
+        title="No contributor events yet"
+        message="Leaderboard entries will appear after moderation decisions are recorded."
+      />
+    } @else {
+      <div class="contributors-list">
+        @for (entry of topContributors(); track entry.userId) {
+          <mat-card class="contributor-item" appearance="outlined">
+            <p class="ref">#{{ entry.rank }} {{ entry.email }}</p>
+            <p class="meta">
+              Score {{ entry.score }} | Approved {{ entry.approvedCount }} | Rejected {{ entry.rejectedCount }}
+            </p>
+            <p class="meta">Last event {{ displayDate(entry.lastEventAt ?? '-') }}</p>
+          </mat-card>
+        }
+      </div>
+    }
+  </section>
+
+  @if (!summaryLoading() && !summaryError()) {
     <section class="pending-panel">
       <div class="panel-head">
         <h2>Latest Pending Submissions</h2>

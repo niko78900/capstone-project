@@ -1,0 +1,104 @@
+<section class="page">
+  <app-page-header
+    eyebrow="Admin"
+    title="Contributor Rewards"
+    subtitle="Review contributor scoring and leaderboard standings."
+  >
+    <button
+      header-actions
+      mat-stroked-button
+      type="button"
+      (click)="onRecompute()"
+      [disabled]="recomputing()"
+    >
+      {{ recomputing() ? 'Recomputing...' : 'Recompute scores' }}
+    </button>
+  </app-page-header>
+
+  <section class="toolbar">
+    <mat-form-field appearance="outline">
+      <mat-label>Leaderboard window</mat-label>
+      <mat-select [formControl]="windowControl">
+        <mat-option value="ALL_TIME">All time</mat-option>
+        <mat-option value="30D">Last 30 days</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </section>
+
+  @if (loading()) {
+    <app-loading-state message="Loading rewards data..." />
+  }
+
+  @if (errorMessage(); as errorMessage) {
+    <app-empty-state icon="warning" title="Rewards data unavailable" [message]="errorMessage" />
+  }
+
+  @if (!loading() && !errorMessage()) {
+    <section class="stats-grid">
+      <app-stat-card
+        label="My score"
+        [value]="myStats()?.score ?? 0"
+        hint="Current contributor score"
+      />
+      <app-stat-card
+        label="Approved"
+        [value]="myStats()?.approvedTotalCount ?? 0"
+        hint="Approved submissions"
+      />
+      <app-stat-card
+        label="Rejected"
+        [value]="myStats()?.rejectedCount ?? 0"
+        tone="rejected"
+        hint="Rejected submissions"
+      />
+      <app-stat-card
+        label="Last event"
+        [value]="displayDate(myStats()?.lastEventAt ?? null)"
+        hint="Most recent scoring event"
+      />
+    </section>
+
+    <mat-card class="leaderboard-card" appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Leaderboard</mat-card-title>
+        <mat-card-subtitle>Top contributors by score.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (!hasLeaderboardRows()) {
+          <app-empty-state
+            icon="leaderboard"
+            title="No leaderboard entries"
+            message="Reward events have not been generated yet."
+          />
+        } @else {
+          <div class="table-wrap">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>User</th>
+                  <th>Score</th>
+                  <th>Approved</th>
+                  <th>Rejected</th>
+                  <th>Last event</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of leaderboard(); track entry.userId) {
+                  <tr>
+                    <td>#{{ entry.rank }}</td>
+                    <td>{{ entry.email }}</td>
+                    <td>{{ entry.score }}</td>
+                    <td>{{ entry.approvedCount }}</td>
+                    <td>{{ entry.rejectedCount }}</td>
+                    <td>{{ displayDate(entry.lastEventAt) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</section>
