@@ -39,75 +39,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: Column(
                   children: [
-                    Expanded(
+                    Align(
+                      alignment: Alignment.centerRight,
                       child: Text(
-                        'Shop',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ),
-                    const MyItemsIconButton(),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search by product or brand',
-                          prefixIcon: const Icon(Icons.search),
-                          filled: true,
-                          fillColor: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest
-                              .withValues(alpha: 0.4),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                          suffixIcon: _searchController.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    ref
-                                            .read(
-                                              productSearchQueryProvider
-                                                  .notifier,
-                                            )
-                                            .state =
-                                        '';
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.clear),
-                                ),
+                        'Skopje Price Compass',
+                        textAlign: TextAlign.right,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
                         ),
-                        onChanged: (value) {
-                          _debounce?.cancel();
-                          _debounce = Timer(
-                            const Duration(milliseconds: 350),
-                            () {
-                              ref
-                                  .read(productSearchQueryProvider.notifier)
-                                  .state = value
-                                  .trim();
-                            },
-                          );
-                          setState(() {});
-                        },
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: 'Code and barcode tools',
-                      onPressed: _openCodeActions,
-                      icon: const Icon(Icons.qr_code_scanner),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Search by product or brand',
+                              prefixIcon: const Icon(Icons.search),
+                              filled: true,
+                              fillColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide.none,
+                              ),
+                              suffixIcon: _SearchFieldActions(
+                                hasQuery: _searchController.text.isNotEmpty,
+                                onClear: _clearSearch,
+                                onOpenBarcodeTools: _openCodeActions,
+                              ),
+                            ),
+                            onChanged: (value) {
+                              _debounce?.cancel();
+                              _debounce = Timer(
+                                const Duration(milliseconds: 350),
+                                () {
+                                  ref
+                                      .read(productSearchQueryProvider.notifier)
+                                      .state = value
+                                      .trim();
+                                },
+                              );
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const MyItemsIconButton(),
+                      ],
                     ),
                   ],
                 ),
@@ -156,7 +142,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.qr_code_scanner),
+                leading: const _BarcodeAssetIcon(size: 22),
                 title: const Text('Scan barcode'),
                 subtitle: const Text(
                   'Scanner entry point is ready for integration',
@@ -177,6 +163,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       },
     );
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    ref.read(productSearchQueryProvider.notifier).state = '';
+    setState(() {});
   }
 
   Future<void> _openManualCodeDialog() async {
@@ -220,6 +212,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _searchController.text = normalized;
     ref.read(productSearchQueryProvider.notifier).state = normalized;
     setState(() {});
+  }
+}
+
+class _SearchFieldActions extends StatelessWidget {
+  const _SearchFieldActions({
+    required this.hasQuery,
+    required this.onClear,
+    required this.onOpenBarcodeTools,
+  });
+
+  final bool hasQuery;
+  final VoidCallback onClear;
+  final VoidCallback onOpenBarcodeTools;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasQuery)
+            IconButton(
+              tooltip: 'Clear search',
+              onPressed: onClear,
+              icon: const Icon(Icons.clear),
+            ),
+          IconButton(
+            tooltip: 'Barcode tools',
+            onPressed: onOpenBarcodeTools,
+            icon: const _BarcodeAssetIcon(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarcodeAssetIcon extends StatelessWidget {
+  const _BarcodeAssetIcon({this.size = 20});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/icons/barcode_icon.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+    );
   }
 }
 
