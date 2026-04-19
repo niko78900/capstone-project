@@ -123,12 +123,12 @@
 }
 
 :host-context(body.dark-theme) .theme-toggle {
-  border-color: rgba(148, 163, 184, 0.45);
+  border-color: rgba(133, 173, 158, 0.5);
 }
 
 :host-context(body.dark-theme) .topbar-tag {
-  background: rgba(15, 23, 42, 0.55);
-  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(10, 34, 27, 0.55);
+  border-color: rgba(133, 173, 158, 0.46);
 }
 
 @media (max-width: 740px) {
