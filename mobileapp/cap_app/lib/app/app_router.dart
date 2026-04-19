@@ -1,16 +1,19 @@
 import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
-import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/presentation/cart_screen.dart';
+import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
+import 'package:cap_app/features/catalog/presentation/supermarkets_screen.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
+import 'package:cap_app/features/account/presentation/account_screen.dart';
 import 'package:cap_app/features/settings/presentation/settings_screen.dart';
 import 'package:cap_app/features/submissions/presentation/my_submissions_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_price_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_product_screen.dart';
+import 'package:cap_app/app/mobile_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +21,12 @@ import 'package:go_router/go_router.dart';
 class AppRoutes {
   static const login = '/login';
   static const register = '/register';
+  static const shop = '/shop';
+  static const items = '/items';
+  static const supermarkets = '/supermarkets';
+  static const account = '/account';
+
+  // Legacy aliases kept for backward compatibility.
   static const home = '/home';
   static const cart = '/cart';
   static const compareResult = '/compare/result';
@@ -35,10 +44,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.login,
     redirect: (context, state) {
+      final matchedLocation = state.matchedLocation;
       final session = authState.valueOrNull;
       final isAuthRoute =
-          state.fullPath == AppRoutes.login ||
-          state.fullPath == AppRoutes.register;
+          matchedLocation == AppRoutes.login ||
+          matchedLocation == AppRoutes.register;
 
       if (authState.isLoading) {
         return null;
@@ -49,7 +59,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (session != null && isAuthRoute) {
-        return AppRoutes.home;
+        return AppRoutes.shop;
       }
 
       return null;
@@ -65,7 +75,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const HomeScreen(),
+        redirect: (context, state) => AppRoutes.shop,
+      ),
+      GoRoute(
+        path: AppRoutes.cart,
+        redirect: (context, state) => AppRoutes.items,
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return MobileShellScaffold(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.shop,
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.items,
+                builder: (context, state) => const CartScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.supermarkets,
+                builder: (context, state) => const SupermarketsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.account,
+                builder: (context, state) => const AccountScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/product/:id',
@@ -76,10 +129,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return ProductDetailScreen(productId: id);
         },
-      ),
-      GoRoute(
-        path: AppRoutes.cart,
-        builder: (context, state) => const CartScreen(),
       ),
       GoRoute(
         path: AppRoutes.compareResult,
