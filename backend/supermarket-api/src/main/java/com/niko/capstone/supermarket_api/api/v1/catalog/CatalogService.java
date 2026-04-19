@@ -13,9 +13,11 @@ import com.niko.capstone.supermarket_api.domain.model.ProductNutritionEntity;
 import com.niko.capstone.supermarket_api.domain.repository.ProductNutritionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
+import java.net.URI;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,8 +36,12 @@ public class CatalogService {
     private final PricingService pricingService;
 
     @Transactional(readOnly = true)
-    public List<ProductSummaryDto> listProducts(String query) {
+    public List<ProductSummaryDto> listProducts(String query, Long supermarketId) {
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
+        if (supermarketId != null && !supermarketRepository.existsById(supermarketId)) {
+            return List.of();
+        }
+
         List<ProductEntity> products = productRepository.findAll(Sort.by(Sort.Direction.ASC, "name"))
                 .stream()
                 .filter(ProductEntity::isActive)
@@ -45,6 +51,11 @@ public class CatalogService {
         List<Long> productIds = products.stream().map(ProductEntity::getId).toList();
         Map<Long, ProductNutritionEntity> nutritionByProduct = nutritionByProductIds(productIds);
         Map<Long, List<LatestPricePoint>> latestPrices = pricingService.latestPricePointsByProductIds(productIds);
+        if (supermarketId != null) {
+            products = products.stream()
+                    .filter(product -> hasPriceAtSupermarket(product.getId(), supermarketId, latestPrices))
+                    .toList();
+        }
 
         return products.stream()
                 .map(product -> {
@@ -69,7 +80,7 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
-    public ProductDetailDto getProductById(Long productId) {
+    public ProductDetailDto getProductById(Long productId, String requestBaseUrl) {
         ProductEntity product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
 
@@ -94,7 +105,7 @@ public class CatalogService {
                 product.getName(),
                 product.getBrand(),
                 product.getBarcode(),
-                product.getImageUrl(),
+                resolveImageUrlForClient(product.getImageUrl(), requestBaseUrl),
                 product.getCategory().getName(),
                 nutritionDto,
                 prices
@@ -135,5 +146,107 @@ public class CatalogService {
         return product.getName().toLowerCase().contains(normalizedQuery)
                 || (product.getBrand() != null && product.getBrand().toLowerCase().contains(normalizedQuery))
                 || (product.getBarcode() != null && product.getBarcode().contains(normalizedQuery));
+    }
+
+    private boolean hasPriceAtSupermarket(
+            Long productId,
+            Long supermarketId,
+            Map<Long, List<LatestPricePoint>> latestPrices
+    ) {
+        return latestPrices.getOrDefault(productId, List.of())
+                .stream()
+                .anyMatch(point -> supermarketId.equals(point.supermarketId()));
+    }
+
+    private String resolveImageUrlForClient(String storedImageUrl, String requestBaseUrl) {
+        String normalizedImageUrl = normalizeOptional(storedImageUrl);
+        if (normalizedImageUrl == null) {
+            return null;
+        }
+
+        String normalizedBaseUrl = normalizeBaseUrl(requestBaseUrl);
+        String uploadsPath = uploadsPathFromAbsolute(normalizedImageUrl);
+        if (uploadsPath != null) {
+            return normalizedBaseUrl == null ? uploadsPath : normalizedBaseUrl + uploadsPath;
+        }
+
+        uploadsPath = normalizeUploadsPath(normalizedImageUrl);
+        if (uploadsPath != null) {
+            return normalizedBaseUrl == null ? uploadsPath : normalizedBaseUrl + uploadsPath;
+        }
+
+        return normalizedImageUrl;
+    }
+
+    private String uploadsPathFromAbsolute(String rawImageUrl) {
+        URI uri;
+        try {
+            uri = URI.create(rawImageUrl);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+
+        if (!uri.isAbsolute()) {
+            return null;
+        }
+
+        String path = normalizeUploadsPath(uri.getPath());
+        if (path == null) {
+            return null;
+        }
+
+        String host = normalizeOptional(uri.getHost());
+        if (host == null || !isLikelyLocalAddress(host)) {
+            return null;
+        }
+        // Legacy records may contain environment-specific local hosts (e.g. 10.0.2.2).
+        // Returning only the uploads path lets us rebuild a client-specific absolute URL.
+        return path;
+    }
+
+    private boolean isLikelyLocalAddress(String host) {
+        String normalizedHost = host.toLowerCase(Locale.ROOT);
+        if (normalizedHost.equals("localhost") || normalizedHost.equals("10.0.2.2")) {
+            return true;
+        }
+        if (normalizedHost.equals("127.0.0.1") || normalizedHost.startsWith("127.")) {
+            return true;
+        }
+        return normalizedHost.startsWith("10.")
+                || normalizedHost.startsWith("192.168.")
+                || normalizedHost.matches("^172\\.(1[6-9]|2\\d|3[0-1])\\..*");
+    }
+
+    private String normalizeUploadsPath(String imageUrl) {
+        String normalized = normalizeOptional(imageUrl);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.startsWith("/uploads/")) {
+            return normalized;
+        }
+        if (normalized.startsWith("uploads/")) {
+            return "/" + normalized;
+        }
+        return null;
+    }
+
+    private String normalizeBaseUrl(String baseUrl) {
+        String normalized = normalizeOptional(baseUrl);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.endsWith("/")) {
+            return normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
