@@ -166,7 +166,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final prefill = state.extra is ProductDetailDto
               ? state.extra as ProductDetailDto
               : null;
-          return SubmitProductScreen(initialProduct: prefill);
+          final prefillMap = state.extra is Map
+              ? state.extra as Map<Object?, Object?>
+              : null;
+          final prefillBarcode = prefillMap?['prefillBarcode']?.toString();
+          return SubmitProductScreen(
+            initialProduct: prefill,
+            prefillBarcode: prefillBarcode,
+          );
         },
       ),
       GoRoute(
