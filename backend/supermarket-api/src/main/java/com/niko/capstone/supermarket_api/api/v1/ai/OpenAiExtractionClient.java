@@ -14,7 +14,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -40,8 +42,31 @@ public class OpenAiExtractionClient implements AiExtractionClient {
 
     @Override
     public AiExtractionResult extractProductDraft(String imageUrl) {
+        return extractProductDraftInternal(imageUrl, null);
+    }
+
+    @Override
+    public AiExtractionResult extractProductDraft(byte[] imageBytes, String contentType, String captureTypeHint) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new IllegalStateException("AI extraction image payload is empty");
+        }
+        String normalizedContentType = normalizeImageContentType(contentType);
+        String base64 = Base64.getEncoder().encodeToString(imageBytes);
+        String imageDataUrl = "data:" + normalizedContentType + ";base64," + base64;
+        return extractProductDraftInternal(imageDataUrl, captureTypeHint);
+    }
+
+    @Override
+    public String configuredModel() {
+        return model;
+    }
+
+    private AiExtractionResult extractProductDraftInternal(String imageUrl, String captureTypeHint) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("AI unavailable: APP_OPENAI_API_KEY is not configured");
+        }
+        if (imageUrl == null || imageUrl.isBlank()) {
+            throw new IllegalStateException("AI extraction image URL is required");
         }
         try {
             ObjectNode requestBody = objectMapper.createObjectNode();
@@ -63,9 +88,13 @@ public class OpenAiExtractionClient implements AiExtractionClient {
             ObjectNode userMessage = messages.addObject();
             userMessage.put("role", "user");
             ArrayNode userContent = userMessage.putArray("content");
+            StringBuilder prompt = new StringBuilder("Extract product details from this image.");
+            if (captureTypeHint != null && !captureTypeHint.isBlank()) {
+                prompt.append(" Capture focus: ").append(captureTypeHint).append(".");
+            }
             userContent.addObject()
                     .put("type", "text")
-                    .put("text", "Extract product details from this image URL.");
+                    .put("text", prompt.toString());
             userContent.addObject()
                     .put("type", "image_url")
                     .putObject("image_url")
@@ -96,11 +125,6 @@ public class OpenAiExtractionClient implements AiExtractionClient {
         } catch (IOException ex) {
             throw new IllegalStateException("AI extraction request failed", ex);
         }
-    }
-
-    @Override
-    public String configuredModel() {
-        return model;
     }
 
     private String extractContent(JsonNode contentNode) {
@@ -183,5 +207,16 @@ public class OpenAiExtractionClient implements AiExtractionClient {
             }
         }
         return values;
+    }
+
+    private String normalizeImageContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return "image/jpeg";
+        }
+        String normalized = contentType.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.startsWith("image/")) {
+            throw new IllegalStateException("Unsupported image content type for AI extraction");
+        }
+        return normalized;
     }
 }

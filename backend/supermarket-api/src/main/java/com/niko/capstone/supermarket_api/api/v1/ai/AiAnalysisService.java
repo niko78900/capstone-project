@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.ai.dto.AiExtractionResult;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
+import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationAiSummaryDto;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiCaptureType;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiDraftResponse;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionAiAnalysisStatus;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionAiAnalysisType;
@@ -17,6 +19,7 @@ import com.niko.capstone.supermarket_api.domain.model.UserEntity;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionAiAnalysisRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -28,10 +31,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
 public class AiAnalysisService {
+
+    private static final long MAX_AI_DRAFT_IMAGE_BYTES = 5L * 1024L * 1024L;
 
     private final ObjectMapper objectMapper;
     private final AiExtractionClient aiExtractionClient;
@@ -67,6 +73,66 @@ public class AiAnalysisService {
         AiExtractionResult extraction = null;
         try {
             extraction = aiExtractionClient.extractProductDraft(imageUrl);
+            analysis.setExtractedPayload(toJson(extraction));
+            analysis.setConfidence(extraction.confidence());
+            analysis.setFlags(toJson(extraction.flags()));
+            analysis.setWarnings(toJson(extraction.warnings()));
+            analysis.setStatus(SubmissionAiAnalysisStatus.COMPLETED);
+        } catch (Exception ex) {
+            analysis.setStatus(SubmissionAiAnalysisStatus.FAILED);
+            analysis.setErrorMessage(ex.getMessage());
+            analysis.setWarnings(toJson(List.of("AI extraction failed", ex.getMessage())));
+        }
+        submissionAiAnalysisRepository.save(analysis);
+        return toDraftResponse(analysis, extraction);
+    }
+
+    @Transactional
+    public ProductAiDraftResponse createProductDraftFromUpload(
+            String userEmail,
+            MultipartFile file,
+            String rawCaptureType
+    ) {
+        ProductAiCaptureType captureType = ProductAiCaptureType.fromRaw(rawCaptureType);
+        if (rawCaptureType != null && !rawCaptureType.isBlank() && captureType == null) {
+            throw new UnprocessableEntityException("captureType must be one of BARCODE, PRICE, NUTRITION");
+        }
+
+        validateDraftUpload(file);
+        String contentType = normalizeOptional(file.getContentType());
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to read uploaded image", ex);
+        }
+
+        UserEntity user = findUserByEmail(userEmail);
+        SubmissionAiAnalysisEntity analysis = new SubmissionAiAnalysisEntity();
+        analysis.setUser(user);
+        analysis.setAnalysisType(SubmissionAiAnalysisType.DRAFT);
+        analysis.setSourceImageUrl(captureType == null
+                ? "upload"
+                : "upload:" + captureType.name());
+        analysis.setModel(aiExtractionClient.configuredModel());
+        analysis.setPromptVersion(promptVersion);
+        analysis.setStatus(SubmissionAiAnalysisStatus.PENDING);
+        submissionAiAnalysisRepository.save(analysis);
+
+        if (!isAiAvailable()) {
+            analysis.setStatus(SubmissionAiAnalysisStatus.UNAVAILABLE);
+            analysis.setWarnings(toJson(List.of("AI unavailable: APP_OPENAI_API_KEY is not configured")));
+            submissionAiAnalysisRepository.save(analysis);
+            return toDraftResponse(analysis, null);
+        }
+
+        AiExtractionResult extraction = null;
+        try {
+            extraction = aiExtractionClient.extractProductDraft(
+                    bytes,
+                    contentType,
+                    captureType == null ? null : captureType.promptHint()
+            );
             analysis.setExtractedPayload(toJson(extraction));
             analysis.setConfidence(extraction.confidence());
             analysis.setFlags(toJson(extraction.flags()));
@@ -312,6 +378,19 @@ public class AiAnalysisService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void validateDraftUpload(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new UnprocessableEntityException("Image file is required");
+        }
+        if (file.getSize() > MAX_AI_DRAFT_IMAGE_BYTES) {
+            throw new UnprocessableEntityException("Image size must be at most 5 MB");
+        }
+        String contentType = normalizeOptional(file.getContentType());
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new UnprocessableEntityException("Only image files are allowed");
+        }
     }
 
     @Transactional(readOnly = true)

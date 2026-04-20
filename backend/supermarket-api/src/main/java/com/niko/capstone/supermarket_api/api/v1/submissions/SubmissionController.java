@@ -59,6 +59,19 @@ public class SubmissionController {
         return aiAnalysisService.createProductDraft(currentEmail(authentication), request.imageUrl());
     }
 
+    @PostMapping(value = "/product/ai-draft-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ProductAiDraftResponse draftProductFromUpload(
+            Authentication authentication,
+            @RequestPart("file") MultipartFile file,
+            @RequestPart(value = "captureType", required = false) String captureType
+    ) {
+        return aiAnalysisService.createProductDraftFromUpload(
+                currentEmail(authentication),
+                file,
+                captureType
+        );
+    }
+
     @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImageUploadResponse> uploadImage(
             Authentication authentication,

@@ -6,5 +6,7 @@ public interface AiExtractionClient {
 
     AiExtractionResult extractProductDraft(String imageUrl);
 
+    AiExtractionResult extractProductDraft(byte[] imageBytes, String contentType, String captureTypeHint);
+
     String configuredModel();
 }
