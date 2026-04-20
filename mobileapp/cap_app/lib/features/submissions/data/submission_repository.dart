@@ -58,4 +58,23 @@ class SubmissionRepository {
     }
     return imageUrl;
   }
+
+  Future<ProductAiDraftResponseDto> draftProductFromUpload(
+    String filePath, {
+    AiCaptureType? captureType,
+  }) async {
+    final formMap = <String, dynamic>{
+      'file': await MultipartFile.fromFile(filePath),
+      if (captureType != null) 'captureType': captureType.apiValue,
+    };
+    final formData = FormData.fromMap(formMap);
+    final raw = await _apiClient.postMultipart(
+      '/api/v1/submissions/product/ai-draft-upload',
+      formData: formData,
+    );
+    if (raw is! Map) {
+      throw const AppException(message: 'AI draft request failed');
+    }
+    return ProductAiDraftResponseDto.fromJson(raw.cast<String, dynamic>());
+  }
 }

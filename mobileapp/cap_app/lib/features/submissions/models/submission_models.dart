@@ -81,6 +81,126 @@ class SubmissionNutritionInput {
   }
 }
 
+enum AiCaptureType { barcode, price, nutrition }
+
+extension AiCaptureTypeX on AiCaptureType {
+  String get apiValue {
+    switch (this) {
+      case AiCaptureType.barcode:
+        return 'BARCODE';
+      case AiCaptureType.price:
+        return 'PRICE';
+      case AiCaptureType.nutrition:
+        return 'NUTRITION';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case AiCaptureType.barcode:
+        return 'Barcode photo';
+      case AiCaptureType.price:
+        return 'Price photo';
+      case AiCaptureType.nutrition:
+        return 'Nutrition photo';
+    }
+  }
+}
+
+class ProductAiDraftResponseDto {
+  const ProductAiDraftResponseDto({
+    required this.status,
+    this.model,
+    this.name,
+    this.brand,
+    this.barcode,
+    this.categoryHint,
+    this.supermarketHint,
+    this.priceHint,
+    this.nutrition,
+    this.confidence,
+    this.warnings = const [],
+    this.flags = const [],
+  });
+
+  final String status;
+  final String? model;
+  final String? name;
+  final String? brand;
+  final String? barcode;
+  final String? categoryHint;
+  final String? supermarketHint;
+  final double? priceHint;
+  final SubmissionNutritionInput? nutrition;
+  final double? confidence;
+  final List<String> warnings;
+  final List<String> flags;
+
+  factory ProductAiDraftResponseDto.fromJson(Map<String, dynamic> json) {
+    final nutritionRaw = json['nutrition'];
+    final warningsRaw = json['warnings'];
+    final flagsRaw = json['flags'];
+    return ProductAiDraftResponseDto(
+      status: _toString(json['status']).toUpperCase(),
+      model: _nullIfBlank(json['model']?.toString()),
+      name: _nullIfBlank(json['name']?.toString()),
+      brand: _nullIfBlank(json['brand']?.toString()),
+      barcode: _nullIfBlank(json['barcode']?.toString()),
+      categoryHint: _nullIfBlank(json['categoryHint']?.toString()),
+      supermarketHint: _nullIfBlank(json['supermarketHint']?.toString()),
+      priceHint: _toDouble(json['priceHint']),
+      nutrition: nutritionRaw is Map
+          ? SubmissionNutritionInput(
+              calories: _toDouble(nutritionRaw['calories']),
+              proteinG: _toDouble(nutritionRaw['proteinG']),
+              carbsG: _toDouble(nutritionRaw['carbsG']),
+              fatG: _toDouble(nutritionRaw['fatG']),
+              servingSize: _nullIfBlank(
+                nutritionRaw['servingSize']?.toString(),
+              ),
+            )
+          : null,
+      confidence: _toDouble(json['confidence']),
+      warnings: warningsRaw is List
+          ? warningsRaw
+                .map((item) => _nullIfBlank(item?.toString()))
+                .whereType<String>()
+                .toList()
+          : const [],
+      flags: flagsRaw is List
+          ? flagsRaw
+                .map((item) => _nullIfBlank(item?.toString()))
+                .whereType<String>()
+                .toList()
+          : const [],
+    );
+  }
+}
+
+class ProductAiDraftMergedSuggestion {
+  const ProductAiDraftMergedSuggestion({
+    this.name,
+    this.brand,
+    this.barcode,
+    this.categoryHint,
+    this.supermarketHint,
+    this.priceHint,
+    this.nutrition,
+    this.warnings = const [],
+    this.flags = const [],
+  });
+
+  final String? name;
+  final String? brand;
+  final String? barcode;
+  final String? categoryHint;
+  final String? supermarketHint;
+  final double? priceHint;
+  final SubmissionNutritionInput? nutrition;
+  final List<String> warnings;
+  final List<String> flags;
+}
+
 class ProductSubmissionRequestDto {
   const ProductSubmissionRequestDto({
     required this.categoryId,
@@ -215,4 +335,24 @@ String? _nullIfBlank(String? value) {
     return null;
   }
   return trimmed;
+}
+
+String _toString(dynamic value) {
+  if (value == null) {
+    return '';
+  }
+  return value.toString().trim();
+}
+
+double? _toDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is String) {
+    return double.tryParse(value.trim());
+  }
+  return null;
 }
