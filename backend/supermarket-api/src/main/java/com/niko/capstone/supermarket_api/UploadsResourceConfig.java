@@ -1,25 +1,24 @@
 package com.niko.capstone.supermarket_api;
 
+import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
+@RequiredArgsConstructor
 public class UploadsResourceConfig implements WebMvcConfigurer {
 
-    @Value("${app.uploads.directory:uploads}")
-    private String uploadsDirectory;
+    private final UploadsStoragePathResolver uploadsStoragePathResolver;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadPath = Paths.get(uploadsDirectory).toAbsolutePath().normalize();
+        Path uploadPath = uploadsStoragePathResolver.resolve();
         String location = uploadPath.toUri().toString();
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(location)
                 .setCachePeriod(3600);
     }
 }
-

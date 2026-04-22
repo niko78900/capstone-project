@@ -13,6 +13,7 @@ import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionR
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.SubmissionResponse;
+import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionType;
 import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
@@ -31,14 +32,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -58,9 +57,7 @@ public class SubmissionService {
     private final SubmissionRepository submissionRepository;
     private final SubmissionReviewRepository submissionReviewRepository;
     private final AiAnalysisService aiAnalysisService;
-
-    @Value("${app.uploads.directory:uploads}")
-    private String uploadsDirectory;
+    private final UploadsStoragePathResolver uploadsStoragePathResolver;
 
     @Transactional
     public SubmissionResponse createProductSubmission(String userEmail, ProductSubmissionRequest request) {
@@ -188,7 +185,7 @@ public class SubmissionService {
 
         String extension = extensionFor(file.getOriginalFilename(), contentType);
         String fileName = "submission_" + UUID.randomUUID() + extension;
-        Path root = Paths.get(uploadsDirectory).toAbsolutePath().normalize();
+        Path root = uploadsStoragePathResolver.resolve();
         Path destination = root.resolve(fileName).normalize();
         if (!destination.startsWith(root)) {
             throw new IllegalStateException("Invalid upload path");

@@ -23,6 +23,8 @@ $env:DB_USERNAME='postgres'
 $env:DB_PASSWORD='postgres'
 $env:APP_JWT_SECRET='replace_with_base64_secret'
 $env:APP_ADMIN_BOOTSTRAP_TOKEN='CAPSTONE_ADMIN_SETUP'
+$env:APP_UPLOADS_DIR='uploads'
+$env:MANAGEMENT_PORT='8081'
 mvn spring-boot:run -DskipTests
 ```
 
@@ -113,3 +115,25 @@ Request body:
 - `POST /api/v1/admin/imports/catalog/dry-run`
 - `POST /api/v1/admin/imports/catalog/commit`
 - `GET /api/v1/admin/imports/{jobId}`
+
+## Upload Storage
+
+- Uploads are stored in `app.uploads.directory` (environment variable: `APP_UPLOADS_DIR`).
+- The application now validates this path at startup (directory exists/created + writable) and fails fast if invalid.
+- In containerized deployment, mount persistent storage to `/var/lib/supermarket/uploads` and set `APP_UPLOADS_DIR` accordingly.
+
+## Observability
+
+- Management server runs on `management.server.port` (environment variable: `MANAGEMENT_PORT`, default `8081`).
+- Exposed actuator endpoints: `/actuator/health`, `/actuator/info`, `/actuator/metrics`, `/actuator/prometheus`.
+- Health probes (`liveness`/`readiness`) are enabled.
+- A custom `uploadsStorage` health contributor reports upload storage readiness.
+
+## Docker Compose
+
+Repository root includes `docker-compose.yml` with:
+
+- `postgres` service (PostgreSQL 16)
+- `api` service (this backend)
+- Named volume for persistent uploads mounted at `/var/lib/supermarket/uploads`
+- Local-only host mapping for management port: `127.0.0.1:18081 -> 8081`

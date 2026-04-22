@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
+import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
 import com.niko.capstone.supermarket_api.domain.model.CategoryEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
@@ -50,6 +51,8 @@ class SubmissionServiceTest {
     private SubmissionReviewRepository submissionReviewRepository;
     @Mock
     private com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService aiAnalysisService;
+    @Mock
+    private UploadsStoragePathResolver uploadsStoragePathResolver;
 
     private SubmissionService submissionService;
 
@@ -64,7 +67,8 @@ class SubmissionServiceTest {
                 branchRepository,
                 submissionRepository,
                 submissionReviewRepository,
-                aiAnalysisService
+                aiAnalysisService,
+                uploadsStoragePathResolver
         );
     }
 

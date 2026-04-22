@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: supermarket_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d supermarket_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: ./backend/supermarket-api
+      dockerfile: Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/supermarket_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      APP_JWT_SECRET: U3VwZXJNYXJrZXRDYXBzdG9uZVNlY3JldEtleUZvckRldmVsb3BtZW50T25seQ==
+      APP_ADMIN_BOOTSTRAP_TOKEN: CAPSTONE_ADMIN_SETUP
+      APP_UPLOADS_DIR: /var/lib/supermarket/uploads
+      MANAGEMENT_PORT: 8081
+    ports:
+      - "8080:8080"
+      - "127.0.0.1:18081:8081"
+    volumes:
+      - api_uploads:/var/lib/supermarket/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8081/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  api_uploads:
