@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class AuthFlowIntegrationTest {
 
+    private static final long ONE_WEEK_MS = 604_800_000L;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -36,6 +38,7 @@ class AuthFlowIntegrationTest {
                         .content(registerPayload))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.expiresInMs").value(ONE_WEEK_MS))
                 .andExpect(jsonPath("$.user.email").value(email));
 
         String loginPayload = """
@@ -50,6 +53,7 @@ class AuthFlowIntegrationTest {
                         .content(loginPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.expiresInMs").value(ONE_WEEK_MS))
                 .andExpect(jsonPath("$.user.email").value(email));
     }
 }

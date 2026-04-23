@@ -2,6 +2,7 @@ package com.niko.capstone.supermarket_api.integration;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -56,7 +57,10 @@ class AdminAuthorizationIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/supermarkets"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].name").isArray())
+                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.hasItem("Kit-go market")))
+                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.hasItem("Kipper")));
     }
 
     private String readToken(MvcResult result) throws Exception {
