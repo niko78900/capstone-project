@@ -93,6 +93,15 @@ body {
   color: var(--field-label-focus);
 }
 
+.mat-mdc-form-field .mat-mdc-form-field-required-marker.mdc-floating-label--required::after {
+  color: var(--field-label);
+}
+
+.mat-mdc-form-field:hover .mat-mdc-form-field-required-marker.mdc-floating-label--required::after,
+.mat-mdc-form-field.mat-focused .mat-mdc-form-field-required-marker.mdc-floating-label--required::after {
+  color: var(--field-label-focus);
+}
+
 .mat-mdc-form-field .mat-mdc-input-element::placeholder {
   color: var(--field-placeholder);
   opacity: 1;
