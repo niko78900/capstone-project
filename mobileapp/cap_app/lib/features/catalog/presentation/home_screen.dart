@@ -6,7 +6,6 @@ import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
-import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
 import 'package:cap_app/shared/widgets/my_items_icon_button.dart';
 import 'package:flutter/foundation.dart';
@@ -37,95 +36,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productListProvider);
-    return HomeExitConfirmScope(
-      child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Skopje Price Compass',
-                        textAlign: TextAlign.left,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Skopje Price Compass',
+                      textAlign: TextAlign.left,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: 'Search by product or brand',
-                              prefixIcon: const Icon(Icons.search),
-                              filled: true,
-                              fillColor: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest
-                                  .withValues(alpha: 0.4),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: BorderSide.none,
-                              ),
-                              suffixIcon: _SearchFieldActions(
-                                hasQuery: _searchController.text.isNotEmpty,
-                                onClear: _clearSearch,
-                                onOpenBarcodeTools: _openCodeActions,
-                              ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search by product or brand',
+                            prefixIcon: const Icon(Icons.search),
+                            filled: true,
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.4),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: BorderSide.none,
                             ),
-                            onChanged: (value) {
-                              _debounce?.cancel();
-                              _debounce = Timer(
-                                const Duration(milliseconds: 350),
-                                () {
-                                  ref
-                                      .read(productSearchQueryProvider.notifier)
-                                      .state = value
-                                      .trim();
-                                },
-                              );
-                              setState(() {});
-                            },
+                            suffixIcon: _SearchFieldActions(
+                              hasQuery: _searchController.text.isNotEmpty,
+                              onClear: _clearSearch,
+                              onOpenBarcodeTools: _openCodeActions,
+                            ),
                           ),
+                          onChanged: (value) {
+                            _debounce?.cancel();
+                            _debounce = Timer(
+                              const Duration(milliseconds: 350),
+                              () {
+                                ref
+                                    .read(productSearchQueryProvider.notifier)
+                                    .state = value
+                                    .trim();
+                              },
+                            );
+                            setState(() {});
+                          },
                         ),
-                        const SizedBox(width: 8),
-                        const MyItemsIconButton(),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: AsyncValueView<List<ProductSummaryDto>>(
-                  value: productsAsync,
-                  loadingMessage: 'Loading products...',
-                  onRefresh: () async {
-                    ref.invalidate(productListProvider);
-                    await ref.read(productListProvider.future);
-                  },
-                  data: (products) {
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        ref.invalidate(productListProvider);
-                        await ref.read(productListProvider.future);
-                      },
-                      child: _ShopProductView(
-                        products: products,
-                        showPopular: _searchController.text.trim().isEmpty,
                       ),
-                    );
-                  },
-                ),
+                      const SizedBox(width: 8),
+                      const MyItemsIconButton(),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: AsyncValueView<List<ProductSummaryDto>>(
+                value: productsAsync,
+                loadingMessage: 'Loading products...',
+                onRefresh: () async {
+                  ref.invalidate(productListProvider);
+                  await ref.read(productListProvider.future);
+                },
+                data: (products) {
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(productListProvider);
+                      await ref.read(productListProvider.future);
+                    },
+                    child: _ShopProductView(
+                      products: products,
+                      showPopular: _searchController.text.trim().isEmpty,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,59 +1,102 @@
 import 'package:cap_app/app/app_router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-class MobileShellScaffold extends StatelessWidget {
+class MobileShellScaffold extends StatefulWidget {
   const MobileShellScaffold({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
+  State<MobileShellScaffold> createState() => _MobileShellScaffoldState();
+}
+
+class _MobileShellScaffoldState extends State<MobileShellScaffold> {
+  bool _dialogVisible = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: BottomAppBar(
-        height: 76,
-        child: Row(
-          children: [
-            _ShellNavItem(
-              icon: Icons.storefront_outlined,
-              label: 'Shop',
-              selected: navigationShell.currentIndex == 0,
-              onTap: () => _onSelectBranch(0),
-            ),
-            _ShellNavItem(
-              icon: Icons.checklist_outlined,
-              label: 'My Items',
-              selected: navigationShell.currentIndex == 1,
-              onTap: () => _onSelectBranch(1),
-            ),
-            _ShellActionItem(
-              icon: Icons.add,
-              label: 'Add',
-              onTap: () => _openContributionActions(context),
-            ),
-            _ShellNavItem(
-              icon: Icons.local_grocery_store_outlined,
-              label: 'Markets',
-              selected: navigationShell.currentIndex == 2,
-              onTap: () => _onSelectBranch(2),
-            ),
-            _ShellNavItem(
-              icon: Icons.person_outline,
-              label: 'Account',
-              selected: navigationShell.currentIndex == 3,
-              onTap: () => _onSelectBranch(3),
-            ),
-          ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop || _dialogVisible) {
+          return;
+        }
+        _dialogVisible = true;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Exit app?'),
+              content: const Text('Do you want to close the app?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Exit'),
+                ),
+              ],
+            );
+          },
+        );
+        _dialogVisible = false;
+        if (!mounted) {
+          return;
+        }
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: widget.navigationShell,
+        bottomNavigationBar: BottomAppBar(
+          height: 76,
+          child: Row(
+            children: [
+              _ShellNavItem(
+                icon: Icons.storefront_outlined,
+                label: 'Shop',
+                selected: widget.navigationShell.currentIndex == 0,
+                onTap: () => _onSelectBranch(0),
+              ),
+              _ShellNavItem(
+                icon: Icons.checklist_outlined,
+                label: 'My Items',
+                selected: widget.navigationShell.currentIndex == 1,
+                onTap: () => _onSelectBranch(1),
+              ),
+              _ShellActionItem(
+                icon: Icons.add,
+                label: 'Add',
+                onTap: () => _openContributionActions(context),
+              ),
+              _ShellNavItem(
+                icon: Icons.local_grocery_store_outlined,
+                label: 'Markets',
+                selected: widget.navigationShell.currentIndex == 2,
+                onTap: () => _onSelectBranch(2),
+              ),
+              _ShellNavItem(
+                icon: Icons.person_outline,
+                label: 'Account',
+                selected: widget.navigationShell.currentIndex == 3,
+                onTap: () => _onSelectBranch(3),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _onSelectBranch(int branchIndex) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       branchIndex,
-      initialLocation: branchIndex == navigationShell.currentIndex,
+      initialLocation: branchIndex == widget.navigationShell.currentIndex,
     );
   }
 

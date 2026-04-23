@@ -1,17 +1,14 @@
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/network/auth_token_storage.dart';
 import 'package:cap_app/core/network/network_providers.dart';
-import 'package:cap_app/features/account/presentation/account_screen.dart';
 import 'package:cap_app/features/auth/models/auth_models.dart';
 import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
-import 'package:cap_app/features/cart/presentation/my_items_screen.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
-import 'package:cap_app/features/catalog/presentation/supermarkets_screen.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -194,89 +191,54 @@ void main() {
     expect(find.textContaining('Tinex'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('home back press opens exit confirmation dialog', (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authSessionProvider.overrideWith(_FakeAuthSessionController.new),
-          productListProvider.overrideWith((ref) async => const []),
-        ],
-        child: const MaterialApp(home: HomeScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-
-    expect(find.text('Exit app?'), findsOneWidget);
-    expect(find.text('Do you want to close the app?'), findsOneWidget);
-  });
-
-  testWidgets('my items back press opens exit confirmation dialog', (
+  testWidgets('root tabs back press opens exit confirmation dialog', (
     tester,
   ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          authSessionProvider.overrideWith(_FakeAuthSessionController.new),
+          authSessionProvider.overrideWith(_LoggedInAuthSessionController.new),
+          authTokenStorageProvider.overrideWithValue(_FakeAuthTokenStorage()),
+          productListProvider.overrideWith((ref) async => const []),
           recentCartItemsProvider.overrideWith(
             _FakeRecentCartItemsNotifier.new,
           ),
-        ],
-        child: const MaterialApp(home: MyItemsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-
-    expect(find.text('Exit app?'), findsOneWidget);
-    expect(find.text('Do you want to close the app?'), findsOneWidget);
-  });
-
-  testWidgets('markets back press opens exit confirmation dialog', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authSessionProvider.overrideWith(_FakeAuthSessionController.new),
           supermarketsProvider.overrideWith(
             (ref) async => const <SupermarketDto>[],
           ),
         ],
-        child: const MaterialApp(home: SupermarketsScreen()),
+        child: Consumer(
+          builder: (context, ref, child) {
+            final router = ref.watch(appRouterProvider);
+            return MaterialApp.router(routerConfig: router);
+          },
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.binding.handlePopRoute();
+    Future<void> expectExitDialogThenCancel() async {
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Exit app?'), findsOneWidget);
+      expect(find.text('Do you want to close the app?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+    }
+
+    await expectExitDialogThenCancel();
+
+    await tester.tap(find.byIcon(Icons.checklist_outlined));
     await tester.pumpAndSettle();
+    await expectExitDialogThenCancel();
 
-    expect(find.text('Exit app?'), findsOneWidget);
-    expect(find.text('Do you want to close the app?'), findsOneWidget);
-  });
-
-  testWidgets('account back press opens exit confirmation dialog', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authSessionProvider.overrideWith(_FakeAuthSessionController.new),
-        ],
-        child: const MaterialApp(home: AccountScreen()),
-      ),
-    );
+    await tester.tap(find.byIcon(Icons.local_grocery_store_outlined));
     await tester.pumpAndSettle();
+    await expectExitDialogThenCancel();
 
-    await tester.binding.handlePopRoute();
+    await tester.tap(find.byIcon(Icons.person_outline));
     await tester.pumpAndSettle();
-
-    expect(find.text('Exit app?'), findsOneWidget);
-    expect(find.text('Do you want to close the app?'), findsOneWidget);
+    await expectExitDialogThenCancel();
   });
 }
 
