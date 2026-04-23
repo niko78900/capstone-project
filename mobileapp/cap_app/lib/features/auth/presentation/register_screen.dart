@@ -1,6 +1,8 @@
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/errors/app_exception.dart';
+import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
+import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -203,16 +205,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   void _applyError(Object error) {
+    final debugModeEnabled = ref.read(debugModeEnabledProvider);
     if (error is AppException) {
       setState(() {
-        _serverMessage = error.message;
+        _serverMessage = formatErrorMessageForUi(
+          error,
+          debugModeEnabled: debugModeEnabled,
+        );
         _fieldErrors = error.fieldErrors;
       });
       return;
     }
 
     setState(() {
-      _serverMessage = 'Registration failed. Please try again.';
+      _serverMessage = formatErrorMessageForUi(
+        error,
+        debugModeEnabled: debugModeEnabled,
+      );
       _fieldErrors = const {};
     });
   }

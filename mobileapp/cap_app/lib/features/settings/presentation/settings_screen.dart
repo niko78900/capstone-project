@@ -17,6 +17,10 @@ class SettingsScreen extends ConsumerWidget {
       data: (value) => value.submissionDecisionNotificationsEnabled,
       orElse: () => true,
     );
+    final debugModeEnabled = settings.maybeWhen(
+      data: (value) => value.debugModeEnabled,
+      orElse: () => false,
+    );
     final loading = settings.isLoading;
 
     return BackToHomeScope(
@@ -86,6 +90,21 @@ class SettingsScreen extends ConsumerWidget {
                       await ref
                           .read(appSettingsProvider.notifier)
                           .setSubmissionDecisionNotificationsEnabled(value);
+                    },
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              title: const Text('Debug mode'),
+              subtitle: const Text(
+                'Show technical exception details together with user-friendly errors.',
+              ),
+              value: debugModeEnabled,
+              onChanged: loading
+                  ? null
+                  : (value) async {
+                      await ref
+                          .read(appSettingsProvider.notifier)
+                          .setDebugModeEnabled(value);
                     },
             ),
           ],

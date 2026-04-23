@@ -1,6 +1,8 @@
 import 'package:cap_app/app/app_router.dart';
+import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
+import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,7 @@ class CartScreen extends ConsumerWidget {
     final cartAsync = ref.watch(cartNotifierProvider);
     final compareState = ref.watch(cartComparisonControllerProvider);
     final isComparing = compareState.isLoading;
+    final debugModeEnabled = ref.watch(debugModeEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -30,7 +33,13 @@ class CartScreen extends ConsumerWidget {
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('Failed to load cart: $error'),
+            child: Text(
+              formatErrorMessageForUi(
+                error,
+                debugModeEnabled: debugModeEnabled,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
         data: (items) {

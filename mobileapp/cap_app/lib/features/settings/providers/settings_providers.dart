@@ -8,20 +8,24 @@ class AppSettings {
   const AppSettings({
     required this.submissionDecisionNotificationsEnabled,
     required this.themePreference,
+    required this.debugModeEnabled,
   });
 
   final bool submissionDecisionNotificationsEnabled;
   final AppThemePreference themePreference;
+  final bool debugModeEnabled;
 
   AppSettings copyWith({
     bool? submissionDecisionNotificationsEnabled,
     AppThemePreference? themePreference,
+    bool? debugModeEnabled,
   }) {
     return AppSettings(
       submissionDecisionNotificationsEnabled:
           submissionDecisionNotificationsEnabled ??
           this.submissionDecisionNotificationsEnabled,
       themePreference: themePreference ?? this.themePreference,
+      debugModeEnabled: debugModeEnabled ?? this.debugModeEnabled,
     );
   }
 }
@@ -47,10 +51,25 @@ final themeModeProvider = Provider<ThemeMode>((ref) {
   );
 });
 
+final debugModeEnabledProvider = Provider<bool>((ref) {
+  final settings = ref.watch(appSettingsProvider);
+  return settings.maybeWhen(
+    data: (value) => value.debugModeEnabled,
+    orElse: () => false,
+  );
+});
+
 class AppSettingsController extends AsyncNotifier<AppSettings> {
   static const _submissionDecisionNotificationsKey =
       'settings_submission_decision_notifications_enabled';
   static const _themePreferenceKey = 'settings_theme_preference';
+  static const _debugModeEnabledKey = 'settings_debug_mode_enabled';
+
+  static const _defaultSettings = AppSettings(
+    submissionDecisionNotificationsEnabled: true,
+    themePreference: AppThemePreference.system,
+    debugModeEnabled: false,
+  );
 
   @override
   Future<AppSettings> build() async {
@@ -60,15 +79,12 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
       submissionDecisionNotificationsEnabled:
           prefs.getBool(_submissionDecisionNotificationsKey) ?? true,
       themePreference: _parseThemePreference(rawThemePreference),
+      debugModeEnabled: prefs.getBool(_debugModeEnabledKey) ?? false,
     );
   }
 
   Future<void> setSubmissionDecisionNotificationsEnabled(bool enabled) async {
-    final current = state.valueOrNull ??
-        const AppSettings(
-          submissionDecisionNotificationsEnabled: true,
-          themePreference: AppThemePreference.system,
-        );
+    final current = state.valueOrNull ?? _defaultSettings;
     final next = current.copyWith(
       submissionDecisionNotificationsEnabled: enabled,
     );
@@ -78,15 +94,19 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
   }
 
   Future<void> setThemePreference(AppThemePreference preference) async {
-    final current = state.valueOrNull ??
-        const AppSettings(
-          submissionDecisionNotificationsEnabled: true,
-          themePreference: AppThemePreference.system,
-        );
+    final current = state.valueOrNull ?? _defaultSettings;
     final next = current.copyWith(themePreference: preference);
     state = AsyncData(next);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_themePreferenceKey, preference.name);
+  }
+
+  Future<void> setDebugModeEnabled(bool enabled) async {
+    final current = state.valueOrNull ?? _defaultSettings;
+    final next = current.copyWith(debugModeEnabled: enabled);
+    state = AsyncData(next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_debugModeEnabledKey, enabled);
   }
 }
 

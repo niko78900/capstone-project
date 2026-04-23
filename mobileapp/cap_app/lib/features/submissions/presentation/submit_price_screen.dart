@@ -1,6 +1,8 @@
 import 'package:cap_app/core/errors/app_exception.dart';
+import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
+import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
@@ -44,6 +46,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
     final supermarketsAsync = ref.watch(supermarketsProvider);
     final submitState = ref.watch(priceSubmissionControllerProvider);
     final isSubmitting = submitState.isLoading;
+    final debugModeEnabled = ref.watch(debugModeEnabledProvider);
 
     return BackToHomeScope(
       child: Scaffold(
@@ -71,8 +74,12 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
                   ),
                   loading: () =>
                       const _LoadingField(label: 'Loading products...'),
-                  error: (error, _) =>
-                      _ErrorField(message: 'Failed to load products: $error'),
+                  error: (error, _) => _ErrorField(
+                    message: formatErrorMessageForUi(
+                      error,
+                      debugModeEnabled: debugModeEnabled,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 supermarketsAsync.when(
@@ -87,7 +94,10 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
                   loading: () =>
                       const _LoadingField(label: 'Loading supermarkets...'),
                   error: (error, _) => _ErrorField(
-                    message: 'Failed to load supermarkets: $error',
+                    message: formatErrorMessageForUi(
+                      error,
+                      debugModeEnabled: debugModeEnabled,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -299,15 +309,22 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
   }
 
   void _applyError(Object error) {
+    final debugModeEnabled = ref.read(debugModeEnabledProvider);
     if (error is AppException) {
       setState(() {
-        _serverMessage = error.message;
+        _serverMessage = formatErrorMessageForUi(
+          error,
+          debugModeEnabled: debugModeEnabled,
+        );
         _fieldErrors = error.fieldErrors;
       });
       return;
     }
     setState(() {
-      _serverMessage = 'Could not submit price right now.';
+      _serverMessage = formatErrorMessageForUi(
+        error,
+        debugModeEnabled: debugModeEnabled,
+      );
       _fieldErrors = const {};
     });
   }

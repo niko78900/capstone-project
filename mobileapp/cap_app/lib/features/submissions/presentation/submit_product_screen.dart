@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:cap_app/core/errors/app_exception.dart';
+import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
+import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/features/submissions/utils/ai_draft_merge.dart';
@@ -98,6 +100,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     final submitState = ref.watch(productSubmissionControllerProvider);
     final isSubmitting = submitState.isLoading;
     final isBusy = isSubmitting || _isUploadingImage || _isApplyingAiDraft;
+    final debugModeEnabled = ref.watch(debugModeEnabledProvider);
 
     return BackToHomeScope(
       child: Scaffold(
@@ -277,7 +280,10 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                     loading: () =>
                         const _LoadingField(label: 'Loading supermarkets...'),
                     error: (error, _) => _ErrorField(
-                      message: 'Failed to load supermarkets: $error',
+                      message: formatErrorMessageForUi(
+                        error,
+                        debugModeEnabled: debugModeEnabled,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -592,11 +598,11 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
         );
         drafts[entry.key] = draft;
       } catch (error) {
-        if (error is AppException) {
-          nextWarnings.add('${entry.key.label}: ${error.message}');
-        } else {
-          nextWarnings.add('${entry.key.label}: AI request failed.');
-        }
+        final formatted = formatErrorMessageForUi(
+          error,
+          debugModeEnabled: ref.read(debugModeEnabledProvider),
+        );
+        nextWarnings.add('${entry.key.label}: $formatted');
       }
     }
 
@@ -735,12 +741,15 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
         return null;
       }
       return picked.path;
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return null;
       }
       setState(() {
-        _serverMessage = 'Could not access camera or gallery.';
+        _serverMessage = formatErrorMessageForUi(
+          error,
+          debugModeEnabled: ref.read(debugModeEnabledProvider),
+        );
       });
       return null;
     }
@@ -875,15 +884,22 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   }
 
   void _applyError(Object error) {
+    final debugModeEnabled = ref.read(debugModeEnabledProvider);
     if (error is AppException) {
       setState(() {
-        _serverMessage = error.message;
+        _serverMessage = formatErrorMessageForUi(
+          error,
+          debugModeEnabled: debugModeEnabled,
+        );
         _fieldErrors = error.fieldErrors;
       });
       return;
     }
     setState(() {
-      _serverMessage = 'Could not submit product right now.';
+      _serverMessage = formatErrorMessageForUi(
+        error,
+        debugModeEnabled: debugModeEnabled,
+      );
       _fieldErrors = const {};
     });
   }
