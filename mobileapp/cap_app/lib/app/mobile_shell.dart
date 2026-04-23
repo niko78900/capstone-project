@@ -34,7 +34,7 @@ class MobileShellScaffold extends StatelessWidget {
             ),
             _ShellNavItem(
               icon: Icons.local_grocery_store_outlined,
-              label: 'Supermarkets',
+              label: 'Markets',
               selected: navigationShell.currentIndex == 2,
               onTap: () => _onSelectBranch(2),
             ),

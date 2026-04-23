@@ -27,8 +27,13 @@ class ProductDetailScreen extends ConsumerWidget {
         body: AsyncValueView<ProductDetailDto>(
           value: detailAsync,
           loadingMessage: 'Loading product details...',
+          onRefresh: () async {
+            ref.invalidate(productDetailProvider(productId));
+            await ref.read(productDetailProvider(productId).future);
+          },
           data: (detail) {
             return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
                 Text(

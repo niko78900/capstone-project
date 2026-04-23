@@ -89,6 +89,7 @@ class _SupermarketProductsScreenState
             child: AsyncValueView<List<ProductSummaryDto>>(
               value: productsAsync,
               loadingMessage: 'Loading items...',
+              onRefresh: _refresh,
               data: (products) {
                 if (products.isEmpty) {
                   return RefreshIndicator(

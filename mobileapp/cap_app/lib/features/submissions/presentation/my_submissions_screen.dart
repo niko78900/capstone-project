@@ -36,6 +36,10 @@ class MySubmissionsScreen extends ConsumerWidget {
         body: AsyncValueView<List<SubmissionResponse>>(
           value: submissionsAsync,
           loadingMessage: 'Loading your submissions...',
+          onRefresh: () async {
+            ref.invalidate(mySubmissionsProvider);
+            await ref.read(mySubmissionsProvider.future);
+          },
           data: (items) {
             if (items.isEmpty) {
               return const Center(
@@ -51,6 +55,7 @@ class MySubmissionsScreen extends ConsumerWidget {
                 await ref.read(mySubmissionsProvider.future);
               },
               child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(12),
                 itemCount: items.length,
                 separatorBuilder: (_, index) => const SizedBox(height: 10),

@@ -1,6 +1,9 @@
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/errors/app_exception.dart';
+import 'package:cap_app/core/errors/error_presenter.dart';
+import 'package:cap_app/core/network/network_providers.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
+import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +19,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedCredentials();
+  }
 
   @override
   void dispose() {
@@ -27,8 +37,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authSessionProvider);
+    final debugModeEnabled = ref.watch(debugModeEnabledProvider);
     final isLoading = authState.isLoading;
-    final authError = _resolveError(authState.asError?.error);
+    final authError = _resolveError(
+      authState.asError?.error,
+      debugModeEnabled: debugModeEnabled,
+    );
     final fieldErrors = authError?.fieldErrors ?? const <String, String>{};
     final serverMessage = authError?.message;
 
@@ -90,6 +104,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 6),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _rememberMe,
+                      onChanged: isLoading
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _rememberMe = value ?? false;
+                              });
+                            },
+                      title: const Text('Remember me?'),
+                    ),
                     if (serverMessage != null) ...[
                       const SizedBox(height: 12),
                       Text(
@@ -146,24 +174,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    await _syncRememberedCredentials();
     if (mounted && state.valueOrNull != null) {
       context.go(AppRoutes.shop);
     }
   }
 
-  _AuthUiError? _resolveError(Object? error) {
+  Future<void> _loadRememberedCredentials() async {
+    final storage = ref.read(authTokenStorageProvider);
+    final remembered = await storage.readRememberedCredentials();
+    if (!mounted || remembered == null) {
+      return;
+    }
+
+    setState(() {
+      _emailController.text = remembered.email;
+      _passwordController.text = remembered.password;
+      _rememberMe = true;
+    });
+  }
+
+  Future<void> _syncRememberedCredentials() async {
+    final storage = ref.read(authTokenStorageProvider);
+    if (_rememberMe) {
+      await storage.saveRememberedCredentials(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      return;
+    }
+    await storage.clearRememberedCredentials();
+  }
+
+  _AuthUiError? _resolveError(Object? error, {required bool debugModeEnabled}) {
     if (error == null) {
       return null;
     }
 
     if (error is AppException) {
       return _AuthUiError(
-        message: error.message,
+        message: formatErrorMessageForUi(
+          error,
+          debugModeEnabled: debugModeEnabled,
+        ),
         fieldErrors: error.fieldErrors,
       );
     }
 
-    return const _AuthUiError(message: 'Login failed. Please try again.');
+    return _AuthUiError(
+      message: formatErrorMessageForUi(
+        error,
+        debugModeEnabled: debugModeEnabled,
+      ),
+    );
   }
 }
 

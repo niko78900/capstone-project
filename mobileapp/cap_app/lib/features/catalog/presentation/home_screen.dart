@@ -106,6 +106,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: AsyncValueView<List<ProductSummaryDto>>(
                   value: productsAsync,
                   loadingMessage: 'Loading products...',
+                  onRefresh: () async {
+                    ref.invalidate(productListProvider);
+                    await ref.read(productListProvider.future);
+                  },
                   data: (products) {
                     return RefreshIndicator(
                       onRefresh: () async {
