@@ -25,7 +25,12 @@
     <div class="filter-field">
       <p class="filter-field-label">Search</p>
       <mat-form-field appearance="outline">
-        <input matInput [formControl]="searchControl" placeholder="Search by email or reference" aria-label="Search by email or reference" />
+        <input
+          matInput
+          [formControl]="searchControl"
+          placeholder="Search by email or reference"
+          aria-label="Search by email or reference"
+        />
         <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
     </div>
@@ -64,7 +69,9 @@
 
     <div class="toolbar-actions">
       @if (hasActiveClientFilters()) {
-        <button mat-stroked-button type="button" (click)="clearClientFilters()">Clear filters</button>
+        <button mat-stroked-button type="button" (click)="clearClientFilters()">
+          Clear filters
+        </button>
       } @else {
         <p class="toolbar-hint">Add search or filter criteria to narrow the queue.</p>
       }
@@ -77,9 +84,7 @@
 
   @if (errorMessage(); as errorMessage) {
     <app-empty-state icon="warning" title="Unable to load submissions" [message]="errorMessage">
-      <button mat-stroked-button type="button" (click)="refreshCurrentPage()">
-        Try again
-      </button>
+      <button mat-stroked-button type="button" (click)="refreshCurrentPage()">Try again</button>
     </app-empty-state>
   }
 
@@ -87,12 +92,16 @@
     <app-empty-state
       icon="rule"
       title="No submissions"
-      [message]="hasActiveClientFilters()
-        ? 'No submissions match the current filters. Clear filters or switch status.'
-        : 'No submissions matched the selected status.'"
+      [message]="
+        hasActiveClientFilters()
+          ? 'No submissions match the current filters. Clear filters or switch status.'
+          : 'No submissions matched the selected status.'
+      "
     >
       @if (hasActiveClientFilters()) {
-        <button mat-stroked-button type="button" (click)="clearClientFilters()">Clear filters</button>
+        <button mat-stroked-button type="button" (click)="clearClientFilters()">
+          Clear filters
+        </button>
       }
     </app-empty-state>
   }
@@ -101,10 +110,20 @@
     <section class="pagination-toolbar" aria-label="Submissions pagination">
       <p class="pagination-summary">{{ paginationSummary() }}</p>
       <div class="pagination-actions">
-        <button mat-stroked-button type="button" (click)="goToPreviousPage()" [disabled]="!canGoToPreviousPage()">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="goToPreviousPage()"
+          [disabled]="!canGoToPreviousPage()"
+        >
           Previous
         </button>
-        <button mat-stroked-button type="button" (click)="goToNextPage()" [disabled]="!canGoToNextPage()">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="goToNextPage()"
+          [disabled]="!canGoToNextPage()"
+        >
           Next
         </button>
       </div>
@@ -122,7 +141,9 @@
       >
         <mat-card-header class="submission-head">
           <div class="head-main">
-            <mat-card-title>Ref {{ submissionReference(submission) }} - {{ submission.type }}</mat-card-title>
+            <mat-card-title
+              >Ref {{ submissionReference(submission) }} - {{ submission.type }}</mat-card-title
+            >
             <mat-card-subtitle>
               {{ submission.submittedByEmail }} | Created {{ displayDate(submission.createdAt) }}
             </mat-card-subtitle>
@@ -169,12 +190,16 @@
 
           <div class="notes-block">
             <p class="notes"><strong>Submitter note:</strong> {{ submission.notes || '-' }}</p>
-            <p class="notes"><strong>Moderator decision note:</strong> {{ submission.reviewReason || '-' }}</p>
+            <p class="notes">
+              <strong>Moderator decision note:</strong> {{ submission.reviewReason || '-' }}
+            </p>
           </div>
 
           @if (evidenceImageUrl(submission); as evidenceImageUrl) {
             <div class="evidence-preview">
-              <a [href]="evidenceImageUrl" target="_blank" rel="noopener noreferrer">Open evidence image</a>
+              <a [href]="evidenceImageUrl" target="_blank" rel="noopener noreferrer"
+                >Open evidence image</a
+              >
               <img [src]="evidenceImageUrl" alt="Submission evidence image preview" />
             </div>
           }
@@ -216,13 +241,18 @@
                     @for (row of rows; track row.key) {
                       <div class="diff-row" [class.diff-row-changed]="row.changed">
                         <div class="diff-cell diff-field">{{ row.label }}</div>
-                        <div class="diff-cell diff-before" [class.diff-before-changed]="row.changed">
+                        <div
+                          class="diff-cell diff-before"
+                          [class.diff-before-changed]="row.changed"
+                        >
                           {{ row.before }}
                         </div>
                         <div
                           class="diff-cell diff-after"
                           [class.diff-after-changed]="row.changed"
-                          [class.diff-after-rejected]="row.changed && submission.status === 'REJECTED'"
+                          [class.diff-after-rejected]="
+                            row.changed && submission.status === 'REJECTED'
+                          "
                         >
                           {{ row.after }}
                         </div>
@@ -238,11 +268,19 @@
         @if (submission.status === 'PENDING') {
           <mat-card-actions class="actions">
             <button
+              mat-stroked-button
+              type="button"
+              (click)="onEditPayload(submission)"
+              [disabled]="processingSubmissionId() !== null || patchingSubmissionId() !== null"
+            >
+              {{ isPatchingSubmission(submission.id) ? 'Saving patch...' : 'Edit fields' }}
+            </button>
+            <button
               mat-flat-button
               color="primary"
               type="button"
               (click)="onApprove(submission)"
-              [disabled]="processingSubmissionId() !== null"
+              [disabled]="processingSubmissionId() !== null || patchingSubmissionId() !== null"
             >
               {{ isProcessingDecision(submission.id, 'approve') ? 'Approving...' : 'Approve' }}
             </button>
@@ -251,7 +289,7 @@
               color="warn"
               type="button"
               (click)="onReject(submission)"
-              [disabled]="processingSubmissionId() !== null"
+              [disabled]="processingSubmissionId() !== null || patchingSubmissionId() !== null"
             >
               {{ isProcessingDecision(submission.id, 'reject') ? 'Rejecting...' : 'Reject' }}
             </button>

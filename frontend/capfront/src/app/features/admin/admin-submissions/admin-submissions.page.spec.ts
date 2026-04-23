@@ -59,6 +59,7 @@ describe('AdminSubmissionsPageComponent', () => {
     moderationService = jasmine.createSpyObj<ModerationService>('ModerationService', [
       'listSubmissions',
       'getSubmission',
+      'patchSubmissionPayload',
       'approve',
       'reject',
     ]);
@@ -104,6 +105,22 @@ describe('AdminSubmissionsPageComponent', () => {
         action: 'APPROVED',
         reason: null,
         reviewedAt: new Date().toISOString(),
+      }),
+    );
+
+    moderationService.patchSubmissionPayload.and.returnValue(
+      of({
+        submission: {
+          ...pendingSubmission,
+          contributorScore: 3,
+          aiSummary: null,
+          payload: {
+            ...pendingSubmission.payload,
+            name: 'Banana edited in queue',
+          },
+          updatedAt: '2026-04-17T08:30:00Z',
+        },
+        changedFieldCount: 1,
       }),
     );
 
@@ -200,5 +217,29 @@ describe('AdminSubmissionsPageComponent', () => {
     component.onReject(pendingSubmission);
 
     expect(moderationService.reject).toHaveBeenCalledWith(10, 'wrong barcode');
+  });
+
+  it('patches submission payload when edit dialog returns updated payload', () => {
+    dialog.open.and.returnValue({
+      afterClosed: () =>
+        of({
+          payload: {
+            ...pendingSubmission.payload,
+            name: 'Banana edited in queue',
+          },
+          editReason: 'Fix typo',
+        }),
+    } as never);
+
+    component.onEditPayload(pendingSubmission);
+
+    expect(moderationService.patchSubmissionPayload).toHaveBeenCalledWith(10, {
+      payload: {
+        ...pendingSubmission.payload,
+        name: 'Banana edited in queue',
+      },
+      editReason: 'Fix typo',
+      expectedUpdatedAt: pendingSubmission.updatedAt,
+    });
   });
 });

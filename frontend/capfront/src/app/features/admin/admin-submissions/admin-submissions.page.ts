@@ -22,7 +22,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { ProductDetailDto } from '../../../core/models/catalog.model';
-import { mapApiError } from '../../../core/models/api-error.model';
+import { fieldErrorMap, mapApiError } from '../../../core/models/api-error.model';
 import {
   ModerationAiSummary,
   ModerationSubmissionDto,
@@ -37,6 +37,10 @@ import { FilterToolbarComponent } from '../../../shared/components/filter-toolba
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { DecisionDialogComponent } from './decision-dialog.component';
+import {
+  PayloadEditDialogComponent,
+  PayloadEditDialogResult,
+} from './payload-edit-dialog.component';
 
 interface SubmissionDiffRow {
   key: string;
@@ -108,6 +112,7 @@ export class AdminSubmissionsPageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly processingSubmissionId = signal<number | null>(null);
   readonly processingAction = signal<'approve' | 'reject' | null>(null);
+  readonly patchingSubmissionId = signal<number | null>(null);
   readonly payloadModeBySubmission = signal<Record<number, 'details' | 'json'>>({});
   readonly productDetailsById = signal<Record<number, ProductDetailDto | null>>({});
   readonly aiSummaryBySubmissionId = signal<Record<number, ModerationAiSummary | null>>({});
@@ -158,11 +163,7 @@ export class AdminSubmissionsPageComponent {
     });
 
     this.searchControl.valueChanges
-      .pipe(
-        debounceTime(260),
-        distinctUntilChanged(),
-        takeUntilDestroyed(this.destroyRef),
-      )
+      .pipe(debounceTime(260), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((query) => {
         this.searchQuery.set(query);
         if (this.syncingFromRoute) {
@@ -172,37 +173,31 @@ export class AdminSubmissionsPageComponent {
         this.pushRouteState();
       });
 
-    this.statusControl.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        if (this.syncingFromRoute) {
-          return;
-        }
-        this.pageIndex.set(0);
-        this.pushRouteState();
-      });
+    this.statusControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.syncingFromRoute) {
+        return;
+      }
+      this.pageIndex.set(0);
+      this.pushRouteState();
+    });
 
-    this.typeControl.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((type) => {
-        this.selectedType.set(type);
-        if (this.syncingFromRoute) {
-          return;
-        }
-        this.pageIndex.set(0);
-        this.pushRouteState();
-      });
+    this.typeControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((type) => {
+      this.selectedType.set(type);
+      if (this.syncingFromRoute) {
+        return;
+      }
+      this.pageIndex.set(0);
+      this.pushRouteState();
+    });
 
-    this.sortControl.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((sort) => {
-        this.selectedSort.set(sort);
-        if (this.syncingFromRoute) {
-          return;
-        }
-        this.pageIndex.set(0);
-        this.pushRouteState();
-      });
+    this.sortControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((sort) => {
+      this.selectedSort.set(sort);
+      if (this.syncingFromRoute) {
+        return;
+      }
+      this.pageIndex.set(0);
+      this.pushRouteState();
+    });
 
     this.pageSizeControl.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -322,6 +317,66 @@ export class AdminSubmissionsPageComponent {
     this.openDecisionDialog('reject', submission);
   }
 
+  onEditPayload(submission: ModerationSubmissionDto): void {
+    if (submission.status !== 'PENDING' || this.patchingSubmissionId() !== null) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(PayloadEditDialogComponent, {
+      width: '760px',
+      maxWidth: '95vw',
+      panelClass: 'decision-dialog-panel',
+      data: {
+        submissionId: submission.id,
+        submissionRef: this.submissionReference(submission),
+        initialPayloadJson: this.formatPayload(submission.payload),
+      },
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(
+        filter((result): result is PayloadEditDialogResult => result !== undefined),
+        switchMap((result) => {
+          this.patchingSubmissionId.set(submission.id);
+          return this.moderationService
+            .patchSubmissionPayload(submission.id, {
+              payload: result.payload,
+              editReason: result.editReason,
+              expectedUpdatedAt: submission.updatedAt,
+            })
+            .pipe(
+              catchError((error: unknown) => {
+                const apiError = mapApiError(error);
+                const fieldErrors = fieldErrorMap(apiError);
+                const firstFieldError = Object.entries(fieldErrors)[0];
+                const message = firstFieldError
+                  ? `${apiError.message} (${firstFieldError[0]}: ${firstFieldError[1]})`
+                  : apiError.message;
+                this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+                if (apiError.status === 409) {
+                  this.loadSubmissionsFromServer();
+                }
+                return of(null);
+              }),
+              finalize(() => this.patchingSubmissionId.set(null)),
+            );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((result) => {
+        if (!result) {
+          return;
+        }
+        this.snackBar.open(
+          `Submission ${this.submissionReference(submission)} patched (${result.changedFieldCount} field(s)).`,
+          'Dismiss',
+          { duration: 3200 },
+        );
+        this.loadSubmissionsFromServer();
+      });
+  }
+
   clearClientFilters(): void {
     this.searchControl.setValue('');
     this.typeControl.setValue('ALL');
@@ -389,6 +444,10 @@ export class AdminSubmissionsPageComponent {
     return this.processingSubmissionId() === submissionId && this.processingAction() === mode;
   }
 
+  isPatchingSubmission(submissionId: number): boolean {
+    return this.patchingSubmissionId() === submissionId;
+  }
+
   submissionReference(submission: ModerationSubmissionDto): string {
     const typePrefix = this.typePrefix(submission.type);
     const dateKey = this.dateKey(submission.createdAt);
@@ -407,12 +466,8 @@ export class AdminSubmissionsPageComponent {
     const requestedPageRaw = Number(params.get('page') ?? '0');
     const requestedSizeRaw = Number(params.get('size') ?? '10');
     const requestedPage =
-      Number.isFinite(requestedPageRaw) && requestedPageRaw >= 0
-        ? Math.floor(requestedPageRaw)
-        : 0;
-    const requestedSize = this.pageSizeOptions.includes(requestedSizeRaw)
-      ? requestedSizeRaw
-      : 10;
+      Number.isFinite(requestedPageRaw) && requestedPageRaw >= 0 ? Math.floor(requestedPageRaw) : 0;
+    const requestedSize = this.pageSizeOptions.includes(requestedSizeRaw) ? requestedSizeRaw : 10;
 
     this.syncingFromRoute = true;
     this.statusControl.setValue(requestedStatus, { emitEvent: false });
@@ -510,7 +565,10 @@ export class AdminSubmissionsPageComponent {
     return trimmed;
   }
 
-  private openDecisionDialog(mode: 'approve' | 'reject', submission: ModerationSubmissionDto): void {
+  private openDecisionDialog(
+    mode: 'approve' | 'reject',
+    submission: ModerationSubmissionDto,
+  ): void {
     const submissionRef = this.submissionReference(submission);
     const dialogRef = this.dialog.open(DecisionDialogComponent, {
       width: '420px',
@@ -635,15 +693,15 @@ export class AdminSubmissionsPageComponent {
 
     const sourceProductId = this.asNumber(payload['sourceProductId']);
     const isCreate = sourceProductId == null;
-    const current = sourceProductId == null ? null : this.productDetailsById()[sourceProductId] ?? null;
+    const current =
+      sourceProductId == null ? null : (this.productDetailsById()[sourceProductId] ?? null);
     const canCompare = !isCreate && current != null;
     const beforeFallback = isCreate ? '-' : this.snapshotPlaceholder(sourceProductId, current);
     const submittedSupermarketId = this.asNumber(payload['supermarketId']);
     const submittedPrice = this.asNumber(payload['price']);
     const currentPriceForSelectedMarket =
       current?.prices.find(
-        (entry) =>
-          submittedSupermarketId != null && entry.supermarketId === submittedSupermarketId,
+        (entry) => submittedSupermarketId != null && entry.supermarketId === submittedSupermarketId,
       ) ?? null;
 
     const rows: SubmissionDiffRow[] = [];
@@ -652,7 +710,7 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'name',
         'Name',
-        isCreate ? '-' : current?.name ?? beforeFallback,
+        isCreate ? '-' : (current?.name ?? beforeFallback),
         this.asText(payload['name'], '-'),
         { canCompare, forceChanged: isCreate },
       ),
@@ -672,7 +730,7 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'category',
         'Category',
-        isCreate ? '-' : current?.category ?? beforeFallback,
+        isCreate ? '-' : (current?.category ?? beforeFallback),
         this.categoryName(payload['categoryId']),
         { canCompare, forceChanged: isCreate },
       ),
@@ -703,7 +761,10 @@ export class AdminSubmissionsPageComponent {
         'price',
         'Price',
         currentPriceForSelectedMarket
-          ? this.formatMoney(currentPriceForSelectedMarket.price, currentPriceForSelectedMarket.currency)
+          ? this.formatMoney(
+              currentPriceForSelectedMarket.price,
+              currentPriceForSelectedMarket.currency,
+            )
           : isCreate
             ? '-'
             : 'No current price',
@@ -806,10 +867,11 @@ export class AdminSubmissionsPageComponent {
 
     const productId = this.asNumber(payload['productId']);
     const supermarketId = this.asNumber(payload['supermarketId']);
-    const current = productId == null ? null : this.productDetailsById()[productId] ?? null;
+    const current = productId == null ? null : (this.productDetailsById()[productId] ?? null);
     const currentPrice =
-      current?.prices.find((entry) => supermarketId != null && entry.supermarketId === supermarketId) ??
-      null;
+      current?.prices.find(
+        (entry) => supermarketId != null && entry.supermarketId === supermarketId,
+      ) ?? null;
 
     const rows: SubmissionDiffRow[] = [];
 
@@ -837,7 +899,9 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'price',
         'Price',
-        currentPrice ? this.formatMoney(currentPrice.price, currentPrice.currency) : 'No verified price',
+        currentPrice
+          ? this.formatMoney(currentPrice.price, currentPrice.currency)
+          : 'No verified price',
         this.formatMoney(this.asNumber(payload['price']), currentPrice?.currency ?? 'MKD'),
         { canCompare: currentPrice != null },
       ),
@@ -864,7 +928,7 @@ export class AdminSubmissionsPageComponent {
 
     const productId = this.asNumber(payload['productId']);
     const submittedNutrition = this.asRecord(payload['nutrition']);
-    const current = productId == null ? null : this.productDetailsById()[productId] ?? null;
+    const current = productId == null ? null : (this.productDetailsById()[productId] ?? null);
     const currentNutrition = current?.nutrition;
     const canCompare = currentNutrition != null && submittedNutrition != null;
 
