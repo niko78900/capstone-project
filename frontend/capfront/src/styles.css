@@ -131,6 +131,16 @@ body.dark-theme {
   --field-label-focus: #cdf5e8;
   --field-placeholder: #9db8ae;
   --field-icon: #9dbeb1;
+  --mat-form-field-outlined-input-text-color: var(--field-input);
+  --mat-form-field-outlined-input-text-placeholder-color: var(--field-placeholder);
+  --mat-form-field-outlined-label-text-color: var(--field-label);
+  --mat-form-field-outlined-hover-label-text-color: var(--field-label-focus);
+  --mat-form-field-outlined-focus-label-text-color: var(--field-label-focus);
+  --mat-form-field-outlined-outline-color: var(--field-border);
+  --mat-form-field-outlined-hover-outline-color: var(--field-border-focus);
+  --mat-form-field-outlined-focus-outline-color: var(--field-border-focus);
+  --mat-form-field-leading-icon-color: var(--field-icon);
+  --mat-form-field-trailing-icon-color: var(--field-icon);
 }
 
 body.dark-theme .mat-mdc-button,
