@@ -1,19 +1,114 @@
 # Supermarket API Backend
 
-Spring Boot backend for the capstone supermarket platform.
+Core Spring Boot API for Skopje Price Compass. This page follows the same documentation style as the repository main page and focuses on backend ownership, status, and contracts.
 
-## Scope
+## Documentation Scope
 
-- Auth (register/login, JWT)
-- Public catalog (products, product detail, supermarkets)
-- User submissions (product, price, image upload, my submissions)
-- Admin moderation (queue, detail, approve/reject, payload patch audit, history)
-- Cart single-supermarket comparison
-- Rewards and contributor leaderboard
-- AI-assisted draft extraction and moderation hints
-- Admin CSV catalog import (dry-run and commit)
+- This README documents backend behavior, interfaces, and quality state.
+- Secret values and environment-specific credentials are intentionally excluded.
+- Operational notes here are implementation-facing, not deployment playbooks.
 
-## Run
+## Backend Goal
+
+Provide a single authoritative API for:
+
+1. Authentication and authorization
+2. Product/supermarket catalog reads
+3. Crowd submissions and evidence upload
+4. Moderation review/edit/decision workflow
+5. Cart comparison logic
+6. Contributor rewards and leaderboard
+
+## Current Status (At a Glance)
+
+### Implemented
+
+- JWT auth (`register`, `login`) with role-aware authorization
+- Public catalog endpoints for products, details, and supermarkets
+- Submission intake for product, price, and image evidence
+- Admin moderation queue/detail with approve/reject and payload patching
+- Moderation audit history (`submission_edits` + review history endpoint)
+- Rewards stats, leaderboard, and recompute operation
+- AI-assisted submission draft/review endpoints with deterministic fallback
+- CSV import pipeline with dry-run and commit stages
+
+### Partially Implemented / In Progress
+
+- Production-grade AI prompt/version lifecycle governance is still lightweight
+- E2E integration test depth for full moderation/rewards chains is not complete
+- Deployment hardening documentation is present but not finalized as a runbook
+
+### Next Work for Capstone Polish
+
+- Expand negative-path integration tests (conflicts, malformed payloads, AI unavailable)
+- Strengthen operational guardrails and alerting docs
+- Finalize release/rollback checklist documentation
+
+## Architecture Overview
+
+### Primary Modules
+
+- Controllers: `api/v1/auth`, `catalog`, `cart`, `submissions`, `moderation`, `rewards`, `imports`
+- Security: `SecurityConfig`, `JwtAuthenticationFilter`, `JwtService`
+- Services: `SubmissionService`, `ModerationService`, `CartComparisonService`, `RewardsService`, `AiAnalysisService`
+- Persistence: Spring Data JPA + Flyway migrations in `src/main/resources/db/migration`
+
+### Data/Migration Baseline
+
+- Core schema: `V1__create_core_schema.sql`
+- Seed/demo catalog and prices: `V2__seed_catalog_and_prices.sql`
+- Advanced moderation/rewards/import/AI support: `V3__advanced_backend_features.sql`
+
+## API Contract Summary
+
+### Public/User-Facing
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/products`
+- `GET /api/v1/products/{id}`
+- `GET /api/v1/supermarkets`
+- `POST /api/v1/cart/compare/single-supermarket`
+- `POST /api/v1/submissions/product`
+- `POST /api/v1/submissions/price`
+- `POST /api/v1/submissions/images`
+- `GET /api/v1/submissions/me`
+
+### Admin
+
+- `GET /api/v1/admin/submissions` (paged list with status/type/q/page/size/sort)
+- `GET /api/v1/admin/submissions/{id}`
+- `PATCH /api/v1/admin/submissions/{id}/payload`
+- `GET /api/v1/admin/submissions/{id}/history`
+- `POST /api/v1/admin/submissions/{id}/ai-review`
+- `POST /api/v1/admin/submissions/{id}/approve`
+- `POST /api/v1/admin/submissions/{id}/reject`
+- `GET /api/v1/rewards/me`
+- `GET /api/v1/rewards/leaderboard`
+- `POST /api/v1/admin/rewards/recompute`
+- `POST /api/v1/admin/imports/catalog/dry-run`
+- `POST /api/v1/admin/imports/catalog/commit`
+- `GET /api/v1/admin/imports/{jobId}`
+
+### Moderation Patch Behavior
+
+`PATCH /api/v1/admin/submissions/{id}/payload` accepts:
+
+```json
+{
+  "payload": { "...": "replacement payload object" },
+  "editReason": "optional note",
+  "expectedUpdatedAt": "2026-04-17T20:00:00Z"
+}
+```
+
+- Allowed only for `PENDING` submissions
+- Uses optimistic concurrency when `expectedUpdatedAt` is supplied
+- Persists audit history in `submission_edits`
+
+## Operational Notes
+
+### Runtime
 
 From `backend/supermarket-api`:
 
@@ -28,112 +123,41 @@ $env:MANAGEMENT_PORT='8081'
 mvn spring-boot:run -DskipTests
 ```
 
-## AI Configuration
+### Upload Storage
 
-Optional AI extraction is enabled when `APP_OPENAI_API_KEY` is set.
+- Uses `APP_UPLOADS_DIR` / `app.uploads.directory`
+- Validated at startup (directory can be created and written)
+- Container recommendation: persistent mount at `/var/lib/supermarket/uploads`
+
+### Observability
+
+- Actuator exposed on `MANAGEMENT_PORT` (default `8081`)
+- Key endpoints: `/actuator/health`, `/actuator/info`, `/actuator/metrics`, `/actuator/prometheus`
+- Includes `liveness`/`readiness` probes and upload-storage health contributor
+
+### Optional AI Config
 
 - `APP_OPENAI_API_KEY`
 - `APP_OPENAI_MODEL` (default `gpt-4.1-mini`)
-- `APP_OPENAI_CHAT_COMPLETIONS_URL` (default `https://api.openai.com/v1/chat/completions`)
-- `APP_OPENAI_TIMEOUT_MS` (default `15000`)
-- `APP_AI_PROMPT_VERSION` (default `v1`)
+- `APP_OPENAI_CHAT_COMPLETIONS_URL`
+- `APP_OPENAI_TIMEOUT_MS`
+- `APP_AI_PROMPT_VERSION`
 
-If API key is missing, AI endpoints return deterministic `UNAVAILABLE` states and submission creation continues normally.
+If key/config is absent, AI endpoints return deterministic `UNAVAILABLE`-style responses and core submission flows continue.
 
-## Rewards Rules
+## Testing and Quality Snapshot
 
-- Approved `PRODUCT`: `+10`
-- Approved `PRICE`: `+6`
-- Approved `NUTRITION`: `+5`
-- Rejected submission: `-2`
+- Tests are under `src/test/java/...`
+- Typical checks:
 
-## CSV Import Templates
-
-### Products import (`kind=PRODUCTS`)
-
-Headers:
-
-`barcode,name,brand,category,supermarket,price,imageUrl,calories,proteinG,carbsG,fatG,servingSize,observedAt,currency`
-
-Minimum required:
-
-`barcode,name,category,supermarket,price`
-
-### Prices import (`kind=PRICES`)
-
-Headers:
-
-`productBarcode,productName,productBrand,supermarket,price,observedAt,currency`
-
-Minimum required:
-
-`supermarket,price` plus either `productBarcode` or `productName` (+ optional `productBrand`).
-
-## Moderation Payload Patch Contract
-
-Endpoint: `PATCH /api/v1/admin/submissions/{id}/payload`
-
-Request body:
-
-```json
-{
-  "payload": { "...": "replacement payload object" },
-  "editReason": "optional note",
-  "expectedUpdatedAt": "2026-04-17T20:00:00Z"
-}
+```powershell
+mvn test
+mvn verify
 ```
 
-- Works only for `PENDING` submissions.
-- Uses optimistic concurrency when `expectedUpdatedAt` is supplied.
-- Saves an audit record in `submission_edits`.
+- Current gap: broader cross-feature integration coverage for moderation conflict and import edge-cases
 
-## Moderation List Response Contract
+## Related Documentation
 
-`GET /api/v1/admin/submissions` now returns a paged envelope:
-
-```json
-{
-  "items": [/* moderation rows */],
-  "totalElements": 42,
-  "page": 0,
-  "size": 10,
-  "totalPages": 5
-}
-```
-
-## Key Endpoints Added
-
-- `GET /api/v1/admin/submissions` (status/type/q/page/size/sort)
-- `GET /api/v1/admin/submissions/{id}`
-- `PATCH /api/v1/admin/submissions/{id}/payload`
-- `GET /api/v1/admin/submissions/{id}/history`
-- `POST /api/v1/admin/submissions/{id}/ai-review`
-- `POST /api/v1/submissions/product/ai-draft`
-- `GET /api/v1/rewards/me`
-- `GET /api/v1/rewards/leaderboard`
-- `POST /api/v1/admin/rewards/recompute`
-- `POST /api/v1/admin/imports/catalog/dry-run`
-- `POST /api/v1/admin/imports/catalog/commit`
-- `GET /api/v1/admin/imports/{jobId}`
-
-## Upload Storage
-
-- Uploads are stored in `app.uploads.directory` (environment variable: `APP_UPLOADS_DIR`).
-- The application now validates this path at startup (directory exists/created + writable) and fails fast if invalid.
-- In containerized deployment, mount persistent storage to `/var/lib/supermarket/uploads` and set `APP_UPLOADS_DIR` accordingly.
-
-## Observability
-
-- Management server runs on `management.server.port` (environment variable: `MANAGEMENT_PORT`, default `8081`).
-- Exposed actuator endpoints: `/actuator/health`, `/actuator/info`, `/actuator/metrics`, `/actuator/prometheus`.
-- Health probes (`liveness`/`readiness`) are enabled.
-- A custom `uploadsStorage` health contributor reports upload storage readiness.
-
-## Docker Compose
-
-Repository root includes `docker-compose.yml` with:
-
-- `postgres` service (PostgreSQL 16)
-- `api` service (this backend)
-- Named volume for persistent uploads mounted at `/var/lib/supermarket/uploads`
-- Local-only host mapping for management port: `127.0.0.1:18081 -> 8081`
+- Root project overview: `../../README.md`
+- Spring scaffold note: `./HELP.md`

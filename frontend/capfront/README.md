@@ -1,98 +1,65 @@
 # Capfront (Angular Web Frontend)
 
-Angular frontend for the capstone web scope:
+Admin-first Angular web client for Skopje Price Compass. This page follows the same documentation style as the repository main page and focuses on web scope, status, and interfaces.
 
-- Limited **public read-only** catalog browsing
-- **Admin moderation + rewards** dashboard
+## Documentation Scope
 
-The Angular app intentionally stays admin-first on web. Consumer-heavy flows remain in mobile scope.
+- Describes implemented web behavior and contracts with backend.
+- Avoids environment secrets or machine-specific configuration.
+- Keeps user-facing setup concise and implementation notes explicit.
 
-## Scope Implemented
+## Web Goal
 
-### Public routes (no account required)
+Deliver:
 
-- `/products`
-  - searchable catalog (`q`)
-  - product cards with best verified price emphasis
-  - category and best-price-supermarket filters
-  - client-side sort (default/relevance, name, price asc/desc)
-  - robust loading/empty/error states
-- `/products/:id`
-  - full product detail
-  - best-offer hero callout
-  - nutrition highlights
-  - verified supermarket prices table (lowest highlighted)
-  - loading/empty/error states
+1. Public read-only catalog browsing for quick discovery
+2. Full admin moderation workflow on web
+3. Rewards visibility and admin operations for contributor management
 
-### Admin routes (guarded)
+Consumer-heavy shopping flows remain primarily in the mobile app.
 
-- `/admin/login`
-  - admin-only sign-in
-  - clear route-reason notices (`authRequired`, `forbidden`, `sessionExpired`)
-- `/admin`
-  - dashboard summary cards (pending/approved/rejected/total)
-  - queue-health cards (oldest/newest pending, oldest age)
-  - latest pending entries + quick links
-  - top-contributors preview
-- `/admin/submissions`
-  - server-driven moderation queue (status/type/search/page/size/sort query params)
-  - route-query synchronized filters
-  - pending highlighting + status chips
-  - AI hints summary when available
-  - evidence preview for image payloads
-  - side-by-side change preview with raw JSON toggle
-  - approve/reject (pending-only; reject reason required)
-- `/admin/submissions/:id`
-  - direct detail load per id
-  - typed payload editor by submission type (`PRODUCT`/`PRICE`/`NUTRITION`)
-  - optimistic concurrency patch (`expectedUpdatedAt`)
-  - conflict/validation handling with field-level feedback
-  - review history timeline
-  - manual AI review refresh
-  - evidence preview + raw/flattened payload views
-- `/admin/rewards`
-  - contributor leaderboard (windowed)
-  - current user reward stats
-  - admin recompute action
+## Current Status (At a Glance)
 
-## Tech stack
+### Implemented
 
-- Angular 20 standalone APIs
-- Angular Material
-- Signals + reactive forms
-- HttpClient + interceptor-based auth handling
+- Public catalog pages (`/products`, `/products/:id`) with search and rich product detail
+- Admin auth and route guards (`/admin/login`, protected `/admin/*`)
+- Admin dashboard summary and queue health views
+- Moderation queue with server-driven filters, pagination metadata, AI hints, and compare previews
+- Queue-level actions: approve, reject, and payload edit for pending submissions
+- Submission detail page with typed editor, history, AI refresh, and evidence preview
+- Rewards page with leaderboard, my stats, and recompute action
+- Theme toggling and dark-mode support
 
-## Run locally
+### Partially Implemented / In Progress
 
-From `frontend/capfront`:
+- Visual polish continues for a few dense admin views
+- End-to-end browser automation coverage is still limited
 
-```bash
-npm install
-npm start
-```
+### Next Work for Capstone Polish
 
-`proxy.conf.json` forwards `/api` traffic to `http://localhost:8080`.
+- Add stronger e2e coverage for moderation conflict/retry paths
+- Finalize UX consistency pass across all admin states (loading/error/empty/success)
+- Expand accessibility verification and keyboard-flow checks
 
-## Build and test
+## Architecture Overview
 
-```bash
-npm run build
-npm test -- --watch=false --browsers=ChromeHeadless
-```
+### Routing and Feature Areas
 
-If Chrome/Chromium is unavailable on your machine, set `CHROME_BIN` to a valid browser executable.
+- Route definitions: `src/app/app.routes.ts`
+- Public: `features/public/product-list`, `features/public/product-detail`
+- Admin: `features/admin/admin-login`, `admin-dashboard`, `admin-submissions`, `admin-rewards`
 
-## Auth behavior (high level)
+### State and UI Stack
 
-- Public product pages are open.
-- Admin pages are protected by `adminAuthGuard`.
-- Non-admin or unauthenticated access to admin routes redirects to `/admin/login` with context.
-- Bearer token is attached when a session exists.
-- `401` on protected admin API calls clears session and redirects to login with `reason=sessionExpired`.
+- Angular 20 standalone components
+- Angular Material component system
+- Signals for view state + reactive forms for input workflows
+- HttpClient with auth interceptor + route guards
 
-## Backend endpoints used by web app
+## Interface Contracts with Backend
 
-### Public catalog
+### Public Catalog
 
 - `GET /api/v1/products?q=...`
 - `GET /api/v1/products/{id}`
@@ -118,6 +85,42 @@ If Chrome/Chromium is unavailable on your machine, set `CHROME_BIN` to a valid b
 - `GET /api/v1/rewards/leaderboard?window=&limit=`
 - `POST /api/v1/admin/rewards/recompute`
 
-## Known assumptions / limitations
+Additional assumptions are documented in [docs/backend-assumptions.md](./docs/backend-assumptions.md).
 
-See [docs/backend-assumptions.md](./docs/backend-assumptions.md).
+## Auth and Access Behavior
+
+- Public product routes are open.
+- Admin routes require authenticated admin session.
+- Unauthorized/forbidden route access redirects to `/admin/login` with reason context.
+- `401` responses on protected admin API calls clear session and redirect with `reason=sessionExpired`.
+
+## Run and Quality Checks
+
+From `frontend/capfront`:
+
+```bash
+npm install
+npm start
+```
+
+`proxy.conf.json` forwards `/api` requests to `http://localhost:8080`.
+
+Build and test:
+
+```bash
+npm run build
+npm test -- --watch=false --browsers=ChromeHeadless
+```
+
+If Chrome/Chromium is not installed, set `CHROME_BIN` to a valid executable.
+
+## Known Risks and Gaps
+
+- Browser test execution depends on local Chrome availability
+- Moderate CSS complexity in admin submissions page exceeds current style budget threshold
+- Regression risk remains highest around moderation state transitions and payload patch conflicts
+
+## Related Documentation
+
+- Root project overview: `../../README.md`
+- Backend assumptions for web contracts: `./docs/backend-assumptions.md`
