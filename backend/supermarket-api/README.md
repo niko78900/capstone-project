@@ -113,15 +113,15 @@ Provide a single authoritative API for:
 From `backend/supermarket-api`:
 
 ```powershell
+$env:SPRING_PROFILES_ACTIVE='local'
 $env:DB_URL='jdbc:postgresql://localhost:5432/supermarket_db'
-$env:DB_USERNAME='postgres'
-$env:DB_PASSWORD='postgres'
-$env:APP_JWT_SECRET='replace_with_base64_secret'
-$env:APP_ADMIN_BOOTSTRAP_TOKEN='CAPSTONE_ADMIN_SETUP'
 $env:APP_UPLOADS_DIR='uploads'
 $env:MANAGEMENT_PORT='8081'
 mvn spring-boot:run -DskipTests
 ```
+
+- Default profile requires explicit `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`, and `APP_ADMIN_BOOTSTRAP_TOKEN`.
+- `local` profile provides development-only defaults for those values.
 
 ### Upload Storage
 
@@ -132,7 +132,8 @@ mvn spring-boot:run -DskipTests
 ### Observability
 
 - Actuator exposed on `MANAGEMENT_PORT` (default `8081`)
-- Key endpoints: `/actuator/health`, `/actuator/info`, `/actuator/metrics`, `/actuator/prometheus`
+- Anonymous endpoints: `/actuator/health` (and probe paths), `/actuator/info`
+- Admin-authenticated endpoints: `/actuator/metrics`, `/actuator/prometheus`
 - Includes `liveness`/`readiness` probes and upload-storage health contributor
 
 ### Optional AI Config
