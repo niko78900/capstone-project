@@ -35,6 +35,11 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/actuator/metrics",
+                                "/actuator/metrics/**",
+                                "/actuator/prometheus"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/products",
                                 "/api/v1/products/**",
@@ -43,7 +48,9 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/actuator/**"
+                                "/actuator/health",
+                                "/actuator/health/**",
+                                "/actuator/info"
                         ).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
