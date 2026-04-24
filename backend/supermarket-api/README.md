@@ -122,6 +122,7 @@ mvn spring-boot:run -DskipTests
 
 - Default profile requires explicit `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`, and `APP_ADMIN_BOOTSTRAP_TOKEN`.
 - `local` profile provides development-only defaults for those values.
+- Admin bootstrap registration is disabled by default; enable only for controlled local/test use via `APP_AUTH_ALLOW_ADMIN_BOOTSTRAP_REGISTRATION=true`.
 
 ### Upload Storage
 

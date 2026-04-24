@@ -29,8 +29,11 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    @Value("${app.admin.bootstrap-token:CAPSTONE_ADMIN_SETUP}")
+    @Value("${app.admin.bootstrap-token}")
     private String adminBootstrapToken;
+
+    @Value("${app.auth.allow-admin-bootstrap-registration:false}")
+    private boolean allowAdminBootstrapRegistration;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -66,6 +69,9 @@ public class AuthService {
     }
 
     private UserRole resolveRole(String providedToken) {
+        if (!allowAdminBootstrapRegistration) {
+            return UserRole.USER;
+        }
         if (providedToken != null && !providedToken.isBlank() && providedToken.equals(adminBootstrapToken)) {
             return UserRole.ADMIN;
         }
