@@ -11,6 +11,7 @@ import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/features/submissions/utils/ai_draft_merge.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
+import 'package:cap_app/shared/widgets/barcode_asset_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -169,7 +170,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                       suffixIcon: IconButton(
                         tooltip: 'Scan barcode',
                         onPressed: isBusy ? null : _scanBarcodeIntoField,
-                        icon: const Icon(Icons.qr_code_scanner_outlined),
+                        icon: const BarcodeAssetIcon(size: 24),
                       ),
                     ),
                     validator: (value) {

@@ -8,6 +8,7 @@ import 'package:cap_app/features/catalog/presentation/barcode_scanner_screen.dar
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
+import 'package:cap_app/shared/widgets/barcode_asset_icon.dart';
 import 'package:cap_app/shared/widgets/my_items_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -145,7 +146,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const _BarcodeAssetIcon(size: 26),
+                leading: const BarcodeAssetIcon(size: 26),
                 title: const Text('Scan barcode'),
                 subtitle: const Text(
                   'Scan and jump directly to product details',
@@ -301,26 +302,10 @@ class _SearchFieldActions extends StatelessWidget {
           IconButton(
             tooltip: 'Barcode tools',
             onPressed: onOpenBarcodeTools,
-            icon: const _BarcodeAssetIcon(size: 26),
+            icon: const BarcodeAssetIcon(size: 26),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _BarcodeAssetIcon extends StatelessWidget {
-  const _BarcodeAssetIcon({this.size = 26});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/icons/barcode_icon.png',
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
     );
   }
 }

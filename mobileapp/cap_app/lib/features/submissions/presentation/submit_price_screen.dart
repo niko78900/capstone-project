@@ -10,6 +10,7 @@ import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/features/submissions/utils/submission_flow_helpers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
+import 'package:cap_app/shared/widgets/barcode_asset_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -103,7 +104,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: isBusy ? null : _scanBarcode,
-          icon: const Icon(Icons.qr_code_scanner_outlined),
+          icon: const BarcodeAssetIcon(size: 22),
           label: const Text('Scan barcode'),
         ),
         const SizedBox(height: 8),
@@ -157,7 +158,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: isBusy ? null : _scanAgain,
-          icon: const Icon(Icons.qr_code_scanner_outlined),
+          icon: const BarcodeAssetIcon(size: 22),
           label: const Text('Scan again'),
         ),
       ],
@@ -203,7 +204,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: isBusy ? null : _scanAgain,
-          icon: const Icon(Icons.qr_code_scanner_outlined),
+          icon: const BarcodeAssetIcon(size: 22),
           label: const Text('Scan again'),
         ),
       ],
@@ -319,7 +320,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
         const SizedBox(height: 8),
         TextButton.icon(
           onPressed: isBusy ? null : _scanAgain,
-          icon: const Icon(Icons.qr_code_scanner_outlined),
+          icon: const BarcodeAssetIcon(size: 22),
           label: const Text('Scan a different barcode'),
         ),
       ],
