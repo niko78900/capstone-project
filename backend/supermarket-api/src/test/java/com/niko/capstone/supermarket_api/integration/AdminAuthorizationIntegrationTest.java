@@ -60,7 +60,9 @@ class AdminAuthorizationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].name").isArray())
                 .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.hasItem("Kit-go market")))
-                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.hasItem("Kipper")));
+                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.hasItem("Kipper")))
+                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.hasItem("Zur")))
+                .andExpect(jsonPath("$[*].name").value(org.hamcrest.Matchers.hasItem("Reptil")));
     }
 
     private String readToken(MvcResult result) throws Exception {
