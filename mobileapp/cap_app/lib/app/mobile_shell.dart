@@ -111,38 +111,29 @@ class _MobileShellScaffoldState extends State<MobileShellScaffold> {
             children: [
               ListTile(
                 leading: const Icon(Icons.inventory_2_outlined),
-                title: const Text('Submit new product'),
-                subtitle: const Text('Propose a product for moderation.'),
+                title: const Text('Submit a product manually'),
+                subtitle: const Text('Open the full editable product form.'),
                 onTap: () {
                   Navigator.of(modalContext).pop();
                   context.push(AppRoutes.submitProduct);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.fact_check_outlined),
+                title: const Text('Submit a product guided'),
+                subtitle: const Text('Scan first, then follow each step.'),
+                onTap: () {
+                  Navigator.of(modalContext).pop();
+                  context.push(AppRoutes.submitProductGuided);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.price_change_outlined),
-                title: const Text('Submit price update'),
-                subtitle: const Text('Send a verified supermarket price.'),
+                title: const Text('Submit a price update'),
+                subtitle: const Text('Scan a known product and report price.'),
                 onTap: () {
                   Navigator.of(modalContext).pop();
                   context.push(AppRoutes.submitPrice);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.add_a_photo_outlined),
-                title: const Text('Upload / attach product image'),
-                subtitle: const Text(
-                  'Attach image from the product submission form.',
-                ),
-                onTap: () {
-                  Navigator.of(modalContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Open product submission to upload an image.',
-                      ),
-                    ),
-                  );
-                  context.push(AppRoutes.submitProduct);
                 },
               ),
               const SizedBox(height: 10),

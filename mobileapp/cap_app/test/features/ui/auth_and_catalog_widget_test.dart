@@ -161,6 +161,35 @@ void main() {
     expect(find.text('Supermarkets'), findsNothing);
   });
 
+  testWidgets('add action exposes the three submission choices', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authSessionProvider.overrideWith(_LoggedInAuthSessionController.new),
+          authTokenStorageProvider.overrideWithValue(_FakeAuthTokenStorage()),
+          productListProvider.overrideWith((ref) async => const []),
+        ],
+        child: Consumer(
+          builder: (context, ref, child) {
+            final router = ref.watch(appRouterProvider);
+            return MaterialApp.router(routerConfig: router);
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Submit a product manually'), findsOneWidget);
+    expect(find.text('Submit a product guided'), findsOneWidget);
+    expect(find.text('Submit a price update'), findsOneWidget);
+    expect(find.text('Upload / attach product image'), findsNothing);
+  });
+
   testWidgets('home screen renders products from provider', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

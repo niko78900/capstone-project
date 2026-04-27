@@ -12,6 +12,7 @@ import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
 import 'package:cap_app/features/account/presentation/account_screen.dart';
 import 'package:cap_app/features/settings/presentation/settings_screen.dart';
+import 'package:cap_app/features/submissions/presentation/guided_product_submission_screen.dart';
 import 'package:cap_app/features/submissions/presentation/my_submissions_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_price_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_product_screen.dart';
@@ -34,6 +35,7 @@ class AppRoutes {
   static const cart = '/cart';
   static const compareResult = '/compare/result';
   static const submitProduct = '/submit/product';
+  static const submitProductGuided = '/submit/product/guided';
   static const submitPrice = '/submit/price';
   static const submissions = '/submissions';
   static const settings = '/settings';
@@ -174,6 +176,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             initialProduct: prefill,
             prefillBarcode: prefillBarcode,
           );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.submitProductGuided,
+        builder: (context, state) {
+          final prefillMap = state.extra is Map
+              ? state.extra as Map<Object?, Object?>
+              : null;
+          final prefillBarcode = prefillMap?['prefillBarcode']?.toString();
+          return GuidedProductSubmissionScreen(prefillBarcode: prefillBarcode);
         },
       ),
       GoRoute(
