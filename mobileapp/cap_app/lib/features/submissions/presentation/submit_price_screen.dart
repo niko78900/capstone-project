@@ -1,13 +1,20 @@
+import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
+import 'package:cap_app/features/catalog/presentation/barcode_scanner_screen.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
+import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
+import 'package:cap_app/features/submissions/utils/submission_flow_helpers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+enum _PriceUpdateStage { scan, confirm, submit, notFound }
 
 class SubmitPriceScreen extends ConsumerStatefulWidget {
   const SubmitPriceScreen({this.initialProductId, super.key});
@@ -20,174 +27,382 @@ class SubmitPriceScreen extends ConsumerStatefulWidget {
 
 class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _barcodeController = TextEditingController();
   final _priceController = TextEditingController();
 
+  _PriceUpdateStage _stage = _PriceUpdateStage.scan;
+  ProductSummaryDto? _matchedProduct;
   int? _productId;
   int? _supermarketId;
-  DateTime? _observedAt;
+  String? _scannedBarcode;
   String? _serverMessage;
   Map<String, String> _fieldErrors = const {};
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
-    _productId = widget.initialProductId;
+    final initialProductId = widget.initialProductId;
+    if (initialProductId != null) {
+      _productId = initialProductId;
+      _stage = _PriceUpdateStage.submit;
+    }
   }
 
   @override
   void dispose() {
+    _barcodeController.dispose();
     _priceController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final productsAsync = ref.watch(allProductsProvider);
-    final supermarketsAsync = ref.watch(supermarketsProvider);
     final submitState = ref.watch(priceSubmissionControllerProvider);
     final isSubmitting = submitState.isLoading;
-    final debugModeEnabled = ref.watch(debugModeEnabledProvider);
+    final isBusy = isSubmitting || _isSearching;
 
     return BackToHomeScope(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Submit Price')),
+        appBar: AppBar(title: const Text('Submit Price Update')),
         body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(allProductsProvider);
-              ref.invalidate(supermarketsProvider);
-              await Future.wait([
-                ref.read(allProductsProvider.future),
-                ref.read(supermarketsProvider.future),
-              ]);
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                productsAsync.when(
-                  data: (products) => _ProductPickerField(
-                    products: products,
-                    value: _productId,
-                    errorText: _fieldErrors['productId'],
-                    enabled: !isSubmitting,
-                    onTap: () => _pickProduct(products),
-                  ),
-                  loading: () =>
-                      const _LoadingField(label: 'Loading products...'),
-                  error: (error, _) => _ErrorField(
-                    message: formatErrorMessageForUi(
-                      error,
-                      debugModeEnabled: debugModeEnabled,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                supermarketsAsync.when(
-                  data: (supermarkets) => _SupermarketDropdown(
-                    supermarkets: supermarkets,
-                    value: _supermarketId,
-                    errorText: _fieldErrors['supermarketId'],
-                    enabled: !isSubmitting,
-                    onChanged: (value) =>
-                        setState(() => _supermarketId = value),
-                  ),
-                  loading: () =>
-                      const _LoadingField(label: 'Loading supermarkets...'),
-                  error: (error, _) => _ErrorField(
-                    message: formatErrorMessageForUi(
-                      error,
-                      debugModeEnabled: debugModeEnabled,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Price (MKD)',
-                          errorText: _fieldErrors['price'],
-                        ),
-                        validator: (value) {
-                          final parsed = double.tryParse((value ?? '').trim());
-                          if (parsed == null || parsed <= 0) {
-                            return 'Price must be a positive number';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      InkWell(
-                        onTap: isSubmitting ? null : _pickObservedAt,
-                        borderRadius: BorderRadius.circular(8),
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Observed at time',
-                            hintText: 'Tap to select date and time',
-                            errorText: _fieldErrors['observedAt'],
-                            suffixIcon: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_observedAt != null)
-                                  IconButton(
-                                    tooltip: 'Clear date and time',
-                                    onPressed: isSubmitting
-                                        ? null
-                                        : _clearObservedAt,
-                                    icon: const Icon(Icons.close),
-                                  ),
-                                IconButton(
-                                  tooltip: 'Select date and time',
-                                  onPressed: isSubmitting
-                                      ? null
-                                      : _pickObservedAt,
-                                  icon: const Icon(Icons.event),
-                                ),
-                              ],
-                            ),
-                          ),
-                          child: Text(
-                            _observedAt == null
-                                ? 'Tap to choose date and time'
-                                : _formatObservedAt(_observedAt!),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_serverMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _serverMessage!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 18),
-                FilledButton(
-                  onPressed: isSubmitting ? null : _submit,
-                  child: isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Submit price update'),
-                ),
-              ],
-            ),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (_stage == _PriceUpdateStage.scan) _buildScanStage(isBusy),
+              if (_stage == _PriceUpdateStage.confirm)
+                _buildConfirmStage(isBusy),
+              if (_stage == _PriceUpdateStage.notFound)
+                _buildNotFoundStage(isBusy),
+              if (_stage == _PriceUpdateStage.submit) _buildSubmitStage(isBusy),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildScanStage(bool isBusy) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Scan the product barcode to find it in the catalog.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _barcodeController,
+          enabled: !isBusy,
+          decoration: const InputDecoration(
+            labelText: 'Barcode',
+            helperText:
+                'Scan first, or enter the code if scanning is unavailable.',
+          ),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: isBusy ? null : _scanBarcode,
+          icon: const Icon(Icons.qr_code_scanner_outlined),
+          label: const Text('Scan barcode'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: isBusy ? null : _searchTypedBarcode,
+          icon: _isSearching
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.search_outlined),
+          label: const Text('Search barcode'),
+        ),
+        if (_serverMessage != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _serverMessage!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildConfirmStage(bool isBusy) {
+    final product = _matchedProduct;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Confirm the matched product.',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        if (product != null) _ProductSummaryCard(product: product),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: isBusy
+              ? null
+              : () {
+                  setState(() {
+                    _productId = product?.id;
+                    _stage = _PriceUpdateStage.submit;
+                    _serverMessage = null;
+                  });
+                },
+          icon: const Icon(Icons.check_outlined),
+          label: const Text('This is the product'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: isBusy ? null : _scanAgain,
+          icon: const Icon(Icons.qr_code_scanner_outlined),
+          label: const Text('Scan again'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotFoundStage(bool isBusy) {
+    final barcode =
+        _scannedBarcode ?? normalizeBarcodeInput(_barcodeController.text);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Product not found',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'No catalog product matched barcode $barcode. Add the product first or scan again.',
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: isBusy
+              ? null
+              : () => context.push(
+                  AppRoutes.submitProductGuided,
+                  extra: {'prefillBarcode': barcode},
+                ),
+          icon: const Icon(Icons.fact_check_outlined),
+          label: const Text('Submit product guided'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: isBusy
+              ? null
+              : () => context.push(
+                  AppRoutes.submitProduct,
+                  extra: {'prefillBarcode': barcode},
+                ),
+          icon: const Icon(Icons.inventory_2_outlined),
+          label: const Text('Submit product manually'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: isBusy ? null : _scanAgain,
+          icon: const Icon(Icons.qr_code_scanner_outlined),
+          label: const Text('Scan again'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitStage(bool isBusy) {
+    final productId = _productId;
+    if (productId == null) {
+      return _buildScanStage(isBusy);
+    }
+
+    final product = _matchedProduct;
+    final detailAsync = widget.initialProductId == productId && product == null
+        ? ref.watch(productDetailProvider(productId))
+        : null;
+    final supermarketsAsync = ref.watch(supermarketsProvider);
+    final debugModeEnabled = ref.watch(debugModeEnabledProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (detailAsync != null)
+          detailAsync.when(
+            data: (detail) => _ProductDetailCard(detail: detail),
+            loading: () => const _LoadingField(label: 'Loading product...'),
+            error: (error, _) => _ErrorField(
+              message: formatErrorMessageForUi(
+                error,
+                debugModeEnabled: debugModeEnabled,
+              ),
+            ),
+          )
+        else if (product != null)
+          _ProductSummaryCard(product: product)
+        else
+          _UnknownProductCard(productId: productId),
+        const SizedBox(height: 16),
+        Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              supermarketsAsync.when(
+                data: (supermarkets) => DropdownButtonFormField<int>(
+                  key: ValueKey('market-$_supermarketId'),
+                  initialValue: _supermarketId,
+                  decoration: InputDecoration(
+                    labelText: 'Market',
+                    errorText: _fieldErrors['supermarketId'],
+                  ),
+                  items: supermarkets
+                      .map(
+                        (market) => DropdownMenuItem<int>(
+                          value: market.id,
+                          child: Text(market.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: isBusy
+                      ? null
+                      : (value) => setState(() => _supermarketId = value),
+                  validator: (value) =>
+                      value == null ? 'Market is required' : null,
+                ),
+                loading: () => const _LoadingField(label: 'Loading markets...'),
+                error: (error, _) => _ErrorField(
+                  message: formatErrorMessageForUi(
+                    error,
+                    debugModeEnabled: debugModeEnabled,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _priceController,
+                enabled: !isBusy,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Price (MKD)',
+                  errorText: _fieldErrors['price'],
+                ),
+                validator: (value) {
+                  final parsed = double.tryParse((value ?? '').trim());
+                  if (parsed == null || parsed <= 0) {
+                    return 'Price must be a positive number';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        if (_serverMessage != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _serverMessage!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+        const SizedBox(height: 18),
+        FilledButton(
+          onPressed: isBusy ? null : _submit,
+          child: isBusy
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Submit price update'),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: isBusy ? null : _scanAgain,
+          icon: const Icon(Icons.qr_code_scanner_outlined),
+          label: const Text('Scan a different barcode'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _scanBarcode() async {
+    final scannedValue = await scanBarcodeWithDevice(context);
+    if (!mounted) {
+      return;
+    }
+    final normalized = normalizeBarcodeInput(scannedValue ?? '');
+    if (normalized.isEmpty) {
+      return;
+    }
+    _barcodeController.text = normalized;
+    await _lookupBarcode(normalized);
+  }
+
+  Future<void> _searchTypedBarcode() async {
+    final normalized = normalizeBarcodeInput(_barcodeController.text);
+    if (normalized.isEmpty) {
+      setState(() => _serverMessage = 'Enter or scan a barcode first.');
+      return;
+    }
+    await _lookupBarcode(normalized);
+  }
+
+  Future<void> _lookupBarcode(String barcode) async {
+    setState(() {
+      _isSearching = true;
+      _serverMessage = null;
+      _fieldErrors = const {};
+      _matchedProduct = null;
+      _productId = null;
+      _scannedBarcode = barcode;
+    });
+
+    try {
+      final results = await ref
+          .read(catalogRepositoryProvider)
+          .getProducts(query: barcode);
+      if (!mounted) {
+        return;
+      }
+      final match = findExactBarcodeMatch(
+        scannedValue: barcode,
+        searchResults: results,
+      );
+      setState(() {
+        _isSearching = false;
+        _matchedProduct = match;
+        _productId = match?.id;
+        _stage = match == null
+            ? _PriceUpdateStage.notFound
+            : _PriceUpdateStage.confirm;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSearching = false;
+        _serverMessage = formatErrorMessageForUi(
+          error,
+          debugModeEnabled: ref.read(debugModeEnabledProvider),
+        );
+      });
+    }
+  }
+
+  void _scanAgain() {
+    _barcodeController.clear();
+    _priceController.clear();
+    setState(() {
+      _stage = _PriceUpdateStage.scan;
+      _matchedProduct = null;
+      _productId = null;
+      _supermarketId = null;
+      _scannedBarcode = null;
+      _serverMessage = null;
+      _fieldErrors = const {};
+    });
   }
 
   Future<void> _submit() async {
@@ -199,8 +414,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
         _fieldErrors = {
           ..._fieldErrors,
           if (_productId == null) 'productId': 'Product is required',
-          if (_supermarketId == null)
-            'supermarketId': 'Supermarket is required',
+          if (_supermarketId == null) 'supermarketId': 'Market is required',
         };
       });
       return;
@@ -215,7 +429,6 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
       productId: _productId!,
       supermarketId: _supermarketId!,
       price: double.parse(_priceController.text.trim()),
-      observedAt: _observedAt,
     );
 
     final result = await ref
@@ -237,75 +450,17 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
         content: Text('Price submission created and pending moderation.'),
       ),
     );
-    _clearForm();
+    _clearSubmissionFields();
   }
 
-  void _clearForm() {
+  void _clearSubmissionFields() {
     _priceController.clear();
     setState(() {
-      _productId = null;
       _supermarketId = null;
-      _observedAt = null;
       _serverMessage = null;
       _fieldErrors = const {};
     });
     ref.read(priceSubmissionControllerProvider.notifier).clear();
-  }
-
-  Future<void> _pickObservedAt() async {
-    final now = DateTime.now();
-    final initial = _observedAt ?? now;
-    final selectedDate = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (selectedDate == null || !mounted) {
-      return;
-    }
-
-    final selectedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(initial),
-    );
-    if (selectedTime == null) {
-      return;
-    }
-
-    final picked = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-      selectedTime.hour,
-      selectedTime.minute,
-    );
-    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
-    nextFieldErrors.remove('observedAt');
-    setState(() {
-      _observedAt = picked;
-      _fieldErrors = nextFieldErrors;
-    });
-  }
-
-  void _clearObservedAt() {
-    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
-    nextFieldErrors.remove('observedAt');
-    setState(() {
-      _observedAt = null;
-      _fieldErrors = nextFieldErrors;
-    });
-  }
-
-  String _formatObservedAt(DateTime value) {
-    final local = value.toLocal();
-    final localization = MaterialLocalizations.of(context);
-    final date = localization.formatMediumDate(local);
-    final time = localization.formatTimeOfDay(
-      TimeOfDay.fromDateTime(local),
-      alwaysUse24HourFormat: MediaQuery.of(context).alwaysUse24HourFormat,
-    );
-    return '$date - $time';
   }
 
   void _applyError(Object error) {
@@ -328,185 +483,72 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
       _fieldErrors = const {};
     });
   }
-
-  Future<void> _pickProduct(List<ProductSummaryDto> products) async {
-    final selectedProductId = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (modalContext) {
-        String query = '';
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final filteredProducts = _filterProducts(products, query);
-            return SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 8,
-                  bottom: MediaQuery.of(modalContext).viewInsets.bottom + 16,
-                ),
-                child: SizedBox(
-                  height: 480,
-                  child: Column(
-                    children: [
-                      TextField(
-                        autofocus: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Search products',
-                          hintText: 'Type product name, brand, or category',
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                        onChanged: (value) {
-                          setModalState(() {
-                            query = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: filteredProducts.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'No products found for your search.',
-                                ),
-                              )
-                            : ListView.separated(
-                                itemCount: filteredProducts.length,
-                                separatorBuilder: (_, index) =>
-                                    const Divider(height: 1),
-                                itemBuilder: (context, index) {
-                                  final product = filteredProducts[index];
-                                  return ListTile(
-                                    title: Text(product.name),
-                                    subtitle: Text(
-                                      '${product.brand ?? 'Unbranded'} - ${product.category}',
-                                    ),
-                                    onTap: () =>
-                                        Navigator.of(context).pop(product.id),
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (!mounted || selectedProductId == null) {
-      return;
-    }
-
-    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
-    nextFieldErrors.remove('productId');
-    setState(() {
-      _productId = selectedProductId;
-      _fieldErrors = nextFieldErrors;
-    });
-  }
-
-  List<ProductSummaryDto> _filterProducts(
-    List<ProductSummaryDto> products,
-    String query,
-  ) {
-    final normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty) {
-      return products;
-    }
-    return products.where((product) {
-      final name = product.name.toLowerCase();
-      final brand = product.brand?.toLowerCase() ?? '';
-      final category = product.category.toLowerCase();
-      return name.contains(normalizedQuery) ||
-          brand.contains(normalizedQuery) ||
-          category.contains(normalizedQuery);
-    }).toList();
-  }
 }
 
-class _ProductPickerField extends StatelessWidget {
-  const _ProductPickerField({
-    required this.products,
-    required this.value,
-    required this.onTap,
-    required this.enabled,
-    this.errorText,
-  });
+class _ProductSummaryCard extends StatelessWidget {
+  const _ProductSummaryCard({required this.product});
 
-  final List<ProductSummaryDto> products;
-  final int? value;
-  final VoidCallback onTap;
-  final bool enabled;
-  final String? errorText;
+  final ProductSummaryDto product;
 
   @override
   Widget build(BuildContext context) {
-    ProductSummaryDto? selectedProduct;
-    for (final product in products) {
-      if (product.id == value) {
-        selectedProduct = product;
-        break;
-      }
-    }
-
-    final displayText = selectedProduct == null
-        ? 'Tap to choose a product'
-        : '${selectedProduct.name} (${selectedProduct.brand ?? 'Unbranded'})';
-
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(8),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: 'Product',
-          errorText: errorText,
-          suffixIcon: const Icon(Icons.search),
-          enabled: enabled,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(product.name, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(product.brand ?? 'Unbranded'),
+            Text('Category: ${product.category}'),
+            if ((product.barcode ?? '').trim().isNotEmpty)
+              Text('Barcode: ${product.barcode}'),
+          ],
         ),
-        child: Text(displayText),
       ),
     );
   }
 }
 
-class _SupermarketDropdown extends StatelessWidget {
-  const _SupermarketDropdown({
-    required this.supermarkets,
-    required this.value,
-    required this.onChanged,
-    required this.enabled,
-    this.errorText,
-  });
+class _ProductDetailCard extends StatelessWidget {
+  const _ProductDetailCard({required this.detail});
 
-  final List<SupermarketDto> supermarkets;
-  final int? value;
-  final ValueChanged<int?> onChanged;
-  final bool enabled;
-  final String? errorText;
+  final ProductDetailDto detail;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<int>(
-      initialValue: value,
-      decoration: InputDecoration(
-        labelText: 'Supermarket',
-        errorText: errorText,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(detail.name, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(detail.brand ?? 'Unbranded'),
+            Text('Category: ${detail.category}'),
+            if ((detail.barcode ?? '').trim().isNotEmpty)
+              Text('Barcode: ${detail.barcode}'),
+          ],
+        ),
       ),
-      items: supermarkets
-          .map(
-            (market) => DropdownMenuItem<int>(
-              value: market.id,
-              child: Text(market.name),
-            ),
-          )
-          .toList(),
-      onChanged: enabled ? onChanged : null,
+    );
+  }
+}
+
+class _UnknownProductCard extends StatelessWidget {
+  const _UnknownProductCard({required this.productId});
+
+  final int productId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text('Product #$productId'),
+      ),
     );
   }
 }
