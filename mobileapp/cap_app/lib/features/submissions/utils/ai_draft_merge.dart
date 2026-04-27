@@ -4,14 +4,13 @@ ProductAiDraftMergedSuggestion mergeAiDraftResponses({
   required Map<AiCaptureType, ProductAiDraftResponseDto> responsesByType,
   Set<AiCaptureType> skippedTypes = const {},
 }) {
-  final barcodeDraft = responsesByType[AiCaptureType.barcode];
   final nutritionDraft = responsesByType[AiCaptureType.nutrition];
   final priceDraft = responsesByType[AiCaptureType.price];
 
   final warnings = <String>{};
   final flags = <String>{};
 
-  for (final type in AiCaptureType.values) {
+  for (final type in const [AiCaptureType.price, AiCaptureType.nutrition]) {
     final response = responsesByType[type];
     if (response == null) {
       if (skippedTypes.contains(type)) {
@@ -31,37 +30,19 @@ ProductAiDraftMergedSuggestion mergeAiDraftResponses({
   }
 
   return ProductAiDraftMergedSuggestion(
-    barcode: _firstNonBlank([
-      barcodeDraft?.barcode,
-      nutritionDraft?.barcode,
-      priceDraft?.barcode,
-    ]),
+    barcode: null,
     priceHint: _firstNonNull<double>([
       priceDraft?.priceHint,
-      barcodeDraft?.priceHint,
       nutritionDraft?.priceHint,
     ]),
     supermarketHint: _firstNonBlank([
       priceDraft?.supermarketHint,
-      barcodeDraft?.supermarketHint,
       nutritionDraft?.supermarketHint,
     ]),
-    nutrition:
-        nutritionDraft?.nutrition ??
-        barcodeDraft?.nutrition ??
-        priceDraft?.nutrition,
-    name: _firstNonBlank([
-      barcodeDraft?.name,
-      nutritionDraft?.name,
-      priceDraft?.name,
-    ]),
-    brand: _firstNonBlank([
-      barcodeDraft?.brand,
-      nutritionDraft?.brand,
-      priceDraft?.brand,
-    ]),
+    nutrition: nutritionDraft?.nutrition ?? priceDraft?.nutrition,
+    name: _firstNonBlank([nutritionDraft?.name, priceDraft?.name]),
+    brand: _firstNonBlank([nutritionDraft?.brand, priceDraft?.brand]),
     categoryHint: _firstNonBlank([
-      barcodeDraft?.categoryHint,
       nutritionDraft?.categoryHint,
       priceDraft?.categoryHint,
     ]),

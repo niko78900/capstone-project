@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
+import 'package:cap_app/features/catalog/presentation/barcode_scanner_screen.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
+import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
@@ -30,6 +32,7 @@ class SubmitProductScreen extends ConsumerStatefulWidget {
 
 class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   static const _fixedServingSize = '100 g';
+  static const _aiCaptureTypes = [AiCaptureType.price, AiCaptureType.nutrition];
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -163,6 +166,11 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                     decoration: InputDecoration(
                       labelText: 'Barcode',
                       errorText: _fieldErrors['barcode'],
+                      suffixIcon: IconButton(
+                        tooltip: 'Scan barcode',
+                        onPressed: isBusy ? null : _scanBarcodeIntoField,
+                        icon: const Icon(Icons.qr_code_scanner_outlined),
+                      ),
                     ),
                     validator: (value) {
                       if ((value ?? '').trim().isEmpty) {
@@ -185,7 +193,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'AI Assist (3 photos)',
+                                  'AI Assist (2 photos)',
                                   style: Theme.of(
                                     context,
                                   ).textTheme.titleMedium,
@@ -195,11 +203,11 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Capture barcode, price tag, and nutrition label photos. AI only pre-fills suggestions.',
+                            'Capture price tag and nutrition label photos. Use the barcode scanner above for barcode entry.',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(height: 10),
-                          ...AiCaptureType.values.map(
+                          ..._aiCaptureTypes.map(
                             (type) => Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: _AiCaptureRow(
@@ -496,7 +504,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
 
   Future<void> _runGuidedAiAssist() async {
     final skipped = <AiCaptureType>{};
-    for (final type in AiCaptureType.values) {
+    for (final type in _aiCaptureTypes) {
       final path = await _chooseImageForAiSlot(type);
       if (!mounted) {
         return;
@@ -622,7 +630,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       responsesByType: drafts,
       skippedTypes: {
         ...skippedTypes,
-        ...AiCaptureType.values.where(
+        ..._aiCaptureTypes.where(
           (type) => !_aiCaptureImagePaths.containsKey(type),
         ),
       },
@@ -656,9 +664,6 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     }
     if ((merged.brand ?? '').isNotEmpty) {
       _brandController.text = merged.brand!;
-    }
-    if ((merged.barcode ?? '').isNotEmpty) {
-      _barcodeController.text = merged.barcode!;
     }
     if (merged.priceHint != null) {
       _priceController.text = _asNumberInput(merged.priceHint);
@@ -716,11 +721,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   }
 
   String? _defaultPrimaryImageFromAiCaptures() {
-    final preferredOrder = [
-      AiCaptureType.barcode,
-      AiCaptureType.price,
-      AiCaptureType.nutrition,
-    ];
+    final preferredOrder = [AiCaptureType.price, AiCaptureType.nutrition];
     for (final type in preferredOrder) {
       final path = _aiCaptureImagePaths[type];
       if (path != null && path.trim().isNotEmpty) {
@@ -967,6 +968,23 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     setState(() {
       _selectedImagePath = path;
       _imageUrl = null;
+      _fieldErrors = nextFieldErrors;
+    });
+  }
+
+  Future<void> _scanBarcodeIntoField() async {
+    final scannedValue = await scanBarcodeWithDevice(context);
+    if (!mounted) {
+      return;
+    }
+    final normalized = normalizeBarcodeInput(scannedValue ?? '');
+    if (normalized.isEmpty) {
+      return;
+    }
+    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
+    nextFieldErrors.remove('barcode');
+    setState(() {
+      _barcodeController.text = normalized;
       _fieldErrors = nextFieldErrors;
     });
   }
