@@ -8,6 +8,7 @@ import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundExcepti
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
 import com.niko.capstone.supermarket_api.api.v1.common.util.NameNormalizer;
+import com.niko.capstone.supermarket_api.api.v1.common.util.TextTransliterator;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
@@ -73,8 +74,10 @@ public class SubmissionService {
             throw new ConflictException("Duplicate product by barcode");
         }
 
-        String normalizedName = NameNormalizer.normalize(request.name());
-        String normalizedBrand = NameNormalizer.normalize(request.brand());
+        String displayName = transliterateRequired(request.name());
+        String displayBrand = normalizeOptional(TextTransliterator.toLatin(request.brand()));
+        String normalizedName = NameNormalizer.normalize(displayName);
+        String normalizedBrand = NameNormalizer.normalize(displayBrand);
         if (isDuplicateNameBrand(normalizedName, normalizedBrand, sourceProduct)) {
             throw new ConflictException("Duplicate product by normalized name and brand");
         }
@@ -82,8 +85,8 @@ public class SubmissionService {
         ProductSubmissionPayload payload = new ProductSubmissionPayload(
                 request.categoryId(),
                 request.sourceProductId(),
-                request.name().trim(),
-                normalizeOptional(request.brand()),
+                displayName,
+                displayBrand,
                 barcode,
                 request.supermarketId(),
                 request.price(),
@@ -96,7 +99,7 @@ public class SubmissionService {
         submission.setType(SubmissionType.PRODUCT);
         submission.setStatus(SubmissionStatus.PENDING);
         submission.setPayload(writeJson(payload));
-        submission.setNotes(normalizeOptional(request.notes()));
+        submission.setNotes(normalizeOptional(TextTransliterator.toLatin(request.notes())));
 
         SubmissionEntity saved = submissionRepository.save(submission);
         aiAnalysisService.analyzeSubmissionAsync(saved.getId());
@@ -132,7 +135,7 @@ public class SubmissionService {
         submission.setType(SubmissionType.PRICE);
         submission.setStatus(SubmissionStatus.PENDING);
         submission.setPayload(writeJson(payload));
-        submission.setNotes(normalizeOptional(request.notes()));
+        submission.setNotes(normalizeOptional(TextTransliterator.toLatin(request.notes())));
 
         SubmissionEntity saved = submissionRepository.save(submission);
         aiAnalysisService.analyzeSubmissionAsync(saved.getId());
@@ -258,6 +261,13 @@ public class SubmissionService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String transliterateRequired(String value) {
+        if (value == null) {
+            return "";
+        }
+        return TextTransliterator.toLatin(value).trim();
     }
 
     private String extensionFor(String originalName, String contentType) {

@@ -12,7 +12,7 @@ public final class NameNormalizer {
             return "";
         }
 
-        String normalizedWhitespace = value.trim().replaceAll("\\s+", " ");
+        String normalizedWhitespace = TextTransliterator.toLatin(value).trim().replaceAll("\\s+", " ");
         String alphanumericOnly = normalizedWhitespace.replaceAll("[^\\p{L}\\p{N}\\s]", "");
         return alphanumericOnly.toLowerCase(Locale.ROOT).trim();
     }

@@ -9,6 +9,7 @@ import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundExcepti
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
 import com.niko.capstone.supermarket_api.api.v1.common.util.NameNormalizer;
+import com.niko.capstone.supermarket_api.api.v1.common.util.TextTransliterator;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationAiSummaryDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDetailDto;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationSubmissionDto;
@@ -283,8 +284,10 @@ public class ModerationService {
             throw new ConflictException("Duplicate product by barcode");
         }
 
-        String normalizedName = NameNormalizer.normalize(payload.name());
-        String normalizedBrand = NameNormalizer.normalize(payload.brand());
+        String displayName = transliterateRequired(payload.name());
+        String displayBrand = normalizeOptional(TextTransliterator.toLatin(payload.brand()));
+        String normalizedName = NameNormalizer.normalize(displayName);
+        String normalizedBrand = NameNormalizer.normalize(displayBrand);
         if (isDuplicateNameBrand(normalizedName, normalizedBrand, sourceProduct)) {
             throw new ConflictException("Duplicate product by normalized name and brand");
         }
@@ -294,8 +297,8 @@ public class ModerationService {
 
         ProductEntity product = sourceProduct == null ? new ProductEntity() : sourceProduct;
         product.setCategory(category);
-        product.setName(payload.name().trim());
-        product.setBrand(normalizeOptional(payload.brand()));
+        product.setName(displayName);
+        product.setBrand(displayBrand);
         product.setNormalizedName(normalizedName);
         product.setNormalizedBrand(normalizedBrand);
         product.setBarcode(barcode);
@@ -512,6 +515,13 @@ public class ModerationService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String transliterateRequired(String value) {
+        if (value == null) {
+            return "";
+        }
+        return TextTransliterator.toLatin(value).trim();
     }
 
     private String latestReviewReason(Long submissionId) {

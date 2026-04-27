@@ -1,5 +1,6 @@
 package com.niko.capstone.supermarket_api.api.v1.submissions;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
 import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
@@ -29,6 +31,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -145,6 +148,47 @@ class SubmissionServiceTest {
         submissionService.createProductSubmission("user@example.com", request);
 
         verify(submissionRepository).save(any());
+    }
+
+    @Test
+    void createProductSubmission_shouldTransliterateCyrillicPayloadText() throws Exception {
+        UserEntity user = new UserEntity();
+        user.setId(1L);
+        user.setEmail("user@example.com");
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(new CategoryEntity()));
+        when(supermarketRepository.findById(1L)).thenReturn(Optional.of(new SupermarketEntity()));
+        when(submissionRepository.save(any())).thenAnswer(invocation -> {
+            var saved = invocation.getArgument(0, com.niko.capstone.supermarket_api.domain.model.SubmissionEntity.class);
+            saved.setId(10L);
+            saved.setCreatedAt(Instant.now());
+            saved.setUpdatedAt(Instant.now());
+            return saved;
+        });
+
+        ProductSubmissionRequest request = new ProductSubmissionRequest(
+                1L,
+                null,
+                "Млеко Битолско",
+                "Млекара",
+                "1234567890123",
+                1L,
+                new BigDecimal("55.00"),
+                null,
+                null,
+                "Цена од денес"
+        );
+
+        submissionService.createProductSubmission("user@example.com", request);
+
+        ArgumentCaptor<com.niko.capstone.supermarket_api.domain.model.SubmissionEntity> captor =
+                ArgumentCaptor.forClass(com.niko.capstone.supermarket_api.domain.model.SubmissionEntity.class);
+        verify(submissionRepository).save(captor.capture());
+        ProductSubmissionPayload payload = new ObjectMapper()
+                .readValue(captor.getValue().getPayload(), ProductSubmissionPayload.class);
+        assertThat(payload.name()).isEqualTo("Mleko Bitolsko");
+        assertThat(payload.brand()).isEqualTo("Mlekara");
+        assertThat(captor.getValue().getNotes()).isEqualTo("Cena od denes");
     }
 
     @Test
