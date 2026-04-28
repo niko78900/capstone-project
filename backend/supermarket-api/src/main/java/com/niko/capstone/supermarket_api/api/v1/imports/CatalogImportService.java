@@ -40,9 +40,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -59,13 +63,12 @@ public class CatalogImportService {
     private final ProductRepository productRepository;
     private final ProductNutritionRepository productNutritionRepository;
     private final VerifiedPriceRepository verifiedPriceRepository;
+    private final PlatformTransactionManager transactionManager;
 
-    @Transactional
     public ImportJobResponse dryRun(String adminEmail, MultipartFile file, CatalogImportKind kind) {
         return process(adminEmail, file, kind, false);
     }
 
-    @Transactional
     public ImportJobResponse commit(String adminEmail, MultipartFile file, CatalogImportKind kind) {
         return process(adminEmail, file, kind, true);
     }
@@ -79,59 +82,92 @@ public class CatalogImportService {
     }
 
     private ImportJobResponse process(String adminEmail, MultipartFile file, CatalogImportKind kind, boolean commit) {
-        UserEntity admin = findUserByEmail(adminEmail);
-        ImportJobEntity job = new ImportJobEntity();
-        job.setAdminUser(admin);
-        job.setJobType(commit ? ImportJobType.CATALOG_COMMIT : ImportJobType.CATALOG_DRY_RUN);
-        job.setStatus(ImportJobStatus.RUNNING);
-        job = importJobRepository.save(job);
-
+        Long jobId = createRunningJob(adminEmail, commit);
         try {
-            List<CsvRecord> rows = parseCsv(file);
-            List<ImportJobRowEntity> persistedRows = new ArrayList<>();
-            int validRows = 0;
-            int invalidRows = 0;
-
-            for (CsvRecord row : rows) {
-                RowOutcome outcome = switch (kind) {
-                    case PRODUCTS -> processProductRow(row, commit);
-                    case PRICES -> processPriceRow(row, commit);
-                };
-                if (outcome.isValid()) {
-                    validRows++;
-                } else {
-                    invalidRows++;
-                }
-
-                ImportJobRowEntity rowEntity = new ImportJobRowEntity();
-                rowEntity.setJob(job);
-                rowEntity.setRowNumber(row.rowNumber());
-                rowEntity.setStatus(outcome.status());
-                rowEntity.setRawRow(row.rawLine());
-                rowEntity.setErrorMessage(outcome.errorMessage());
-                rowEntity.setCreatedEntityType(outcome.createdEntityType());
-                rowEntity.setCreatedEntityId(outcome.createdEntityId());
-                persistedRows.add(rowEntity);
-            }
-            importJobRowRepository.saveAll(persistedRows);
-
-            job.setTotalRows(rows.size());
-            job.setValidRows(validRows);
-            job.setInvalidRows(invalidRows);
-            job.setStatus(ImportJobStatus.COMPLETED);
-            job.setSummary(commit
-                    ? "Catalog import commit completed"
-                    : "Catalog import dry-run completed");
-            job = importJobRepository.save(job);
-            return toResponse(job, persistedRows);
+            return inTransaction(
+                    TransactionDefinition.PROPAGATION_REQUIRED,
+                    () -> processRows(jobId, file, kind, commit)
+            );
         } catch (Exception ex) {
-            job.setStatus(ImportJobStatus.FAILED);
-            job.setSummary("Import failed: " + ex.getMessage());
-            importJobRepository.save(job);
+            markJobFailed(jobId, "Import failed: " + safeMessage(ex));
             throw ex instanceof UnprocessableEntityException
                     ? (UnprocessableEntityException) ex
-                    : new UnprocessableEntityException("Import failed: " + ex.getMessage());
+                    : new UnprocessableEntityException("Import failed: " + safeMessage(ex));
         }
+    }
+
+    private Long createRunningJob(String adminEmail, boolean commit) {
+        return inTransaction(TransactionDefinition.PROPAGATION_REQUIRES_NEW, () -> {
+            UserEntity admin = findUserByEmail(adminEmail);
+            ImportJobEntity job = new ImportJobEntity();
+            job.setAdminUser(admin);
+            job.setJobType(commit ? ImportJobType.CATALOG_COMMIT : ImportJobType.CATALOG_DRY_RUN);
+            job.setStatus(ImportJobStatus.RUNNING);
+            return importJobRepository.save(job).getId();
+        });
+    }
+
+    private void markJobFailed(Long jobId, String summary) {
+        inTransaction(TransactionDefinition.PROPAGATION_REQUIRES_NEW, () -> {
+            importJobRepository.findById(jobId).ifPresent(job -> {
+                job.setStatus(ImportJobStatus.FAILED);
+                job.setSummary(summary);
+                importJobRepository.save(job);
+            });
+            return null;
+        });
+    }
+
+    private ImportJobResponse processRows(Long jobId, MultipartFile file, CatalogImportKind kind, boolean commit) {
+        ImportJobEntity job = importJobRepository.findById(jobId)
+                .orElseThrow(() -> new NotFoundException("Import job not found"));
+        List<CsvRecord> rows = parseCsv(file);
+        List<ImportJobRowEntity> persistedRows = new ArrayList<>();
+        int validRows = 0;
+        int invalidRows = 0;
+
+        for (CsvRecord row : rows) {
+            RowOutcome outcome = switch (kind) {
+                case PRODUCTS -> processProductRow(row, commit);
+                case PRICES -> processPriceRow(row, commit);
+            };
+            if (outcome.isValid()) {
+                validRows++;
+            } else {
+                invalidRows++;
+            }
+
+            ImportJobRowEntity rowEntity = new ImportJobRowEntity();
+            rowEntity.setJob(job);
+            rowEntity.setRowNumber(row.rowNumber());
+            rowEntity.setStatus(outcome.status());
+            rowEntity.setRawRow(row.rawLine());
+            rowEntity.setErrorMessage(outcome.errorMessage());
+            rowEntity.setCreatedEntityType(outcome.createdEntityType());
+            rowEntity.setCreatedEntityId(outcome.createdEntityId());
+            persistedRows.add(rowEntity);
+        }
+        importJobRowRepository.saveAll(persistedRows);
+
+        job.setTotalRows(rows.size());
+        job.setValidRows(validRows);
+        job.setInvalidRows(invalidRows);
+        job.setStatus(ImportJobStatus.COMPLETED);
+        job.setSummary(commit
+                ? "Catalog import commit completed"
+                : "Catalog import dry-run completed");
+        job = importJobRepository.save(job);
+        return toResponse(job, persistedRows);
+    }
+
+    private <T> T inTransaction(int propagation, Supplier<T> action) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(propagation);
+        return template.execute(status -> action.get());
+    }
+
+    private String safeMessage(Exception ex) {
+        return ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
     }
 
     private RowOutcome processProductRow(CsvRecord row, boolean commit) {
@@ -168,6 +204,8 @@ public class CatalogImportService {
                 return RowOutcome.markValid();
             }
 
+            NutritionValues nutritionValues = parseNutritionValues(row);
+
             CategoryEntity category = categoryRepository.findByNameIgnoreCase(categoryName)
                     .orElseGet(() -> {
                         CategoryEntity created = new CategoryEntity();
@@ -190,7 +228,7 @@ public class CatalogImportService {
             product.setActive(true);
             ProductEntity savedProduct = productRepository.save(product);
 
-            upsertNutritionIfPresent(savedProduct, row);
+            upsertNutritionIfPresent(savedProduct, nutritionValues);
             createSystemPrice(savedProduct, supermarket, price, observedAt, normalizeOptional(value(row, "currency")));
             return RowOutcome.imported("PRODUCT", savedProduct.getId());
         } catch (Exception ex) {
@@ -265,13 +303,17 @@ public class CatalogImportService {
         return verifiedPriceRepository.save(verifiedPrice);
     }
 
-    private void upsertNutritionIfPresent(ProductEntity product, CsvRecord row) {
+    private NutritionValues parseNutritionValues(CsvRecord row) {
         BigDecimal calories = parseOptionalDecimal(value(row, "calories"));
         BigDecimal proteinG = parseOptionalDecimal(value(row, "proteinG"));
         BigDecimal carbsG = parseOptionalDecimal(value(row, "carbsG"));
         BigDecimal fatG = parseOptionalDecimal(value(row, "fatG"));
         String servingSize = normalizeOptional(value(row, "servingSize"));
-        if (calories == null && proteinG == null && carbsG == null && fatG == null && servingSize == null) {
+        return new NutritionValues(calories, proteinG, carbsG, fatG, servingSize);
+    }
+
+    private void upsertNutritionIfPresent(ProductEntity product, NutritionValues values) {
+        if (values.isEmpty()) {
             return;
         }
         ProductNutritionEntity nutrition = productNutritionRepository.findByProductId(product.getId())
@@ -280,11 +322,11 @@ public class CatalogImportService {
                     created.setProduct(product);
                     return created;
                 });
-        nutrition.setCalories(calories);
-        nutrition.setProteinG(proteinG);
-        nutrition.setCarbsG(carbsG);
-        nutrition.setFatG(fatG);
-        nutrition.setServingSize(servingSize);
+        nutrition.setCalories(values.calories());
+        nutrition.setProteinG(values.proteinG());
+        nutrition.setCarbsG(values.carbsG());
+        nutrition.setFatG(values.fatG());
+        nutrition.setServingSize(values.servingSize());
         productNutritionRepository.save(nutrition);
     }
 
@@ -431,6 +473,22 @@ public class CatalogImportService {
     }
 
     private record CsvRecord(int rowNumber, String rawLine, Map<String, String> values) {
+    }
+
+    private record NutritionValues(
+            BigDecimal calories,
+            BigDecimal proteinG,
+            BigDecimal carbsG,
+            BigDecimal fatG,
+            String servingSize
+    ) {
+        boolean isEmpty() {
+            return calories == null
+                    && proteinG == null
+                    && carbsG == null
+                    && fatG == null
+                    && servingSize == null;
+        }
     }
 
     private record RowOutcome(
