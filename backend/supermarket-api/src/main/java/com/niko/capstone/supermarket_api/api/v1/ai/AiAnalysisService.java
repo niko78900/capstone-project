@@ -21,7 +21,14 @@ import com.niko.capstone.supermarket_api.domain.model.UserEntity;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionAiAnalysisRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
+import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +52,7 @@ public class AiAnalysisService {
     private final SubmissionRepository submissionRepository;
     private final SubmissionAiAnalysisRepository submissionAiAnalysisRepository;
     private final UserRepository userRepository;
+    private final UploadsStoragePathResolver uploadsStoragePathResolver;
 
     @Value("${app.openai.api-key:}")
     private String openAiApiKey;
@@ -187,7 +195,7 @@ public class AiAnalysisService {
         AiExtractionResult extraction = null;
         if (imageUrl != null && isAiAvailable()) {
             try {
-                extraction = aiExtractionClient.extractProductDraft(imageUrl);
+                extraction = extractProductDraftForSubmissionImage(imageUrl);
             } catch (Exception ex) {
                 heuristicWarnings.add("AI extraction failed: " + ex.getMessage());
             }
@@ -374,18 +382,61 @@ public class AiAnalysisService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private void validateDraftUpload(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new UnprocessableEntityException("Image file is required");
+    private AiExtractionResult extractProductDraftForSubmissionImage(String imageUrl) {
+        Path localUpload = resolveLocalUploadPath(imageUrl);
+        if (localUpload == null) {
+            return aiExtractionClient.extractProductDraft(imageUrl);
         }
-        if (file.getSize() > MAX_AI_DRAFT_IMAGE_BYTES) {
-            throw new UnprocessableEntityException("Image size must be at most 5 MB");
+        if (!Files.isRegularFile(localUpload)) {
+            throw new IllegalStateException("Stored upload image is unavailable");
         }
-        String contentType = normalizeOptional(file.getContentType());
-        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new UnprocessableEntityException("Only image files are allowed");
+        VerifiedImage image;
+        try {
+            image = SafeImageUploadValidator.validate(Files.readAllBytes(localUpload), MAX_AI_DRAFT_IMAGE_BYTES);
+        } catch (UnprocessableEntityException ex) {
+            throw new IllegalStateException(ex.getMessage(), ex);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Stored upload image is unavailable", ex);
+        }
+        return aiExtractionClient.extractProductDraft(image.bytes(), image.contentType(), null);
+    }
+
+    private Path resolveLocalUploadPath(String imageUrl) {
+        String requestPath = imagePath(imageUrl);
+        if (requestPath == null || !requestPath.startsWith("/uploads/")) {
+            return null;
+        }
+        String fileName = URLDecoder.decode(
+                requestPath.substring("/uploads/".length()),
+                StandardCharsets.UTF_8
+        );
+        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")) {
+            throw new IllegalStateException("Stored upload path is invalid");
+        }
+        Path root = uploadsStoragePathResolver.resolve();
+        Path candidate = root.resolve(fileName).normalize();
+        if (!candidate.startsWith(root)) {
+            throw new IllegalStateException("Stored upload path is invalid");
+        }
+        return candidate;
+    }
+
+    private String imagePath(String imageUrl) {
+        String normalized = normalizeOptional(imageUrl);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.startsWith("/")) {
+            return normalized;
+        }
+        try {
+            URI uri = new URI(normalized);
+            return uri.getPath();
+        } catch (URISyntaxException ex) {
+            return null;
         }
     }
+
     @Transactional(readOnly = true)
     public Optional<SubmissionAiAnalysisEntity> latestAnalysisEntity(Long submissionId) {
         return submissionAiAnalysisRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId);
