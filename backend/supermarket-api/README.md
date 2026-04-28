@@ -140,9 +140,10 @@ mvn spring-boot:run -DskipTests
 ### Optional AI Config
 
 - `APP_OPENAI_API_KEY`
-- `APP_OPENAI_MODEL` (default `gpt-4.1-mini`)
+- `APP_OPENAI_MODEL` (default `gpt-5.4-mini`)
 - `APP_OPENAI_CHAT_COMPLETIONS_URL`
 - `APP_OPENAI_TIMEOUT_MS`
+- `APP_OPENAI_IMAGE_DETAIL` (default `high`; accepts `low`, `high`, or `auto`)
 - `APP_AI_PROMPT_VERSION`
 
 If key/config is absent, AI endpoints return deterministic `UNAVAILABLE`-style responses and core submission flows continue.

@@ -31,7 +31,7 @@ public class OpenAiExtractionClient implements AiExtractionClient {
     @Value("${app.openai.api-key:}")
     private String apiKey;
 
-    @Value("${app.openai.model:gpt-4.1-mini}")
+    @Value("${app.openai.model:gpt-5.4-mini}")
     private String model;
 
     @Value("${app.openai.timeout-ms:15000}")
@@ -39,6 +39,9 @@ public class OpenAiExtractionClient implements AiExtractionClient {
 
     @Value("${app.openai.chat-completions-url:https://api.openai.com/v1/chat/completions}")
     private String chatCompletionsUrl;
+
+    @Value("${app.openai.image-detail:high}")
+    private String imageDetail;
 
     @Override
     public AiExtractionResult extractProductDraft(String imageUrl) {
@@ -72,33 +75,30 @@ public class OpenAiExtractionClient implements AiExtractionClient {
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
             requestBody.put("temperature", 0.1);
-            requestBody.putObject("response_format").put("type", "json_object");
+            addStructuredResponseFormat(requestBody);
 
             ArrayNode messages = requestBody.putArray("messages");
             messages.addObject()
                     .put("role", "system")
                     .put("content", """
-                            You extract product data from a supermarket image.
-                            Return strict JSON with keys:
-                            name, brand, barcode, categoryHint, supermarketHint, priceHint,
-                            nutrition{calories,proteinG,carbsG,fatG,servingSize}, confidence, warnings, flags.
-                            Use null when unknown. warnings and flags must be arrays of strings.
+                            You extract conservative product data from supermarket price and nutrition images.
+                            Return only JSON matching the schema. Use null when a value is not clearly visible.
+                            Do not guess from product packaging conventions or prior knowledge.
+                            Barcode values are collected by the app barcode scanner, not AI; always return barcode as null.
+                            Use warnings for human-readable review notes and flags only from the schema enum.
                             """);
 
             ObjectNode userMessage = messages.addObject();
             userMessage.put("role", "user");
             ArrayNode userContent = userMessage.putArray("content");
-            StringBuilder prompt = new StringBuilder("Extract product details from this image.");
-            if (captureTypeHint != null && !captureTypeHint.isBlank()) {
-                prompt.append(" Capture focus: ").append(captureTypeHint).append(".");
-            }
             userContent.addObject()
                     .put("type", "text")
-                    .put("text", prompt.toString());
+                    .put("text", buildUserPrompt(captureTypeHint));
             userContent.addObject()
                     .put("type", "image_url")
                     .putObject("image_url")
-                    .put("url", imageUrl);
+                    .put("url", imageUrl)
+                    .put("detail", normalizeImageDetail());
 
             HttpRequest request = HttpRequest.newBuilder(URI.create(chatCompletionsUrl))
                     .header("Authorization", "Bearer " + apiKey)
@@ -125,6 +125,140 @@ public class OpenAiExtractionClient implements AiExtractionClient {
         } catch (IOException ex) {
             throw new IllegalStateException("AI extraction request failed", ex);
         }
+    }
+
+    private void addStructuredResponseFormat(ObjectNode requestBody) {
+        ObjectNode responseFormat = requestBody.putObject("response_format");
+        responseFormat.put("type", "json_schema");
+        ObjectNode jsonSchema = responseFormat.putObject("json_schema");
+        jsonSchema.put("name", "product_image_extraction");
+        jsonSchema.put("strict", true);
+        jsonSchema.set("schema", productExtractionSchema());
+    }
+
+    private ObjectNode productExtractionSchema() {
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "object");
+        schema.put("additionalProperties", false);
+
+        ObjectNode properties = schema.putObject("properties");
+        properties.set("name", nullableScalarSchema("string"));
+        properties.set("brand", nullableScalarSchema("string"));
+        properties.set("barcode", nullableScalarSchema("string"));
+        properties.set("categoryHint", nullableScalarSchema("string"));
+        properties.set("supermarketHint", nullableScalarSchema("string"));
+        properties.set("priceHint", nullableScalarSchema("number"));
+        properties.set("nutrition", nutritionSchema());
+        properties.set("confidence", nullableScalarSchema("number"));
+        properties.set("warnings", stringArraySchema());
+        properties.set("flags", flagsArraySchema());
+
+        ArrayNode required = schema.putArray("required");
+        required.add("name");
+        required.add("brand");
+        required.add("barcode");
+        required.add("categoryHint");
+        required.add("supermarketHint");
+        required.add("priceHint");
+        required.add("nutrition");
+        required.add("confidence");
+        required.add("warnings");
+        required.add("flags");
+        return schema;
+    }
+
+    private ObjectNode nutritionSchema() {
+        ObjectNode schema = objectMapper.createObjectNode();
+        nullableType(schema, "object");
+        schema.put("additionalProperties", false);
+
+        ObjectNode properties = schema.putObject("properties");
+        properties.set("calories", nullableScalarSchema("number"));
+        properties.set("proteinG", nullableScalarSchema("number"));
+        properties.set("carbsG", nullableScalarSchema("number"));
+        properties.set("fatG", nullableScalarSchema("number"));
+        properties.set("servingSize", nullableScalarSchema("string"));
+
+        ArrayNode required = schema.putArray("required");
+        required.add("calories");
+        required.add("proteinG");
+        required.add("carbsG");
+        required.add("fatG");
+        required.add("servingSize");
+        return schema;
+    }
+
+    private ObjectNode nullableScalarSchema(String type) {
+        ObjectNode schema = objectMapper.createObjectNode();
+        nullableType(schema, type);
+        return schema;
+    }
+
+    private void nullableType(ObjectNode schema, String type) {
+        ArrayNode types = schema.putArray("type");
+        types.add(type);
+        types.add("null");
+    }
+
+    private ObjectNode stringArraySchema() {
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "array");
+        schema.putObject("items").put("type", "string");
+        return schema;
+    }
+
+    private ObjectNode flagsArraySchema() {
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "array");
+        ObjectNode items = schema.putObject("items");
+        items.put("type", "string");
+        ArrayNode allowedFlags = items.putArray("enum");
+        allowedFlags.add("unreadable_price");
+        allowedFlags.add("multiple_prices");
+        allowedFlags.add("loyalty_price");
+        allowedFlags.add("unclear_currency");
+        allowedFlags.add("price_not_mkd");
+        allowedFlags.add("unreadable_nutrition");
+        allowedFlags.add("nutrition_not_per_100g");
+        allowedFlags.add("multiple_servings");
+        allowedFlags.add("partial_label");
+        allowedFlags.add("low_image_quality");
+        allowedFlags.add("product_identity_unclear");
+        allowedFlags.add("supermarket_unclear");
+        allowedFlags.add("unsupported_capture");
+        allowedFlags.add("other_ambiguous");
+        return schema;
+    }
+
+    private String buildUserPrompt(String captureTypeHint) {
+        String normalizedHint = captureTypeHint == null
+                ? ""
+                : captureTypeHint.trim().toLowerCase(Locale.ROOT);
+        if ("price tag".equals(normalizedHint)) {
+            return """
+                    Extract details from this supermarket price tag photo.
+                    Focus on visible product name, brand, supermarket, and the final shopper price in MKD.
+                    If multiple prices are visible, use the main final price only when it is unambiguous.
+                    Flag multiple prices, loyalty-only prices, unreadable price, unclear currency, or non-MKD prices.
+                    Return nutrition as null unless nutrition values are clearly visible. Return barcode as null.
+                    """;
+        }
+        if ("nutrition table".equals(normalizedHint)) {
+            return """
+                    Extract details from this nutrition table photo.
+                    Focus on calories, protein, carbohydrates, fat, and the serving basis.
+                    Prefer values per 100 g when clearly labeled. If values are for another serving basis, keep the
+                    visible servingSize and flag nutrition_not_per_100g.
+                    Extract visible product name, brand, and category hint only if they are clear.
+                    Return priceHint as null unless a price is clearly visible. Return barcode as null.
+                    """;
+        }
+        return """
+                Extract conservative product draft details from this supermarket image.
+                If it is a price tag, extract the visible final price in MKD. If it is a nutrition table, extract
+                visible nutrition values and serving basis. Use null and a warning/flag for unclear fields.
+                Return barcode as null.
+                """;
     }
 
     private String extractContent(JsonNode contentNode) {
@@ -207,6 +341,17 @@ public class OpenAiExtractionClient implements AiExtractionClient {
             }
         }
         return values;
+    }
+
+    private String normalizeImageDetail() {
+        if (imageDetail == null || imageDetail.isBlank()) {
+            return "high";
+        }
+        String normalized = imageDetail.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "low", "high", "auto" -> normalized;
+            default -> "high";
+        };
     }
 
     private String normalizeImageContentType(String contentType) {
