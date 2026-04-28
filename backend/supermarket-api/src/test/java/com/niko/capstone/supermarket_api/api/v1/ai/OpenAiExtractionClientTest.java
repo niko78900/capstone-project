@@ -23,7 +23,7 @@ class OpenAiExtractionClientTest {
                 {
                   "name": "Milk",
                   "brand": null,
-                  "barcode": null,
+                  "barcode": "model-should-not-return-this",
                   "categoryHint": "Dairy & Eggs",
                   "supermarketHint": null,
                   "priceHint": 79.5,
@@ -98,6 +98,11 @@ class OpenAiExtractionClientTest {
             assertThat(responseFormat.path("json_schema").path("strict").asBoolean()).isTrue();
             assertThat(responseFormat.path("json_schema").path("schema").path("additionalProperties").asBoolean())
                     .isFalse();
+            JsonNode barcodeSchema = responseFormat.path("json_schema")
+                    .path("schema")
+                    .path("properties")
+                    .path("barcode");
+            assertThat(barcodeSchema.path("type").asText()).isEqualTo("null");
 
             String prompt = requestJson.path("messages").path(1).path("content").path(0).path("text").asText();
             assertThat(prompt).contains("price tag");

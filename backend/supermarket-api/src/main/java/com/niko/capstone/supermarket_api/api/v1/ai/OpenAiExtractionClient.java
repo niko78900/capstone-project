@@ -144,7 +144,7 @@ public class OpenAiExtractionClient implements AiExtractionClient {
         ObjectNode properties = schema.putObject("properties");
         properties.set("name", nullableScalarSchema("string"));
         properties.set("brand", nullableScalarSchema("string"));
-        properties.set("barcode", nullableScalarSchema("string"));
+        properties.set("barcode", nullSchema());
         properties.set("categoryHint", nullableScalarSchema("string"));
         properties.set("supermarketHint", nullableScalarSchema("string"));
         properties.set("priceHint", nullableScalarSchema("number"));
@@ -191,6 +191,12 @@ public class OpenAiExtractionClient implements AiExtractionClient {
     private ObjectNode nullableScalarSchema(String type) {
         ObjectNode schema = objectMapper.createObjectNode();
         nullableType(schema, type);
+        return schema;
+    }
+
+    private ObjectNode nullSchema() {
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "null");
         return schema;
     }
 
@@ -295,7 +301,7 @@ public class OpenAiExtractionClient implements AiExtractionClient {
         return new AiExtractionResult(
                 textOrNull(payload, "name"),
                 textOrNull(payload, "brand"),
-                textOrNull(payload, "barcode"),
+                null,
                 textOrNull(payload, "categoryHint"),
                 textOrNull(payload, "supermarketHint"),
                 decimalOrNull(payload, "priceHint"),
