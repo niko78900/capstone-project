@@ -95,7 +95,7 @@ public class AiAnalysisService {
     ) {
         ProductAiCaptureType captureType = ProductAiCaptureType.fromRaw(rawCaptureType);
         if (rawCaptureType != null && !rawCaptureType.isBlank() && captureType == null) {
-            throw new UnprocessableEntityException("captureType must be one of BARCODE, PRICE, NUTRITION");
+            throw new UnprocessableEntityException("captureType must be one of PRICE, NUTRITION");
         }
 
         validateDraftUpload(file);

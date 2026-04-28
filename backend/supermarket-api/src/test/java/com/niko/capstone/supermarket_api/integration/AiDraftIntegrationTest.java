@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,8 +50,34 @@ class AiDraftIntegrationTest {
     }
 
     @Test
-    void aiDraftUpload_shouldReturnUnavailableWithoutApiKey() throws Exception {
+    void aiDraftUpload_shouldReturnUnavailableWithoutApiKeyForSupportedCaptureTypes() throws Exception {
         String userToken = registerUser("ai.upload.user." + System.nanoTime() + "@example.com", null);
+
+        for (String captureType : List.of("PRICE", "NUTRITION")) {
+            MockMultipartFile image = new MockMultipartFile(
+                    "file",
+                    "sample-" + captureType.toLowerCase() + ".jpg",
+                    MediaType.IMAGE_JPEG_VALUE,
+                    "fake-jpeg-content".getBytes()
+            );
+
+            MvcResult result = mockMvc.perform(multipart("/api/v1/submissions/product/ai-draft-upload")
+                            .file(image)
+                            .param("captureType", captureType)
+                            .header("Authorization", "Bearer " + userToken))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode json = readJson(result);
+            assertThat(json.path("status").asText()).isEqualTo("UNAVAILABLE");
+            assertThat(json.path("warnings").isArray()).isTrue();
+            assertThat(json.path("warnings").size()).isGreaterThan(0);
+        }
+    }
+
+    @Test
+    void aiDraftUpload_shouldRejectBarcodeCaptureType() throws Exception {
+        String userToken = registerUser("ai.barcode.capture." + System.nanoTime() + "@example.com", null);
         MockMultipartFile image = new MockMultipartFile(
                 "file",
                 "sample.jpg",
@@ -62,13 +89,11 @@ class AiDraftIntegrationTest {
                         .file(image)
                         .param("captureType", "BARCODE")
                         .header("Authorization", "Bearer " + userToken))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnprocessableEntity())
                 .andReturn();
 
         JsonNode json = readJson(result);
-        assertThat(json.path("status").asText()).isEqualTo("UNAVAILABLE");
-        assertThat(json.path("warnings").isArray()).isTrue();
-        assertThat(json.path("warnings").size()).isGreaterThan(0);
+        assertThat(json.path("message").asText()).isEqualTo("captureType must be one of PRICE, NUTRITION");
     }
 
     @Test
@@ -96,16 +121,9 @@ class AiDraftIntegrationTest {
                 MediaType.IMAGE_JPEG_VALUE,
                 "fake-jpeg-content".getBytes()
         );
-        MockMultipartFile captureTypePart = new MockMultipartFile(
-                "captureType",
-                "",
-                MediaType.TEXT_PLAIN_VALUE,
-                "UNKNOWN".getBytes()
-        );
-
         mockMvc.perform(multipart("/api/v1/submissions/product/ai-draft-upload")
                         .file(image)
-                        .file(captureTypePart)
+                        .param("captureType", "UNKNOWN")
                         .header("Authorization", "Bearer " + userToken))
                 .andExpect(status().isUnprocessableEntity());
     }

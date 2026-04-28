@@ -8,7 +8,6 @@ class ProductAiCaptureTypeTest {
 
     @Test
     void fromRaw_shouldParseSupportedValuesCaseInsensitive() {
-        assertThat(ProductAiCaptureType.fromRaw("BARCODE")).isEqualTo(ProductAiCaptureType.BARCODE);
         assertThat(ProductAiCaptureType.fromRaw("price")).isEqualTo(ProductAiCaptureType.PRICE);
         assertThat(ProductAiCaptureType.fromRaw(" Nutrition ")).isEqualTo(ProductAiCaptureType.NUTRITION);
     }
@@ -18,6 +17,7 @@ class ProductAiCaptureTypeTest {
         assertThat(ProductAiCaptureType.fromRaw("")).isNull();
         assertThat(ProductAiCaptureType.fromRaw(" ")).isNull();
         assertThat(ProductAiCaptureType.fromRaw(null)).isNull();
+        assertThat(ProductAiCaptureType.fromRaw("BARCODE")).isNull();
         assertThat(ProductAiCaptureType.fromRaw("unknown")).isNull();
     }
 }
