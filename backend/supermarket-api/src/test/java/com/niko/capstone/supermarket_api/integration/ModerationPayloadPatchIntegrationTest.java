@@ -98,6 +98,58 @@ class ModerationPayloadPatchIntegrationTest {
         assertThat(historyJson).contains("APPROVED");
     }
 
+    @Test
+    void patchPayload_shouldRejectInvalidShapeBeforeSavingHistory() throws Exception {
+        String userToken = registerUser("patch.invalid.user." + System.nanoTime() + "@example.com", null);
+        String adminToken = registerUser("patch.invalid.admin." + System.nanoTime() + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        Long submissionId = createPriceSubmission(userToken);
+        String patchRequest = """
+                {
+                  "payload": [1, 2, 3],
+                  "editReason": "Invalid shape"
+                }
+                """;
+
+        mockMvc.perform(patch("/api/v1/admin/submissions/" + submissionId + "/payload")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(patchRequest))
+                .andExpect(status().isUnprocessableEntity());
+
+        MvcResult historyResult = mockMvc.perform(get("/api/v1/admin/submissions/" + submissionId + "/history")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(historyResult.getResponse().getContentAsString()).doesNotContain("PATCH_PAYLOAD");
+    }
+
+    @Test
+    void patchPayload_shouldRejectMissingRequiredFieldsBeforeSaving() throws Exception {
+        String userToken = registerUser("patch.missing.user." + System.nanoTime() + "@example.com", null);
+        String adminToken = registerUser("patch.missing.admin." + System.nanoTime() + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        Long submissionId = createPriceSubmission(userToken);
+        String patchRequest = """
+                {
+                  "payload": {
+                    "productId": 1,
+                    "supermarketId": 1,
+                    "branchId": null,
+                    "observedAt": null
+                  },
+                  "editReason": "Missing price"
+                }
+                """;
+
+        MvcResult result = mockMvc.perform(patch("/api/v1/admin/submissions/" + submissionId + "/payload")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(patchRequest))
+                .andExpect(status().isUnprocessableEntity())
+                .andReturn();
+
+        assertThat(readJson(result).path("message").asText()).isEqualTo("Price is required in price submission");
+    }
+
     private String registerUser(String email, String adminBootstrapToken) throws Exception {
         String rolePart = adminBootstrapToken == null
                 ? ""
@@ -122,6 +174,24 @@ class ModerationPayloadPatchIntegrationTest {
 
     private JsonNode readJson(MvcResult result) throws Exception {
         return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    private Long createPriceSubmission(String userToken) throws Exception {
+        String submitPricePayload = """
+                {
+                  "productId": 1,
+                  "supermarketId": 1,
+                  "price": 123.45
+                }
+                """;
+
+        MvcResult submissionResult = mockMvc.perform(post("/api/v1/submissions/price")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(submitPricePayload))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return readJson(submissionResult).get("id").asLong();
     }
 
     private JsonNode findPriceForSupermarket(JsonNode prices, Long supermarketId) {

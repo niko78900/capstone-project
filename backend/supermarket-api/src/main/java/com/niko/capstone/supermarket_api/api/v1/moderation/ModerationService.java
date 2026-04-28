@@ -51,6 +51,7 @@ import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
 import com.niko.capstone.supermarket_api.domain.repository.VerifiedPriceRepository;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -135,10 +136,11 @@ public class ModerationService {
         }
 
         Object beforePayload = readPayloadValue(submission.getPayload());
-        String afterPayloadJson = writeJson(replacementPayload);
+        Object validatedPayload = validateReplacementPayload(submission.getType(), replacementPayload);
+        String afterPayloadJson = writeJson(validatedPayload);
         int changedFieldCount = countChangedFields(
                 toJsonNode(beforePayload),
-                toJsonNode(replacementPayload)
+                toJsonNode(validatedPayload)
         );
 
         submission.setPayload(afterPayloadJson);
@@ -475,6 +477,146 @@ public class ModerationService {
     private void assertPending(SubmissionEntity submission) {
         if (submission.getStatus() != SubmissionStatus.PENDING) {
             throw new ConflictException("Submission has already been reviewed");
+        }
+    }
+
+    private Object validateReplacementPayload(SubmissionType submissionType, Object replacementPayload) {
+        if (replacementPayload == null) {
+            throw new UnprocessableEntityException("Payload is required");
+        }
+        return switch (submissionType) {
+            case PRODUCT -> {
+                ProductSubmissionPayload payload = convertPatchPayload(replacementPayload, ProductSubmissionPayload.class);
+                validateProductPatchPayload(payload);
+                yield payload;
+            }
+            case PRICE -> {
+                PriceSubmissionPayload payload = convertPatchPayload(replacementPayload, PriceSubmissionPayload.class);
+                validatePricePatchPayload(payload);
+                yield payload;
+            }
+            case NUTRITION -> {
+                NutritionSubmissionPayload payload = convertPatchPayload(replacementPayload, NutritionSubmissionPayload.class);
+                validateNutritionPatchPayload(payload);
+                yield payload;
+            }
+            default -> throw new UnprocessableEntityException("Unsupported submission type");
+        };
+    }
+
+    private <T> T convertPatchPayload(Object replacementPayload, Class<T> type) {
+        try {
+            return objectMapper.convertValue(replacementPayload, type);
+        } catch (IllegalArgumentException ex) {
+            throw new UnprocessableEntityException("Invalid submission payload");
+        }
+    }
+
+    private void validateProductPatchPayload(ProductSubmissionPayload payload) {
+        requireId(payload.categoryId(), "Category is required");
+        ProductEntity sourceProduct = resolveSourceProduct(payload.sourceProductId());
+        requireText(payload.name(), 200, "Product name is required", "Name must be at most 200 characters");
+        requireText(payload.barcode(), 64, "Barcode is required", "Barcode must be at most 64 characters");
+        requireMaxLength(payload.brand(), 160, "Brand must be at most 160 characters");
+        requireMaxLength(payload.imageUrl(), 500, "Image URL must be at most 500 characters");
+        requireId(payload.supermarketId(), "Supermarket is required in product submission");
+        requirePositive(payload.price(), "Price is required in product submission", "Price must be positive");
+
+        categoryRepository.findById(payload.categoryId())
+                .orElseThrow(() -> new NotFoundException("Category not found"));
+        supermarketRepository.findById(payload.supermarketId())
+                .orElseThrow(() -> new NotFoundException("Supermarket not found"));
+        String barcode = normalizeOptional(payload.barcode());
+        if (isDuplicateBarcode(barcode, sourceProduct)) {
+            throw new ConflictException("Duplicate product by barcode");
+        }
+        String normalizedName = NameNormalizer.normalize(TextTransliterator.toLatin(payload.name()));
+        String normalizedBrand = NameNormalizer.normalize(TextTransliterator.toLatin(payload.brand()));
+        if (isDuplicateNameBrand(normalizedName, normalizedBrand, sourceProduct)) {
+            throw new ConflictException("Duplicate product by normalized name and brand");
+        }
+        if (payload.nutrition() != null) {
+            validateNutritionInput(payload.nutrition(), false);
+        }
+    }
+
+    private void validatePricePatchPayload(PriceSubmissionPayload payload) {
+        requireId(payload.productId(), "Product is required in price submission");
+        requireId(payload.supermarketId(), "Supermarket is required in price submission");
+        requirePositive(payload.price(), "Price is required in price submission", "Price must be positive");
+        productRepository.findById(payload.productId())
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        SupermarketEntity supermarket = supermarketRepository.findById(payload.supermarketId())
+                .orElseThrow(() -> new NotFoundException("Supermarket not found"));
+        if (payload.branchId() != null) {
+            BranchEntity branch = branchRepository.findById(payload.branchId())
+                    .orElseThrow(() -> new NotFoundException("Branch not found"));
+            if (!branch.getSupermarket().getId().equals(supermarket.getId())) {
+                throw new ConflictException("Branch does not belong to the selected supermarket");
+            }
+        }
+    }
+
+    private void validateNutritionPatchPayload(NutritionSubmissionPayload payload) {
+        requireId(payload.productId(), "Product is required in nutrition submission");
+        productRepository.findById(payload.productId())
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        validateNutritionInput(payload.nutrition(), true);
+    }
+
+    private void validateNutritionInput(SubmissionNutritionInput input, boolean required) {
+        if (input == null) {
+            if (required) {
+                throw new UnprocessableEntityException("Nutrition values are required");
+            }
+            return;
+        }
+        requireNonNegative(input.calories(), "Calories must be non-negative");
+        requireNonNegative(input.proteinG(), "Protein must be non-negative");
+        requireNonNegative(input.carbsG(), "Carbs must be non-negative");
+        requireNonNegative(input.fatG(), "Fat must be non-negative");
+        requireMaxLength(input.servingSize(), 100, "Serving size must be at most 100 characters");
+        if (required
+                && input.calories() == null
+                && input.proteinG() == null
+                && input.carbsG() == null
+                && input.fatG() == null
+                && normalizeOptional(input.servingSize()) == null) {
+            throw new UnprocessableEntityException("Nutrition values are required");
+        }
+    }
+
+    private void requireId(Long value, String message) {
+        if (value == null) {
+            throw new UnprocessableEntityException(message);
+        }
+    }
+
+    private void requireText(String value, int maxLength, String missingMessage, String tooLongMessage) {
+        if (normalizeOptional(value) == null) {
+            throw new UnprocessableEntityException(missingMessage);
+        }
+        requireMaxLength(value, maxLength, tooLongMessage);
+    }
+
+    private void requireMaxLength(String value, int maxLength, String message) {
+        if (value != null && value.length() > maxLength) {
+            throw new UnprocessableEntityException(message);
+        }
+    }
+
+    private void requirePositive(BigDecimal value, String missingMessage, String invalidMessage) {
+        if (value == null) {
+            throw new UnprocessableEntityException(missingMessage);
+        }
+        if (value.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new UnprocessableEntityException(invalidMessage);
+        }
+    }
+
+    private void requireNonNegative(BigDecimal value, String message) {
+        if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new UnprocessableEntityException(message);
         }
     }
 
