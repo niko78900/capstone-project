@@ -81,13 +81,11 @@ class SubmissionNutritionInput {
   }
 }
 
-enum AiCaptureType { barcode, price, nutrition }
+enum AiCaptureType { price, nutrition }
 
 extension AiCaptureTypeX on AiCaptureType {
   String get apiValue {
     switch (this) {
-      case AiCaptureType.barcode:
-        return 'BARCODE';
       case AiCaptureType.price:
         return 'PRICE';
       case AiCaptureType.nutrition:
@@ -97,8 +95,6 @@ extension AiCaptureTypeX on AiCaptureType {
 
   String get label {
     switch (this) {
-      case AiCaptureType.barcode:
-        return 'Barcode photo';
       case AiCaptureType.price:
         return 'Price photo';
       case AiCaptureType.nutrition:
