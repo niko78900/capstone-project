@@ -7,6 +7,8 @@ import com.niko.capstone.supermarket_api.api.v1.ai.dto.AiExtractionResult;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
+import com.niko.capstone.supermarket_api.api.v1.common.util.SafeImageUploadValidator;
+import com.niko.capstone.supermarket_api.api.v1.common.util.SafeImageUploadValidator.VerifiedImage;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.ModerationAiSummaryDto;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiCaptureType;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiDraftResponse;
@@ -19,7 +21,6 @@ import com.niko.capstone.supermarket_api.domain.model.UserEntity;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionAiAnalysisRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -98,14 +99,7 @@ public class AiAnalysisService {
             throw new UnprocessableEntityException("captureType must be one of PRICE, NUTRITION");
         }
 
-        validateDraftUpload(file);
-        String contentType = normalizeOptional(file.getContentType());
-        byte[] bytes;
-        try {
-            bytes = file.getBytes();
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to read uploaded image", ex);
-        }
+        VerifiedImage image = SafeImageUploadValidator.validate(file, MAX_AI_DRAFT_IMAGE_BYTES);
 
         UserEntity user = findUserByEmail(userEmail);
         SubmissionAiAnalysisEntity analysis = new SubmissionAiAnalysisEntity();
@@ -129,8 +123,8 @@ public class AiAnalysisService {
         AiExtractionResult extraction = null;
         try {
             extraction = aiExtractionClient.extractProductDraft(
-                    bytes,
-                    contentType,
+                    image.bytes(),
+                    image.contentType(),
                     captureType == null ? null : captureType.promptHint()
             );
             analysis.setExtractedPayload(toJson(extraction));
@@ -392,7 +386,6 @@ public class AiAnalysisService {
             throw new UnprocessableEntityException("Only image files are allowed");
         }
     }
-
     @Transactional(readOnly = true)
     public Optional<SubmissionAiAnalysisEntity> latestAnalysisEntity(Long submissionId) {
         return submissionAiAnalysisRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId);

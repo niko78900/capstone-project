@@ -7,7 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.List;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -58,7 +61,7 @@ class AiDraftIntegrationTest {
                     "file",
                     "sample-" + captureType.toLowerCase() + ".jpg",
                     MediaType.IMAGE_JPEG_VALUE,
-                    "fake-jpeg-content".getBytes()
+                    imageBytes("jpeg")
             );
 
             MvcResult result = mockMvc.perform(multipart("/api/v1/submissions/product/ai-draft-upload")
@@ -152,5 +155,13 @@ class AiDraftIntegrationTest {
 
     private JsonNode readJson(MvcResult result) throws Exception {
         return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    private byte[] imageBytes(String format) throws Exception {
+        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            ImageIO.write(image, format, output);
+            return output.toByteArray();
+        }
     }
 }

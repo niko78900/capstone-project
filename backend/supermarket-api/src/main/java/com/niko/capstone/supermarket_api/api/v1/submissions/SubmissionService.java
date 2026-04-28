@@ -6,15 +6,15 @@ import com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
-import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
 import com.niko.capstone.supermarket_api.api.v1.common.util.NameNormalizer;
+import com.niko.capstone.supermarket_api.api.v1.common.util.SafeImageUploadValidator;
+import com.niko.capstone.supermarket_api.api.v1.common.util.SafeImageUploadValidator.VerifiedImage;
 import com.niko.capstone.supermarket_api.api.v1.common.util.TextTransliterator;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.SubmissionResponse;
-import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionType;
 import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
@@ -29,11 +29,10 @@ import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionReviewRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
+import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -175,19 +174,8 @@ public class SubmissionService {
     }
 
     public String uploadSubmissionImage(MultipartFile file, String baseUrl) {
-        if (file == null || file.isEmpty()) {
-            throw new UnprocessableEntityException("Image file is required");
-        }
-        if (file.getSize() > MAX_IMAGE_BYTES) {
-            throw new UnprocessableEntityException("Image size must be at most 5 MB");
-        }
-        String contentType = normalizeOptional(file.getContentType());
-        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new UnprocessableEntityException("Only image files are allowed");
-        }
-
-        String extension = extensionFor(file.getOriginalFilename(), contentType);
-        String fileName = "submission_" + UUID.randomUUID() + extension;
+        VerifiedImage image = SafeImageUploadValidator.validate(file, MAX_IMAGE_BYTES);
+        String fileName = "submission_" + UUID.randomUUID() + image.extension();
         Path root = uploadsStoragePathResolver.resolve();
         Path destination = root.resolve(fileName).normalize();
         if (!destination.startsWith(root)) {
@@ -196,9 +184,7 @@ public class SubmissionService {
 
         try {
             Files.createDirectories(root);
-            try (InputStream input = file.getInputStream()) {
-                Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.write(destination, image.bytes());
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to store image", ex);
         }
@@ -270,21 +256,4 @@ public class SubmissionService {
         return TextTransliterator.toLatin(value).trim();
     }
 
-    private String extensionFor(String originalName, String contentType) {
-        if (originalName != null) {
-            int index = originalName.lastIndexOf('.');
-            if (index >= 0 && index < originalName.length() - 1) {
-                String extension = originalName.substring(index);
-                if (extension.length() <= 10) {
-                    return extension.toLowerCase(Locale.ROOT);
-                }
-            }
-        }
-        return switch (contentType.toLowerCase(Locale.ROOT)) {
-            case "image/png" -> ".png";
-            case "image/webp" -> ".webp";
-            case "image/gif" -> ".gif";
-            default -> ".jpg";
-        };
-    }
 }

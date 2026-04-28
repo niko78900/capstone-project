@@ -9,10 +9,10 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
+import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
-import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
 import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
 import com.niko.capstone.supermarket_api.domain.model.CategoryEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
@@ -25,15 +25,24 @@ import com.niko.capstone.supermarket_api.domain.repository.SubmissionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionReviewRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import com.niko.capstone.supermarket_api.domain.repository.UserRepository;
+import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class SubmissionServiceTest {
@@ -58,6 +67,9 @@ class SubmissionServiceTest {
     private UploadsStoragePathResolver uploadsStoragePathResolver;
 
     private SubmissionService submissionService;
+
+    @TempDir
+    private Path tempDir;
 
     @BeforeEach
     void setUp() {
@@ -227,5 +239,86 @@ class SubmissionServiceTest {
                 .hasMessageContaining("Branch does not belong to the selected supermarket");
 
         verify(submissionRepository, never()).save(any());
+    }
+
+    @Test
+    void uploadSubmissionImage_shouldStoreJpegWithDetectedExtensionIgnoringOriginalFilename() throws Exception {
+        when(uploadsStoragePathResolver.resolve()).thenReturn(tempDir.toAbsolutePath().normalize());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "image.html",
+                "image/jpeg",
+                imageBytes("jpeg")
+        );
+
+        String url = submissionService.uploadSubmissionImage(file, "http://localhost:8080/");
+
+        assertThat(url).startsWith("http://localhost:8080/uploads/submission_");
+        assertThat(url).endsWith(".jpg");
+        assertThat(Files.exists(tempDir.resolve(url.substring(url.lastIndexOf('/') + 1)))).isTrue();
+    }
+
+    @Test
+    void uploadSubmissionImage_shouldStorePngWithDetectedExtension() throws Exception {
+        when(uploadsStoragePathResolver.resolve()).thenReturn(tempDir.toAbsolutePath().normalize());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "image.jpg",
+                "image/jpeg",
+                imageBytes("png")
+        );
+
+        String url = submissionService.uploadSubmissionImage(file, "http://localhost:8080");
+
+        assertThat(url).startsWith("http://localhost:8080/uploads/submission_");
+        assertThat(url).endsWith(".png");
+        assertThat(Files.exists(tempDir.resolve(url.substring(url.lastIndexOf('/') + 1)))).isTrue();
+    }
+
+    @Test
+    void uploadSubmissionImage_shouldRejectInvalidImageBytes() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "evil.jpg",
+                "image/jpeg",
+                "<html></html>".getBytes(StandardCharsets.UTF_8)
+        );
+
+        assertThatThrownBy(() -> submissionService.uploadSubmissionImage(file, "http://localhost:8080"))
+                .isInstanceOf(UnprocessableEntityException.class)
+                .hasMessageContaining("Only JPEG and PNG image files are allowed");
+
+        verify(uploadsStoragePathResolver, never()).resolve();
+    }
+
+    @Test
+    void uploadSubmissionImage_shouldRejectSvgAndGif() throws Exception {
+        MockMultipartFile svg = new MockMultipartFile(
+                "file",
+                "vector.svg",
+                "image/svg+xml",
+                "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>".getBytes(StandardCharsets.UTF_8)
+        );
+        MockMultipartFile gif = new MockMultipartFile(
+                "file",
+                "animated.gif",
+                "image/gif",
+                imageBytes("gif")
+        );
+
+        assertThatThrownBy(() -> submissionService.uploadSubmissionImage(svg, "http://localhost:8080"))
+                .isInstanceOf(UnprocessableEntityException.class)
+                .hasMessageContaining("Only JPEG and PNG image files are allowed");
+        assertThatThrownBy(() -> submissionService.uploadSubmissionImage(gif, "http://localhost:8080"))
+                .isInstanceOf(UnprocessableEntityException.class)
+                .hasMessageContaining("Only JPEG and PNG image files are allowed");
+    }
+
+    private byte[] imageBytes(String format) throws Exception {
+        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            ImageIO.write(image, format, output);
+            return output.toByteArray();
+        }
     }
 }
