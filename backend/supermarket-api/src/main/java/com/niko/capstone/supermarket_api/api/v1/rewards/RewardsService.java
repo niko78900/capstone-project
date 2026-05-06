@@ -141,7 +141,9 @@ public class RewardsService {
         List<MutableLeaderboard> sorted = byUser.values().stream()
                 .sorted(Comparator
                         .comparingInt((MutableLeaderboard m) -> m.score).reversed()
-                        .thenComparingInt((MutableLeaderboard m) -> m.approvedCount).reversed()
+                        .thenComparing(Comparator
+                                .comparingInt((MutableLeaderboard m) -> m.approvedCount)
+                                .reversed())
                         .thenComparing(m -> m.lastEventAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .limit(limit)
                 .toList();
