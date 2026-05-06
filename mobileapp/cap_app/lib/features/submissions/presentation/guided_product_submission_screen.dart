@@ -1124,28 +1124,62 @@ class _ImageCaptureTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasImage = (path ?? '').trim().isNotEmpty;
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(hasImage ? 'Photo selected' : 'No photo selected'),
-          ),
-          if (hasImage)
-            IconButton(
-              tooltip: 'Remove',
-              onPressed: enabled ? onRemove : null,
-              icon: const Icon(Icons.close),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final disabledColor = colorScheme.onSurface.withValues(alpha: 0.38);
+    final borderColor = enabled
+        ? colorScheme.outline
+        : colorScheme.onSurface.withValues(alpha: 0.22);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: enabled ? colorScheme.primary : disabledColor,
+              fontWeight: FontWeight.w600,
             ),
-          OutlinedButton(
-            onPressed: enabled ? onCapture : null,
-            child: Text(hasImage ? 'Change' : 'Capture'),
           ),
-        ],
-      ),
+        ),
+        Container(
+          constraints: const BoxConstraints(minHeight: 72),
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  hasImage ? 'Photo selected' : 'No photo selected',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: enabled ? colorScheme.onSurface : disabledColor,
+                  ),
+                ),
+              ),
+              if (hasImage) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Remove',
+                  onPressed: enabled ? onRemove : null,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: enabled ? onCapture : null,
+                child: Text(hasImage ? 'Change' : 'Capture'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
