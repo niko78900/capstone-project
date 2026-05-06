@@ -10,6 +10,7 @@ public record ProductDetailDto(
         String imageUrl,
         String category,
         ProductNutritionDto nutrition,
-        List<ProductPriceDto> prices
+        List<ProductPriceDto> prices,
+        List<ProductPriceHistoryPointDto> priceHistory
 ) {
 }

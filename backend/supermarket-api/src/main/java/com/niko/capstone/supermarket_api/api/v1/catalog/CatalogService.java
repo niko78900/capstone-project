@@ -2,6 +2,7 @@ package com.niko.capstone.supermarket_api.api.v1.catalog;
 
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductDetailDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductNutritionDto;
+import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductPriceHistoryPointDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductPriceDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductSummaryDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.SupermarketDto;
@@ -10,9 +11,11 @@ import com.niko.capstone.supermarket_api.api.v1.pricing.PricingService;
 import com.niko.capstone.supermarket_api.api.v1.pricing.dto.LatestPricePoint;
 import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductNutritionEntity;
+import com.niko.capstone.supermarket_api.domain.model.VerifiedPriceEntity;
 import com.niko.capstone.supermarket_api.domain.repository.ProductNutritionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
+import com.niko.capstone.supermarket_api.domain.repository.VerifiedPriceRepository;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Comparator;
@@ -33,6 +36,7 @@ public class CatalogService {
     private final ProductRepository productRepository;
     private final ProductNutritionRepository productNutritionRepository;
     private final SupermarketRepository supermarketRepository;
+    private final VerifiedPriceRepository verifiedPriceRepository;
     private final PricingService pricingService;
 
     @Transactional(readOnly = true)
@@ -100,6 +104,12 @@ public class CatalogService {
                 ))
                 .toList();
 
+        List<ProductPriceHistoryPointDto> priceHistory = verifiedPriceRepository
+                .findByProductIdOrderByObservedAtAsc(productId)
+                .stream()
+                .map(this::toPriceHistoryPointDto)
+                .toList();
+
         return new ProductDetailDto(
                 product.getId(),
                 product.getName(),
@@ -108,7 +118,8 @@ public class CatalogService {
                 resolveImageUrlForClient(product.getImageUrl(), requestBaseUrl),
                 product.getCategory().getName(),
                 nutritionDto,
-                prices
+                prices,
+                priceHistory
         );
     }
 
@@ -139,6 +150,16 @@ public class CatalogService {
                 nutrition.getCarbsG(),
                 nutrition.getFatG(),
                 nutrition.getServingSize()
+        );
+    }
+
+    private ProductPriceHistoryPointDto toPriceHistoryPointDto(VerifiedPriceEntity price) {
+        return new ProductPriceHistoryPointDto(
+                price.getSupermarket().getId(),
+                price.getSupermarket().getName(),
+                price.getPrice(),
+                price.getCurrency(),
+                price.getObservedAt()
         );
     }
 

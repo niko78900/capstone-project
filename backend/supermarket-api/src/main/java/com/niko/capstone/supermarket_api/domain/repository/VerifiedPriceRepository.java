@@ -10,4 +10,6 @@ public interface VerifiedPriceRepository extends JpaRepository<VerifiedPriceEnti
     List<VerifiedPriceEntity> findByProductIdInOrderByObservedAtDesc(Collection<Long> productIds);
 
     List<VerifiedPriceEntity> findByProductIdOrderByObservedAtDesc(Long productId);
+
+    List<VerifiedPriceEntity> findByProductIdOrderByObservedAtAsc(Long productId);
 }
