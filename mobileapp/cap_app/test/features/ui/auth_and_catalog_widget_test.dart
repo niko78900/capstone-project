@@ -9,6 +9,7 @@ import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
+import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -220,6 +221,68 @@ void main() {
     expect(find.textContaining('Tinex'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('product detail shows price history below verified prices', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          productDetailProvider(1).overrideWith(
+            (ref) async => ProductDetailDto(
+              id: 1,
+              name: 'Milk 1L',
+              brand: 'Bucen Kozjak',
+              barcode: '123',
+              category: 'Dairy & Eggs',
+              nutrition: null,
+              prices: [
+                ProductPriceDto(
+                  supermarketId: 1,
+                  supermarketName: 'Tinex',
+                  price: 62,
+                  currency: 'MKD',
+                  observedAt: DateTime.utc(2026, 4, 12),
+                ),
+              ],
+              priceHistory: [
+                ProductPriceHistoryPointDto(
+                  supermarketId: 1,
+                  supermarketName: 'Tinex',
+                  price: 65,
+                  currency: 'MKD',
+                  observedAt: DateTime.utc(2026, 3, 12),
+                ),
+                ProductPriceHistoryPointDto(
+                  supermarketId: 1,
+                  supermarketName: 'Tinex',
+                  price: 62,
+                  currency: 'MKD',
+                  observedAt: DateTime.utc(2026, 4, 12),
+                ),
+                ProductPriceHistoryPointDto(
+                  supermarketId: 2,
+                  supermarketName: 'Vero',
+                  price: 69,
+                  currency: 'MKD',
+                  observedAt: DateTime.utc(2026, 4, 10),
+                ),
+              ],
+            ),
+          ),
+          cartNotifierProvider.overrideWith(_FakeCartNotifier.new),
+        ],
+        child: const MaterialApp(home: ProductDetailScreen(productId: 1)),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Verified Prices'), findsOneWidget);
+    expect(find.text('Price History'), findsOneWidget);
+    expect(find.text('Vero'), findsOneWidget);
+    expect(find.textContaining('latest'), findsWidgets);
+  });
+
   testWidgets('root tabs back press opens exit confirmation dialog', (
     tester,
   ) async {
@@ -322,6 +385,11 @@ class _LoggedInAuthSessionController extends AuthSessionController {
 class _FakeRecentCartItemsNotifier extends RecentCartItemsNotifier {
   @override
   Future<List<RecentCartItem>> build() async => const [];
+}
+
+class _FakeCartNotifier extends CartNotifier {
+  @override
+  Future<List<CartItem>> build() async => const [];
 }
 
 class _FakeAuthTokenStorage extends AuthTokenStorage {

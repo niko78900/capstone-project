@@ -2,6 +2,7 @@ import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
+import 'package:cap_app/features/catalog/presentation/price_history_chart.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
@@ -126,6 +127,8 @@ class ProductDetailScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
+                const SizedBox(height: 16),
+                PriceHistoryChart(points: detail.priceHistory),
               ],
             );
           },

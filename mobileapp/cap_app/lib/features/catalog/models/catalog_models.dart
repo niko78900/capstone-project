@@ -55,7 +55,37 @@ class ProductPriceDto {
       supermarketName: _toString(json['supermarketName']),
       price: _toDouble(json['price']) ?? 0,
       currency: _toString(json['currency'], fallback: 'MKD'),
-      observedAt: DateTime.tryParse(_toString(json['observedAt'])) ?? DateTime.now().toUtc(),
+      observedAt:
+          DateTime.tryParse(_toString(json['observedAt'])) ??
+          DateTime.now().toUtc(),
+    );
+  }
+}
+
+class ProductPriceHistoryPointDto {
+  const ProductPriceHistoryPointDto({
+    required this.supermarketId,
+    required this.supermarketName,
+    required this.price,
+    required this.currency,
+    required this.observedAt,
+  });
+
+  final int supermarketId;
+  final String supermarketName;
+  final double price;
+  final String currency;
+  final DateTime observedAt;
+
+  factory ProductPriceHistoryPointDto.fromJson(Map<String, dynamic> json) {
+    return ProductPriceHistoryPointDto(
+      supermarketId: _toInt(json['supermarketId']),
+      supermarketName: _toString(json['supermarketName']),
+      price: _toDouble(json['price']) ?? 0,
+      currency: _toString(json['currency'], fallback: 'MKD'),
+      observedAt:
+          DateTime.tryParse(_toString(json['observedAt'])) ??
+          DateTime.now().toUtc(),
     );
   }
 }
@@ -91,7 +121,9 @@ class ProductSummaryDto {
       brand: _toNullableString(json['brand']),
       barcode: _toNullableString(json['barcode']),
       category: _toString(json['category']),
-      nutrition: nutritionRaw is Map ? ProductNutritionDto.fromJson(nutritionRaw.cast<String, dynamic>()) : null,
+      nutrition: nutritionRaw is Map
+          ? ProductNutritionDto.fromJson(nutritionRaw.cast<String, dynamic>())
+          : null,
       bestPrice: _toDouble(json['bestPrice']),
       bestPriceSupermarket: _toNullableString(json['bestPriceSupermarket']),
       currency: _toNullableString(json['currency']),
@@ -109,6 +141,7 @@ class ProductDetailDto {
     required this.category,
     this.nutrition,
     required this.prices,
+    this.priceHistory = const [],
   });
 
   final int id;
@@ -119,10 +152,12 @@ class ProductDetailDto {
   final String category;
   final ProductNutritionDto? nutrition;
   final List<ProductPriceDto> prices;
+  final List<ProductPriceHistoryPointDto> priceHistory;
 
   factory ProductDetailDto.fromJson(Map<String, dynamic> json) {
     final nutritionRaw = json['nutrition'];
     final pricesRaw = json['prices'];
+    final priceHistoryRaw = json['priceHistory'];
     return ProductDetailDto(
       id: _toInt(json['id']),
       name: _toString(json['name']),
@@ -130,22 +165,34 @@ class ProductDetailDto {
       barcode: _toNullableString(json['barcode']),
       imageUrl: _toNullableString(json['imageUrl']),
       category: _toString(json['category']),
-      nutrition: nutritionRaw is Map ? ProductNutritionDto.fromJson(nutritionRaw.cast<String, dynamic>()) : null,
+      nutrition: nutritionRaw is Map
+          ? ProductNutritionDto.fromJson(nutritionRaw.cast<String, dynamic>())
+          : null,
       prices: pricesRaw is List
           ? pricesRaw
-              .whereType<Map>()
-              .map((item) => ProductPriceDto.fromJson(item.cast<String, dynamic>()))
-              .toList()
+                .whereType<Map>()
+                .map(
+                  (item) =>
+                      ProductPriceDto.fromJson(item.cast<String, dynamic>()),
+                )
+                .toList()
+          : const [],
+      priceHistory: priceHistoryRaw is List
+          ? priceHistoryRaw
+                .whereType<Map>()
+                .map(
+                  (item) => ProductPriceHistoryPointDto.fromJson(
+                    item.cast<String, dynamic>(),
+                  ),
+                )
+                .toList()
           : const [],
     );
   }
 }
 
 class SupermarketDto {
-  const SupermarketDto({
-    required this.id,
-    required this.name,
-  });
+  const SupermarketDto({required this.id, required this.name});
 
   final int id;
   final String name;

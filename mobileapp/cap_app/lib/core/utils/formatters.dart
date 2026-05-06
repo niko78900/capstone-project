@@ -8,6 +8,7 @@ class AppFormatters {
     decimalDigits: 2,
   );
   static final DateFormat _dateTimeFormatter = DateFormat('yyyy-MM-dd HH:mm');
+  static final DateFormat _shortDateFormatter = DateFormat('MMM d');
 
   static String asCurrency(num? value) {
     if (value == null) {
@@ -18,5 +19,9 @@ class AppFormatters {
 
   static String asRelativeDateTime(DateTime dateTime) {
     return _dateTimeFormatter.format(dateTime.toLocal());
+  }
+
+  static String asShortDate(DateTime dateTime) {
+    return _shortDateFormatter.format(dateTime.toLocal());
   }
 }
