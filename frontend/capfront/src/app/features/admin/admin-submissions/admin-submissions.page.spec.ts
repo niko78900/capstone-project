@@ -144,6 +144,7 @@ describe('AdminSubmissionsPageComponent', () => {
         category: 'Fruits and Vegetables',
         nutrition: null,
         prices: [],
+        priceHistory: [],
       }),
     );
     catalogService.getSupermarkets.and.returnValue(of([{ id: 2, name: 'Tinex' }]));

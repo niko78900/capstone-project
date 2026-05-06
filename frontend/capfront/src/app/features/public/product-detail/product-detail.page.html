@@ -1,5 +1,9 @@
 <section class="page">
-  <app-page-header eyebrow="Public Catalog" [title]="detail()?.name ?? 'Product Detail'" [subtitle]="subtitle()">
+  <app-page-header
+    eyebrow="Public Catalog"
+    [title]="detail()?.name ?? 'Product Detail'"
+    [subtitle]="subtitle()"
+  >
     <a header-actions mat-stroked-button routerLink="/products">Back to catalog</a>
   </app-page-header>
 
@@ -50,7 +54,8 @@
               <p class="best-price-label">Best verified offer</p>
               <p class="best-price-value">{{ formatMoney(bestPrice.price, bestPrice.currency) }}</p>
               <p class="best-price-meta">
-                {{ bestPrice.supermarketName }} | Observed {{ formatTimestamp(bestPrice.observedAt) }}
+                {{ bestPrice.supermarketName }} | Observed
+                {{ formatTimestamp(bestPrice.observedAt) }}
               </p>
             </div>
           } @else {
@@ -67,7 +72,9 @@
       <mat-card class="panel" appearance="outlined">
         <mat-card-header>
           <mat-card-title>Nutrition Highlights</mat-card-title>
-          <mat-card-subtitle>Shown per serving unit in catalog records (typically 100 g).</mat-card-subtitle>
+          <mat-card-subtitle
+            >Shown per serving unit in catalog records (typically 100 g).</mat-card-subtitle
+          >
         </mat-card-header>
         <mat-card-content>
           @if (detail.nutrition) {
@@ -88,7 +95,9 @@
       <mat-card class="panel" appearance="outlined">
         <mat-card-header>
           <mat-card-title>Verified Supermarket Prices</mat-card-title>
-          <mat-card-subtitle>Sorted from lowest to highest price with the best row highlighted.</mat-card-subtitle>
+          <mat-card-subtitle
+            >Sorted from lowest to highest price with the best row highlighted.</mat-card-subtitle
+          >
         </mat-card-header>
         <mat-card-content>
           @if (sortedPrices().length === 0) {
@@ -104,7 +113,10 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (price of sortedPrices(); track price.supermarketId + '-' + price.observedAt) {
+                  @for (
+                    price of sortedPrices();
+                    track price.supermarketId + '-' + price.observedAt
+                  ) {
                     <tr [class]="priceRowClass(price)">
                       <td>{{ price.supermarketName }}</td>
                       <td>{{ formatMoney(price.price, price.currency) }}</td>
@@ -114,6 +126,73 @@
                 </tbody>
               </table>
             </div>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="panel" appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Price History</mat-card-title>
+          <mat-card-subtitle>Verified prices over time, grouped by supermarket.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (priceHistoryChart(); as chart) {
+            <div class="history-chart-wrap">
+              <svg
+                class="history-chart"
+                viewBox="0 0 720 260"
+                role="img"
+                aria-label="Price history chart by supermarket"
+              >
+                <line class="chart-axis" x1="58" y1="24" x2="58" y2="210" />
+                <line class="chart-axis" x1="58" y1="210" x2="700" y2="210" />
+                <line class="chart-grid" x1="58" y1="24" x2="700" y2="24" />
+                <line class="chart-grid" x1="58" y1="117" x2="700" y2="117" />
+                <text class="chart-label" x="8" y="29">{{ chart.maxPriceLabel }}</text>
+                <text class="chart-label" x="8" y="214">{{ chart.minPriceLabel }}</text>
+                <text class="chart-label" x="58" y="244">{{ chart.startDateLabel }}</text>
+                <text class="chart-label chart-label-end" x="700" y="244">
+                  {{ chart.endDateLabel }}
+                </text>
+
+                @for (series of chart.series; track series.supermarketId) {
+                  @if (series.points.length > 1) {
+                    <polyline
+                      class="history-line"
+                      fill="none"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      [attr.stroke]="series.color"
+                      [attr.points]="series.svgPoints"
+                    />
+                  }
+                  @for (point of series.points; track point.key) {
+                    <circle
+                      class="history-point"
+                      r="4"
+                      [attr.cx]="point.cx"
+                      [attr.cy]="point.cy"
+                      [attr.fill]="series.color"
+                    >
+                      <title>{{ point.label }}</title>
+                    </circle>
+                  }
+                }
+              </svg>
+            </div>
+            <div class="history-legend" aria-label="Price history markets">
+              @for (series of chart.series; track series.supermarketId) {
+                <div class="history-legend-item">
+                  <span class="history-swatch" [style.background]="series.color"></span>
+                  <span>{{ series.supermarketName }}</span>
+                  <span class="history-latest">
+                    latest {{ formatMoney(series.latestPrice, series.currency) }}
+                  </span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="panel-empty">No price history is available for this product.</p>
           }
         </mat-card-content>
       </mat-card>

@@ -37,6 +37,29 @@ describe('ProductDetailPageComponent', () => {
             observedAt: '2026-04-12T11:00:00Z',
           },
         ],
+        priceHistory: [
+          {
+            supermarketId: 1,
+            supermarketName: 'Tinex',
+            price: 69.5,
+            currency: 'MKD',
+            observedAt: '2026-03-12T11:00:00Z',
+          },
+          {
+            supermarketId: 1,
+            supermarketName: 'Tinex',
+            price: 65.5,
+            currency: 'MKD',
+            observedAt: '2026-04-12T11:00:00Z',
+          },
+          {
+            supermarketId: 2,
+            supermarketName: 'Vero',
+            price: 72,
+            currency: 'MKD',
+            observedAt: '2026-04-10T09:00:00Z',
+          },
+        ],
       }),
     );
 
@@ -65,6 +88,9 @@ describe('ProductDetailPageComponent', () => {
     expect(component.detail()?.name).toBe('Banana');
     expect(fixture.nativeElement.textContent).toContain('Verified Supermarket Prices');
     expect(fixture.nativeElement.textContent).toContain('Nutrition Highlights');
+    expect(fixture.nativeElement.textContent).toContain('Price History');
     expect(fixture.nativeElement.textContent).toContain('Tinex');
+    expect(fixture.nativeElement.textContent).toContain('Vero');
+    expect(fixture.nativeElement.querySelector('svg.history-chart')).not.toBeNull();
   });
 });

@@ -31,6 +31,14 @@ export interface ProductPriceDto {
   observedAt: string;
 }
 
+export interface ProductPriceHistoryPointDto {
+  supermarketId: number;
+  supermarketName: string;
+  price: number;
+  currency: string;
+  observedAt: string;
+}
+
 export interface ProductDetailDto {
   id: number;
   name: string;
@@ -40,4 +48,5 @@ export interface ProductDetailDto {
   category: string;
   nutrition: ProductNutritionDto | null;
   prices: ProductPriceDto[];
+  priceHistory: ProductPriceHistoryPointDto[];
 }
