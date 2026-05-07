@@ -2,6 +2,7 @@ import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
+import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -93,10 +94,7 @@ class _SupermarketCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         onTap: onTap,
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: const Icon(Icons.storefront_outlined),
-        ),
+        leading: MarketLogo(supermarketName: market.name),
         title: Text(market.name),
         subtitle: const Text('Included in verified price comparison results'),
         trailing: const Icon(Icons.chevron_right),

@@ -11,6 +11,7 @@ import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
+import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -219,6 +220,7 @@ void main() {
 
     expect(find.text('Milk 1L'), findsAtLeastNWidgets(1));
     expect(find.textContaining('Tinex'), findsAtLeastNWidgets(1));
+    expect(find.byType(MarketLogo), findsAtLeastNWidgets(1));
   });
 
   testWidgets('product detail shows price history below verified prices', (
@@ -281,6 +283,7 @@ void main() {
     expect(find.text('Price History'), findsOneWidget);
     expect(find.text('Vero'), findsOneWidget);
     expect(find.textContaining('latest'), findsWidgets);
+    expect(find.byType(MarketLogo), findsAtLeastNWidgets(2));
   });
 
   testWidgets('root tabs back press opens exit confirmation dialog', (

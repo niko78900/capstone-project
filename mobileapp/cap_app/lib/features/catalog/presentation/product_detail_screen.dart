@@ -6,6 +6,7 @@ import 'package:cap_app/features/catalog/presentation/price_history_chart.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
+import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:cap_app/shared/widgets/my_items_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,6 +117,9 @@ class ProductDetailScreen extends ConsumerWidget {
                   ...detail.prices.map(
                     (price) => Card(
                       child: ListTile(
+                        leading: MarketLogo(
+                          supermarketName: price.supermarketName,
+                        ),
                         title: Text(price.supermarketName),
                         subtitle: Text(
                           'Observed ${AppFormatters.asRelativeDateTime(price.observedAt)}',

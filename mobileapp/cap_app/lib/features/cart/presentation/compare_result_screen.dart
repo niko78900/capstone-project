@@ -2,6 +2,7 @@ import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
+import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -88,9 +89,23 @@ class _CheapestBanner extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 6),
-            Text(
-              '${option!.supermarketName} | ${AppFormatters.asCurrency(option!.totalCost)}',
-              style: Theme.of(context).textTheme.titleLarge,
+            Row(
+              children: [
+                MarketLogo(supermarketName: option!.supermarketName),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    option!.supermarketName,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                Text(
+                  AppFormatters.asCurrency(option!.totalCost),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -115,6 +130,8 @@ class _ResultCard extends StatelessWidget {
           children: [
             Row(
               children: [
+                MarketLogo(supermarketName: entry.supermarketName),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     entry.supermarketName,

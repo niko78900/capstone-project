@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
+import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 
 class PriceHistoryChart extends StatelessWidget {
@@ -100,6 +101,8 @@ class _LegendItem extends StatelessWidget {
           height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
+        const SizedBox(width: 6),
+        MarketLogo(supermarketName: label, width: 28, height: 24),
         const SizedBox(width: 6),
         Text(label, style: textStyle),
         const SizedBox(width: 4),

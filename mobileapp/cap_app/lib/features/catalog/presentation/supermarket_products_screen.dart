@@ -5,6 +5,7 @@ import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
+import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -48,7 +49,21 @@ class _SupermarketProductsScreenState
     final marketName = widget.supermarketName ?? 'Selected supermarket';
 
     return Scaffold(
-      appBar: AppBar(title: Text(marketName)),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            MarketLogo(supermarketName: marketName, width: 34, height: 34),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                marketName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Padding(

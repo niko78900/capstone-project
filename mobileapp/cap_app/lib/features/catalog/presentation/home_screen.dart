@@ -9,6 +9,7 @@ import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:cap_app/shared/widgets/async_value_view.dart';
 import 'package:cap_app/shared/widgets/barcode_asset_icon.dart';
+import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:cap_app/shared/widgets/my_items_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -452,12 +453,7 @@ class _PopularProductCard extends StatelessWidget {
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                Text(
-                  product.bestPriceSupermarket ?? 'Awaiting verified market',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                _BestMarketLabel(marketName: product.bestPriceSupermarket),
               ],
             ),
           ),
@@ -477,7 +473,7 @@ class _CatalogProductCard extends ConsumerWidget {
     final bestPrice = product.bestPrice;
     final bestPriceLabel = bestPrice == null
         ? 'No verified price yet'
-        : '${AppFormatters.asCurrency(bestPrice)} | ${product.bestPriceSupermarket ?? '-'}';
+        : AppFormatters.asCurrency(bestPrice);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -521,9 +517,17 @@ class _CatalogProductCard extends ConsumerWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            bestPriceLabel,
-                            style: Theme.of(context).textTheme.bodySmall,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                bestPriceLabel,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              _BestMarketLabel(
+                                marketName: product.bestPriceSupermarket,
+                              ),
+                            ],
                           ),
                         ),
                         FilledButton.tonalIcon(
@@ -558,6 +562,43 @@ class _CatalogProductCard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _BestMarketLabel extends StatelessWidget {
+  const _BestMarketLabel({required this.marketName});
+
+  final String? marketName;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolved = marketName?.trim();
+    if (resolved == null || resolved.isEmpty) {
+      return Text(
+        'Awaiting verified market',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 3),
+      child: Row(
+        children: [
+          MarketLogo(supermarketName: resolved, width: 28, height: 24),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              resolved,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
       ),
     );
   }
