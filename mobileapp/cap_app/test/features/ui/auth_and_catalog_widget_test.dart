@@ -6,6 +6,7 @@ import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
+import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
@@ -285,6 +286,87 @@ void main() {
     expect(find.textContaining('latest'), findsWidgets);
     expect(find.byType(MarketLogo), findsAtLeastNWidgets(2));
   });
+
+  testWidgets(
+    'cart comparison renders market logos for cheapest and ranked rows',
+    (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: CompareResultScreen(
+              result: CartComparisonResponse(
+                requestItemCount: 2,
+                cheapestEligible: CheapestEligibleOptionDto(
+                  supermarketId: 1,
+                  supermarketName: 'Tinex',
+                  totalCost: 180,
+                  currency: 'MKD',
+                ),
+                rankedSupermarkets: [
+                  SupermarketCartResultDto(
+                    supermarketId: 1,
+                    supermarketName: 'Tinex',
+                    totalCost: 180,
+                    currency: 'MKD',
+                    fullCoverage: true,
+                    coverageRatio: 1,
+                    missingItems: [],
+                    lineItems: [
+                      CartLineItemDto(
+                        productId: 1,
+                        productName: 'Milk 1L',
+                        quantity: 1,
+                        unitPrice: 70,
+                        lineTotal: 70,
+                      ),
+                    ],
+                  ),
+                  SupermarketCartResultDto(
+                    supermarketId: 2,
+                    supermarketName: 'Vero',
+                    totalCost: 95,
+                    currency: 'MKD',
+                    fullCoverage: false,
+                    coverageRatio: 0.5,
+                    missingItems: [
+                      MissingCartItemDto(productId: 2, productName: 'Bread'),
+                    ],
+                    lineItems: [
+                      CartLineItemDto(
+                        productId: 1,
+                        productName: 'Milk 1L',
+                        quantity: 1,
+                        unitPrice: 95,
+                        lineTotal: 95,
+                      ),
+                    ],
+                  ),
+                ],
+                diagnostics: CartDiagnosticsDto(
+                  eligibleSupermarkets: 1,
+                  partialSupermarkets: 1,
+                  totalSupermarkets: 2,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cheapest eligible option'), findsOneWidget);
+      expect(find.text('Ranked supermarkets'), findsOneWidget);
+      expect(find.byType(MarketLogo), findsNWidgets(3));
+
+      final assetNames = tester
+          .widgetList<Image>(find.byType(Image))
+          .map((image) => (image.image as AssetImage).assetName)
+          .toList();
+      expect(assetNames, contains('assets/market_logos/tinex.png'));
+      expect(assetNames, contains('assets/market_logos/vero.png'));
+    },
+  );
 
   testWidgets('root tabs back press opens exit confirmation dialog', (
     tester,

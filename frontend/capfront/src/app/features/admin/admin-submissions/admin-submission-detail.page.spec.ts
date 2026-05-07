@@ -83,6 +83,24 @@ describe('AdminSubmissionDetailPageComponent', () => {
         updatedAt: '2026-04-17T10:00:00Z',
       }),
     );
+    moderationService.approve.and.returnValue(
+      of({
+        submissionId: 10,
+        status: 'APPROVED',
+        action: 'APPROVED',
+        reason: 'approved',
+        reviewedAt: '2026-04-17T10:00:00Z',
+      }),
+    );
+    moderationService.reject.and.returnValue(
+      of({
+        submissionId: 10,
+        status: 'REJECTED',
+        action: 'REJECTED',
+        reason: 'incorrect values',
+        reviewedAt: '2026-04-17T10:00:00Z',
+      }),
+    );
 
     catalogService.getProductDetail.and.returnValue(
       of({
