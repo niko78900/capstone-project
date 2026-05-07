@@ -1,4 +1,4 @@
-package com.example.cap_app
+package com.niko.skopjepricecompass
 
 import io.flutter.embedding.android.FlutterActivity
 

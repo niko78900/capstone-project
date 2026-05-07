@@ -3,3 +3,6 @@ dev-credentials.txt
 backend/supermarket-api/uploads/
 DEPLOY_DEBIAN_BACKEND_FRONTEND.txt
 plan.txt
+mobileapp/cap_app/android/key.properties
+*.jks
+*.keystore
