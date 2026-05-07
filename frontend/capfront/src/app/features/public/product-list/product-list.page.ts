@@ -23,6 +23,7 @@ import { CatalogService } from '../../../core/services/catalog.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { FilterToolbarComponent } from '../../../shared/components/filter-toolbar/filter-toolbar.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
+import { MarketLogoComponent } from '../../../shared/components/market-logo/market-logo.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 type ProductSortOrder = 'RELEVANCE' | 'NAME_ASC' | 'PRICE_ASC' | 'PRICE_DESC';
@@ -42,6 +43,7 @@ type ProductFilterValue = 'ALL' | string;
     EmptyStateComponent,
     FilterToolbarComponent,
     LoadingStateComponent,
+    MarketLogoComponent,
     PageHeaderComponent,
   ],
   templateUrl: './product-list.page.html',

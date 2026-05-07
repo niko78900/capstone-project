@@ -111,6 +111,17 @@
   margin: 0;
 }
 
+.best-price-market,
+.market-cell {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+}
+
+.best-price-market {
+  flex-wrap: wrap;
+}
+
 .best-price-empty .best-price-label,
 .best-price-empty .best-price-value,
 .best-price-empty .best-price-meta {
@@ -249,7 +260,7 @@
   align-items: center;
   color: var(--app-text);
   display: inline-flex;
-  gap: 7px;
+  gap: 6px;
 }
 
 .history-swatch {

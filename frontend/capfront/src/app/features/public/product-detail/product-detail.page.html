@@ -53,10 +53,11 @@
             <div class="best-price">
               <p class="best-price-label">Best verified offer</p>
               <p class="best-price-value">{{ formatMoney(bestPrice.price, bestPrice.currency) }}</p>
-              <p class="best-price-meta">
-                {{ bestPrice.supermarketName }} | Observed
-                {{ formatTimestamp(bestPrice.observedAt) }}
-              </p>
+              <div class="best-price-meta best-price-market">
+                <app-market-logo size="sm" [supermarketName]="bestPrice.supermarketName" />
+                <span>{{ bestPrice.supermarketName }}</span>
+                <span>| Observed {{ formatTimestamp(bestPrice.observedAt) }}</span>
+              </div>
             </div>
           } @else {
             <div class="best-price best-price-empty">
@@ -118,7 +119,12 @@
                     track price.supermarketId + '-' + price.observedAt
                   ) {
                     <tr [class]="priceRowClass(price)">
-                      <td>{{ price.supermarketName }}</td>
+                      <td>
+                        <span class="market-cell">
+                          <app-market-logo size="sm" [supermarketName]="price.supermarketName" />
+                          <span>{{ price.supermarketName }}</span>
+                        </span>
+                      </td>
                       <td>{{ formatMoney(price.price, price.currency) }}</td>
                       <td>{{ formatTimestamp(price.observedAt) }}</td>
                     </tr>
@@ -184,6 +190,7 @@
               @for (series of chart.series; track series.supermarketId) {
                 <div class="history-legend-item">
                   <span class="history-swatch" [style.background]="series.color"></span>
+                  <app-market-logo size="sm" [supermarketName]="series.supermarketName" />
                   <span>{{ series.supermarketName }}</span>
                   <span class="history-latest">
                     latest {{ formatMoney(series.latestPrice, series.currency) }}

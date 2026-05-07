@@ -36,6 +36,13 @@ describe('ProductDetailPageComponent', () => {
             currency: 'MKD',
             observedAt: '2026-04-12T11:00:00Z',
           },
+          {
+            supermarketId: 99,
+            supermarketName: 'Corner Market',
+            price: 70,
+            currency: 'MKD',
+            observedAt: '2026-04-11T11:00:00Z',
+          },
         ],
         priceHistory: [
           {
@@ -58,6 +65,13 @@ describe('ProductDetailPageComponent', () => {
             price: 72,
             currency: 'MKD',
             observedAt: '2026-04-10T09:00:00Z',
+          },
+          {
+            supermarketId: 99,
+            supermarketName: 'Corner Market',
+            price: 70,
+            currency: 'MKD',
+            observedAt: '2026-04-11T11:00:00Z',
           },
         ],
       }),
@@ -92,5 +106,12 @@ describe('ProductDetailPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Tinex');
     expect(fixture.nativeElement.textContent).toContain('Vero');
     expect(fixture.nativeElement.querySelector('svg.history-chart')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/tinex.png"]'),
+    ).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/vero.png"]'),
+    ).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('CM');
   });
 });

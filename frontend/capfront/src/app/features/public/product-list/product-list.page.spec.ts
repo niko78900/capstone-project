@@ -33,6 +33,17 @@ describe('ProductListPageComponent', () => {
       bestPriceSupermarket: 'Vero',
       currency: 'MKD',
     },
+    {
+      id: 3,
+      name: 'Pretzels',
+      brand: 'Snack Co',
+      barcode: '789',
+      category: 'Snacks',
+      nutrition: null,
+      bestPrice: 85,
+      bestPriceSupermarket: 'Corner Market',
+      currency: 'MKD',
+    },
   ];
 
   beforeEach(async () => {
@@ -42,6 +53,7 @@ describe('ProductListPageComponent', () => {
       of([
         { id: 1, name: 'Tinex' },
         { id: 2, name: 'Vero' },
+        { id: 3, name: 'Corner Market' },
       ]),
     );
 
@@ -68,6 +80,13 @@ describe('ProductListPageComponent', () => {
 
     expect(catalogService.getProducts).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('Milk 3.2% 1L');
+    expect(
+      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/tinex.png"]'),
+    ).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/vero.png"]'),
+    ).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('CM');
   }));
 
   it('triggers new search request when query changes', fakeAsync(() => {

@@ -15,6 +15,7 @@ import {
 import { CatalogService } from '../../../core/services/catalog.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
+import { MarketLogoComponent } from '../../../shared/components/market-logo/market-logo.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 interface NutritionRow {
@@ -76,6 +77,7 @@ const MARKET_COLORS_BY_NAME: Record<string, string> = {
     MatIconModule,
     EmptyStateComponent,
     LoadingStateComponent,
+    MarketLogoComponent,
     PageHeaderComponent,
   ],
   templateUrl: './product-detail.page.html',

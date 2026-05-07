@@ -106,9 +106,25 @@
   margin: 0;
 }
 
+.price-market {
+  align-items: center;
+  color: #206039;
+  display: inline-flex;
+  font-size: 0.84rem;
+  gap: 7px;
+  min-width: 0;
+}
+
+.price-market span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .price-block-empty .price-label,
 .price-block-empty .price-value,
-.price-block-empty .price-hint {
+.price-block-empty .price-hint,
+.price-block-empty .price-market {
   color: var(--text-muted);
 }
 
@@ -119,7 +135,8 @@
 
 :host-context(body.dark-theme) .price-label,
 :host-context(body.dark-theme) .price-value,
-:host-context(body.dark-theme) .price-hint {
+:host-context(body.dark-theme) .price-hint,
+:host-context(body.dark-theme) .price-market {
   color: #bbf7d0;
 }
 

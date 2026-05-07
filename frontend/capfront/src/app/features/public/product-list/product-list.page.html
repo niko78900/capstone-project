@@ -102,7 +102,14 @@
           <div class="price-block" [class.price-block-empty]="product.bestPrice == null">
             <p class="price-label">Best verified price</p>
             <p class="price-value">{{ formatPrice(product) }}</p>
-            <p class="price-hint">{{ priceHint(product) }}</p>
+            @if (product.bestPriceSupermarket) {
+              <div class="price-market">
+                <app-market-logo size="sm" [supermarketName]="product.bestPriceSupermarket" />
+                <span>{{ product.bestPriceSupermarket }}</span>
+              </div>
+            } @else {
+              <p class="price-hint">{{ priceHint(product) }}</p>
+            }
           </div>
         </mat-card-content>
 
