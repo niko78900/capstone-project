@@ -277,28 +277,34 @@ List<_HistorySeries> _buildSeries(List<ProductPriceHistoryPointDto> points) {
     );
 
   return [
-    for (var index = 0; index < entries.length; index++)
+    for (final entry in entries)
       _HistorySeries(
-        supermarketName: entries[index].value.first.supermarketName,
-        color: _marketColor(entries[index].key, index),
-        points: entries[index].value,
+        supermarketName: entry.value.first.supermarketName,
+        color: _marketColor(entry.key, entry.value.first.supermarketName),
+        points: entry.value,
       ),
   ];
 }
 
-Color _marketColor(int supermarketId, int index) {
-  const palette = [
-    Color(0xFF1A7F64),
-    Color(0xFF2563EB),
-    Color(0xFFDC2626),
-    Color(0xFF9333EA),
-    Color(0xFFCA8A04),
-    Color(0xFF0891B2),
-    Color(0xFFDB2777),
-    Color(0xFF4F46E5),
-  ];
-  if (index < palette.length) {
-    return palette[index];
+Color _marketColor(int supermarketId, String supermarketName) {
+  const marketColorsByName = {
+    'tinex': Color(0xFF1A7F64),
+    'vero': Color(0xFF2563EB),
+    'kam market': Color(0xFFDC2626),
+    'ramstore': Color(0xFF9333EA),
+    'stokomak': Color(0xFFCA8A04),
+    'kit-go market': Color(0xFF0891B2),
+    'kipper': Color(0xFFDB2777),
+    'zur': Color(0xFF4F46E5),
+    'reptil': Color(0xFF0EA5E9),
+  };
+  final configured = marketColorsByName[_normalizeMarketName(supermarketName)];
+  if (configured != null) {
+    return configured;
   }
   return HSVColor.fromAHSV(1, (supermarketId * 47) % 360, 0.68, 0.72).toColor();
+}
+
+String _normalizeMarketName(String value) {
+  return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 }

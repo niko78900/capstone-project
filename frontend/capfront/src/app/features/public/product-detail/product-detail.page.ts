@@ -55,16 +55,17 @@ const CHART_LEFT = 58;
 const CHART_RIGHT = 700;
 const CHART_TOP = 24;
 const CHART_BOTTOM = 210;
-const CHART_COLORS = [
-  '#1a7f64',
-  '#2563eb',
-  '#dc2626',
-  '#9333ea',
-  '#ca8a04',
-  '#0891b2',
-  '#db2777',
-  '#4f46e5',
-];
+const MARKET_COLORS_BY_NAME: Record<string, string> = {
+  tinex: '#1A7F64',
+  vero: '#2563EB',
+  'kam market': '#DC2626',
+  ramstore: '#9333EA',
+  stokomak: '#CA8A04',
+  'kit-go market': '#0891B2',
+  kipper: '#DB2777',
+  zur: '#4F46E5',
+  reptil: '#0EA5E9',
+};
 
 @Component({
   selector: 'app-product-detail-page',
@@ -148,7 +149,8 @@ export class ProductDetailPageComponent {
     }
 
     const series = Array.from(grouped.entries())
-      .map(([supermarketId, points], index) => {
+      .map(([supermarketId, points]) => {
+        const latest = points[points.length - 1];
         const chartPoints = points.map((point) => {
           const cx = this.scale(point.timeMs, minTime, maxTime, CHART_LEFT, CHART_RIGHT);
           const cy = this.scale(point.price, minPrice, maxPrice, CHART_BOTTOM, CHART_TOP);
@@ -159,11 +161,10 @@ export class ProductDetailPageComponent {
             label: `${point.supermarketName}: ${this.formatMoney(point.price, point.currency)} on ${this.formatShortDate(point.observedAt)}`,
           };
         });
-        const latest = points[points.length - 1];
         return {
           supermarketId,
           supermarketName: latest.supermarketName,
-          color: this.marketColor(supermarketId, index),
+          color: this.marketColor(supermarketId, latest.supermarketName),
           points: chartPoints,
           svgPoints: chartPoints.map((point) => `${point.cx},${point.cy}`).join(' '),
           latestPrice: latest.price,
@@ -275,12 +276,17 @@ export class ProductDetailPageComponent {
     return targetMin + ((value - min) / (max - min)) * (targetMax - targetMin);
   }
 
-  private marketColor(supermarketId: number, index: number): string {
-    if (index < CHART_COLORS.length) {
-      return CHART_COLORS[index];
+  private marketColor(supermarketId: number, supermarketName: string): string {
+    const configured = MARKET_COLORS_BY_NAME[this.normalizeMarketName(supermarketName)];
+    if (configured) {
+      return configured;
     }
     const hue = Math.abs(supermarketId * 47) % 360;
     return `hsl(${hue} 68% 42%)`;
+  }
+
+  private normalizeMarketName(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, ' ');
   }
 
   private formatMeasure(value: number | null, unit: string): string {
