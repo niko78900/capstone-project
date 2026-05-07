@@ -7,6 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
+import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
+import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import java.time.Instant;
 import java.util.Iterator;
 import org.junit.jupiter.api.Test;
@@ -27,18 +31,33 @@ class SubmissionModerationIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private SupermarketRepository supermarketRepository;
+
     @Test
     void approvedPriceSubmission_shouldAffectCatalogProductPrices() throws Exception {
         String userToken = registerUser("submitter." + System.nanoTime() + "@example.com", null);
         String adminToken = registerUser("admin." + System.nanoTime() + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Moderated Price Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
 
         String submitPricePayload = """
                 {
-                  "productId": 1,
-                  "supermarketId": 1,
+                  "productId": %d,
+                  "supermarketId": %d,
                   "price": 123.45
                 }
-                """;
+                """.formatted(product.getId(), supermarketId);
 
         MvcResult submissionResult = mockMvc.perform(post("/api/v1/submissions/price")
                         .header("Authorization", "Bearer " + userToken)
@@ -56,12 +75,12 @@ class SubmissionModerationIntegrationTest {
 
         String historicalPricePayload = """
                 {
-                  "productId": 1,
-                  "supermarketId": 1,
+                  "productId": %d,
+                  "supermarketId": %d,
                   "price": 111.11,
                   "observedAt": "2026-01-01T10:00:00Z"
                 }
-                """;
+                """.formatted(product.getId(), supermarketId);
         MvcResult historicalSubmissionResult = mockMvc.perform(post("/api/v1/submissions/price")
                         .header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -76,23 +95,23 @@ class SubmissionModerationIntegrationTest {
                         .content("{\"reason\":\"Historical price\"}"))
                 .andExpect(status().isOk());
 
-        MvcResult productResult = mockMvc.perform(get("/api/v1/products/1")
+        MvcResult productResult = mockMvc.perform(get("/api/v1/products/" + product.getId())
                         .header("Authorization", "Bearer " + userToken))
                 .andExpect(status().isOk())
                 .andReturn();
 
-        JsonNode product = readJson(productResult);
-        JsonNode prices = product.get("prices");
-        JsonNode matching = findPriceForSupermarket(prices, 1L);
+        JsonNode productJson = readJson(productResult);
+        JsonNode prices = productJson.get("prices");
+        JsonNode matching = findPriceForSupermarket(prices, supermarketId);
         assertThat(matching).isNotNull();
         assertThat(matching.get("price").decimalValue()).isEqualByComparingTo("123.45");
 
-        JsonNode priceHistory = product.get("priceHistory");
+        JsonNode priceHistory = productJson.get("priceHistory");
         assertThat(priceHistory).isNotNull();
         assertThat(priceHistory.isArray()).isTrue();
         assertThat(priceHistory.size()).isGreaterThan(prices.size());
-        assertThat(containsPriceForSupermarket(priceHistory, 1L, "111.11")).isTrue();
-        assertThat(containsPriceForSupermarket(priceHistory, 1L, "123.45")).isTrue();
+        assertThat(containsPriceForSupermarket(priceHistory, supermarketId, "111.11")).isTrue();
+        assertThat(containsPriceForSupermarket(priceHistory, supermarketId, "123.45")).isTrue();
         assertThat(isObservedAtSortedAscending(priceHistory)).isTrue();
     }
 

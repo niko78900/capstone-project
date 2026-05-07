@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
+import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +27,12 @@ class AdminAuthorizationIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @Test
     void userToken_shouldNotAccessAdminSubmissionsEndpoint() throws Exception {
@@ -50,10 +59,16 @@ class AdminAuthorizationIntegrationTest {
 
     @Test
     void anonymousUser_shouldAccessPublicCatalogEndpoints() throws Exception {
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Public Catalog Product"
+        );
+
         mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/v1/products/1"))
+        mockMvc.perform(get("/api/v1/products/" + product.getId()))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/supermarkets"))

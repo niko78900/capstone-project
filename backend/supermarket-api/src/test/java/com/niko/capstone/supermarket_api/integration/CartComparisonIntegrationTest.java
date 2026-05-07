@@ -6,6 +6,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
+import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
+import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
+import com.niko.capstone.supermarket_api.domain.repository.VerifiedPriceRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,18 +29,46 @@ class CartComparisonIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private SupermarketRepository supermarketRepository;
+
+    @Autowired
+    private VerifiedPriceRepository verifiedPriceRepository;
+
     @Test
     void compareCart_shouldReturnCheapestAndRankedSupermarkets() throws Exception {
         String token = registerUser("cart." + System.nanoTime() + "@example.com");
+        ProductEntity firstProduct = IntegrationTestCatalog.createPricedProduct(
+                productRepository,
+                categoryRepository,
+                supermarketRepository,
+                verifiedPriceRepository,
+                "Cart Product A",
+                "30.00"
+        );
+        ProductEntity secondProduct = IntegrationTestCatalog.createPricedProduct(
+                productRepository,
+                categoryRepository,
+                supermarketRepository,
+                verifiedPriceRepository,
+                "Cart Product B",
+                "45.00"
+        );
 
         String payload = """
                 {
                   "items": [
-                    { "productId": 1, "quantity": 2 },
-                    { "productId": 2, "quantity": 1 }
+                    { "productId": %d, "quantity": 2 },
+                    { "productId": %d, "quantity": 1 }
                   ]
                 }
-                """;
+                """.formatted(firstProduct.getId(), secondProduct.getId());
 
         mockMvc.perform(post("/api/v1/cart/compare/single-supermarket")
                         .header("Authorization", "Bearer " + token)

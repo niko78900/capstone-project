@@ -8,6 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
+import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
+import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Iterator;
@@ -29,18 +33,33 @@ class ModerationPayloadPatchIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private SupermarketRepository supermarketRepository;
+
     @Test
     void patchThenApprove_shouldApplyPatchedPayloadAndPersistHistory() throws Exception {
         String userToken = registerUser("patch.user." + System.nanoTime() + "@example.com", null);
         String adminToken = registerUser("patch.admin." + System.nanoTime() + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Patch Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
 
         String submitPricePayload = """
                 {
-                  "productId": 1,
-                  "supermarketId": 1,
+                  "productId": %d,
+                  "supermarketId": %d,
                   "price": 123.45
                 }
-                """;
+                """.formatted(product.getId(), supermarketId);
 
         MvcResult submissionResult = mockMvc.perform(post("/api/v1/submissions/price")
                         .header("Authorization", "Bearer " + userToken)
@@ -53,13 +72,13 @@ class ModerationPayloadPatchIntegrationTest {
         Long submissionId = submission.get("id").asLong();
         String patchedPayload = """
                 {
-                  "productId": 1,
-                  "supermarketId": 1,
+                  "productId": %d,
+                  "supermarketId": %d,
                   "branchId": null,
                   "price": 150.00,
                   "observedAt": "%s"
                 }
-                """.formatted(Instant.now());
+                """.formatted(product.getId(), supermarketId, Instant.now());
         String patchRequest = """
                 {
                   "payload": %s,
@@ -79,13 +98,13 @@ class ModerationPayloadPatchIntegrationTest {
                         .content("{\"reason\":\"Patched and approved\"}"))
                 .andExpect(status().isOk());
 
-        MvcResult productResult = mockMvc.perform(get("/api/v1/products/1")
+        MvcResult productResult = mockMvc.perform(get("/api/v1/products/" + product.getId())
                         .header("Authorization", "Bearer " + userToken))
                 .andExpect(status().isOk())
                 .andReturn();
 
         JsonNode prices = readJson(productResult).get("prices");
-        JsonNode matching = findPriceForSupermarket(prices, 1L);
+        JsonNode matching = findPriceForSupermarket(prices, supermarketId);
         assertThat(matching).isNotNull();
         assertThat(matching.get("price").decimalValue()).isEqualByComparingTo(new BigDecimal("150.00"));
 
@@ -102,7 +121,13 @@ class ModerationPayloadPatchIntegrationTest {
     void patchPayload_shouldRejectInvalidShapeBeforeSavingHistory() throws Exception {
         String userToken = registerUser("patch.invalid.user." + System.nanoTime() + "@example.com", null);
         String adminToken = registerUser("patch.invalid.admin." + System.nanoTime() + "@example.com", "TEST_ADMIN_BOOTSTRAP");
-        Long submissionId = createPriceSubmission(userToken);
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Invalid Patch Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
+        Long submissionId = createPriceSubmission(userToken, product.getId(), supermarketId);
         String patchRequest = """
                 {
                   "payload": [1, 2, 3],
@@ -127,18 +152,24 @@ class ModerationPayloadPatchIntegrationTest {
     void patchPayload_shouldRejectMissingRequiredFieldsBeforeSaving() throws Exception {
         String userToken = registerUser("patch.missing.user." + System.nanoTime() + "@example.com", null);
         String adminToken = registerUser("patch.missing.admin." + System.nanoTime() + "@example.com", "TEST_ADMIN_BOOTSTRAP");
-        Long submissionId = createPriceSubmission(userToken);
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Missing Patch Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
+        Long submissionId = createPriceSubmission(userToken, product.getId(), supermarketId);
         String patchRequest = """
                 {
                   "payload": {
-                    "productId": 1,
-                    "supermarketId": 1,
+                    "productId": %d,
+                    "supermarketId": %d,
                     "branchId": null,
                     "observedAt": null
                   },
                   "editReason": "Missing price"
                 }
-                """;
+                """.formatted(product.getId(), supermarketId);
 
         MvcResult result = mockMvc.perform(patch("/api/v1/admin/submissions/" + submissionId + "/payload")
                         .header("Authorization", "Bearer " + adminToken)
@@ -176,14 +207,14 @@ class ModerationPayloadPatchIntegrationTest {
         return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
-    private Long createPriceSubmission(String userToken) throws Exception {
+    private Long createPriceSubmission(String userToken, Long productId, Long supermarketId) throws Exception {
         String submitPricePayload = """
                 {
-                  "productId": 1,
-                  "supermarketId": 1,
+                  "productId": %d,
+                  "supermarketId": %d,
                   "price": 123.45
                 }
-                """;
+                """.formatted(productId, supermarketId);
 
         MvcResult submissionResult = mockMvc.perform(post("/api/v1/submissions/price")
                         .header("Authorization", "Bearer " + userToken)

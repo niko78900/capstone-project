@@ -7,6 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
+import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
+import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,18 +29,33 @@ class RewardsIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private SupermarketRepository supermarketRepository;
+
     @Test
     void approvedSubmission_shouldUpdateRewardsAndLeaderboard() throws Exception {
         String userToken = registerUser("rewards.user." + System.nanoTime() + "@example.com", null);
         String adminToken = registerUser("rewards.admin." + System.nanoTime() + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Rewards Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
 
         String submissionPayload = """
                 {
-                  "productId": 1,
-                  "supermarketId": 1,
+                  "productId": %d,
+                  "supermarketId": %d,
                   "price": 222.22
                 }
-                """;
+                """.formatted(product.getId(), supermarketId);
         MvcResult submissionResult = mockMvc.perform(post("/api/v1/submissions/price")
                         .header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,10 +107,16 @@ class RewardsIntegrationTest {
         String lowToken = registerUser(lowEmail, null);
         String highToken = registerUser(highEmail, null);
         String adminToken = registerUser("rewards.sort.admin." + unique + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Leaderboard Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
 
-        approveSubmission(submitPrice(lowToken, "111.11"), adminToken);
-        approveSubmission(submitPrice(highToken, "222.22"), adminToken);
-        approveSubmission(submitPrice(highToken, "333.33"), adminToken);
+        approveSubmission(submitPrice(lowToken, product.getId(), supermarketId, "111.11"), adminToken);
+        approveSubmission(submitPrice(highToken, product.getId(), supermarketId, "222.22"), adminToken);
+        approveSubmission(submitPrice(highToken, product.getId(), supermarketId, "333.33"), adminToken);
 
         MvcResult leaderboardResult = mockMvc.perform(get("/api/v1/rewards/leaderboard")
                         .header("Authorization", "Bearer " + highToken)
@@ -134,14 +159,14 @@ class RewardsIntegrationTest {
         return readJson(result).get("accessToken").asText();
     }
 
-    private Long submitPrice(String userToken, String price) throws Exception {
+    private Long submitPrice(String userToken, Long productId, Long supermarketId, String price) throws Exception {
         String submissionPayload = """
                 {
-                  "productId": 1,
-                  "supermarketId": 1,
+                  "productId": %d,
+                  "supermarketId": %d,
                   "price": %s
                 }
-                """.formatted(price);
+                """.formatted(productId, supermarketId, price);
         MvcResult submissionResult = mockMvc.perform(post("/api/v1/submissions/price")
                         .header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
