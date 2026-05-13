@@ -1,7 +1,9 @@
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/errors/error_presenter.dart';
+import 'package:cap_app/core/notifications/local_notifications_service.dart';
 import 'package:cap_app/core/network/network_providers.dart';
+import 'package:cap_app/features/auth/models/password_reset_models.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +27,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void initState() {
     super.initState();
     _loadRememberedCredentials();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkStoredPasswordResetRequest();
+    });
   }
 
   @override
@@ -147,6 +152,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             },
                       child: const Text('Create account'),
                     ),
+                    TextButton(
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              context.push(AppRoutes.forgotPassword);
+                            },
+                      child: const Text('Forgot password?'),
+                    ),
                   ],
                 ),
               ),
@@ -204,6 +217,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     await storage.clearRememberedCredentials();
+  }
+
+  Future<void> _checkStoredPasswordResetRequest() async {
+    try {
+      final status = await ref
+          .read(passwordResetRepositoryProvider)
+          .checkStoredStatus();
+      if (!mounted || status == null) {
+        return;
+      }
+
+      switch (status.status) {
+        case PasswordResetStatus.approved:
+          await ref
+              .read(localNotificationsServiceProvider)
+              .show(
+                notificationId: 310001,
+                title: 'Password reset approved',
+                body: 'Set a new password to finish account recovery.',
+              );
+          if (mounted) {
+            context.go(AppRoutes.resetPassword);
+          }
+          break;
+        case PasswordResetStatus.denied:
+          await ref
+              .read(localNotificationsServiceProvider)
+              .show(
+                notificationId: 310002,
+                title: 'Password reset denied',
+                body: 'Your password reset request was denied.',
+              );
+          await ref.read(passwordResetRepositoryProvider).clearStoredRequest();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Your password reset request was denied.'),
+              ),
+            );
+          }
+          break;
+        case PasswordResetStatus.completed:
+        case PasswordResetStatus.expired:
+          await ref.read(passwordResetRepositoryProvider).clearStoredRequest();
+          break;
+        case PasswordResetStatus.pending:
+        case PasswordResetStatus.unknown:
+          break;
+      }
+    } catch (_) {
+      // Login should remain usable even if a stale reset token cannot be checked.
+    }
   }
 
   _AuthUiError? _resolveError(Object? error, {required bool debugModeEnabled}) {

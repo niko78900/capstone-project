@@ -1,5 +1,7 @@
+import 'package:cap_app/features/auth/presentation/forgot_password_screen.dart';
 import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';
+import 'package:cap_app/features/auth/presentation/reset_password_screen.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/presentation/cart_screen.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
@@ -24,6 +26,8 @@ import 'package:go_router/go_router.dart';
 class AppRoutes {
   static const login = '/login';
   static const register = '/register';
+  static const forgotPassword = '/forgot-password';
+  static const resetPassword = '/reset-password';
   static const shop = '/shop';
   static const items = '/items';
   static const supermarkets = '/supermarkets';
@@ -55,7 +59,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final session = authState.valueOrNull;
       final isAuthRoute =
           matchedLocation == AppRoutes.login ||
-          matchedLocation == AppRoutes.register;
+          matchedLocation == AppRoutes.register ||
+          matchedLocation == AppRoutes.forgotPassword ||
+          matchedLocation == AppRoutes.resetPassword;
 
       if (authState.isLoading) {
         return null;
@@ -79,6 +85,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        builder: (context, state) => const ResetPasswordScreen(),
       ),
       GoRoute(
         path: AppRoutes.home,

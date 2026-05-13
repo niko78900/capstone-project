@@ -13,6 +13,7 @@ class AuthTokenStorage {
   static const _tokenKey = 'auth_token';
   static const _rememberedEmailKey = 'remembered_email';
   static const _rememberedPasswordKey = 'remembered_password';
+  static const _passwordResetTokenKey = 'password_reset_token';
   static String? _cachedToken;
 
   FlutterSecureStorage get _storage => const FlutterSecureStorage();
@@ -60,5 +61,17 @@ class AuthTokenStorage {
   Future<void> clearRememberedCredentials() async {
     await _storage.delete(key: _rememberedEmailKey);
     await _storage.delete(key: _rememberedPasswordKey);
+  }
+
+  Future<void> savePasswordResetToken(String token) async {
+    await _storage.write(key: _passwordResetTokenKey, value: token);
+  }
+
+  Future<String?> readPasswordResetToken() async {
+    return _storage.read(key: _passwordResetTokenKey);
+  }
+
+  Future<void> clearPasswordResetToken() async {
+    await _storage.delete(key: _passwordResetTokenKey);
   }
 }

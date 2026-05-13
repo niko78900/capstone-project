@@ -6,10 +6,10 @@ final localNotificationsServiceProvider = Provider<LocalNotificationsService>(
 );
 
 class LocalNotificationsService {
-  static const _channelId = 'submission_decision_updates';
-  static const _channelName = 'Submission Decisions';
+  static const _channelId = 'account_and_submission_updates';
+  static const _channelName = 'Account and Submission Updates';
   static const _channelDescription =
-      'Notifications about approved or rejected submissions';
+      'Notifications about account requests and submission decisions';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();

@@ -1,9 +1,14 @@
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/network/auth_token_storage.dart';
+import 'package:cap_app/core/network/api_client.dart';
 import 'package:cap_app/core/network/network_providers.dart';
 import 'package:cap_app/features/auth/models/auth_models.dart';
+import 'package:cap_app/features/auth/models/password_reset_models.dart';
+import 'package:cap_app/features/auth/data/password_reset_repository.dart';
+import 'package:cap_app/features/auth/presentation/forgot_password_screen.dart';
 import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';
+import 'package:cap_app/features/auth/presentation/reset_password_screen.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
@@ -36,6 +41,7 @@ void main() {
 
       expect(find.text('Email is required'), findsOneWidget);
       expect(find.text('Password is required'), findsOneWidget);
+      expect(find.text('Forgot password?'), findsOneWidget);
     });
 
     testWidgets('login remembers saved credentials and checks remember me', (
@@ -136,6 +142,58 @@ void main() {
       await tester.pump();
 
       expect(find.text('Passwords do not match'), findsOneWidget);
+    });
+
+    testWidgets('forgot password submits reset request', (tester) async {
+      final resetRepository = _FakePasswordResetRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            passwordResetRepositoryProvider.overrideWithValue(resetRepository),
+          ],
+          child: const MaterialApp(home: ForgotPasswordScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'reset@example.com');
+      await tester.tap(find.text('Request reset'));
+      await tester.pumpAndSettle();
+
+      expect(resetRepository.requestedEmail, 'reset@example.com');
+      expect(find.textContaining('Request sent'), findsOneWidget);
+    });
+
+    testWidgets('reset password validates confirmation mismatch', (
+      tester,
+    ) async {
+      final resetRepository = _FakePasswordResetRepository(
+        storedStatus: const PasswordResetStatusResponse(
+          status: PasswordResetStatus.approved,
+          email: 'approved@example.com',
+          expiresAt: null,
+          updatedAt: null,
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            passwordResetRepositoryProvider.overrideWithValue(resetRepository),
+          ],
+          child: const MaterialApp(home: ResetPasswordScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).at(1), 'Password123!');
+      await tester.enterText(find.byType(TextFormField).at(2), 'Different123!');
+      await tester.tap(find.text('Set new password'));
+      await tester.pump();
+
+      expect(find.text('Passwords do not match'), findsOneWidget);
+      expect(resetRepository.completedEmail, isNull);
     });
   });
 
@@ -482,6 +540,7 @@ class _FakeAuthTokenStorage extends AuthTokenStorage {
 
   String? _token;
   RememberedCredentials? remembered;
+  String? passwordResetToken;
   bool clearedRemembered = false;
 
   @override
@@ -516,6 +575,62 @@ class _FakeAuthTokenStorage extends AuthTokenStorage {
   Future<void> clearRememberedCredentials() async {
     remembered = null;
     clearedRemembered = true;
+  }
+
+  @override
+  Future<void> savePasswordResetToken(String token) async {
+    passwordResetToken = token;
+  }
+
+  @override
+  Future<String?> readPasswordResetToken() async {
+    return passwordResetToken;
+  }
+
+  @override
+  Future<void> clearPasswordResetToken() async {
+    passwordResetToken = null;
+  }
+}
+
+class _FakePasswordResetRepository extends PasswordResetRepository {
+  _FakePasswordResetRepository({this.storedStatus})
+    : super(ApiClient(_FakeAuthTokenStorage()), _FakeAuthTokenStorage());
+
+  PasswordResetStatusResponse? storedStatus;
+  String? requestedEmail;
+  String? completedEmail;
+
+  @override
+  Future<PasswordResetRequestResponse> requestReset(String email) async {
+    requestedEmail = email;
+    return PasswordResetRequestResponse(
+      requestToken: 'reset-token',
+      status: PasswordResetStatus.pending,
+      expiresAt: DateTime.utc(2026, 5, 14),
+    );
+  }
+
+  @override
+  Future<PasswordResetStatusResponse?> checkStoredStatus() async {
+    return storedStatus;
+  }
+
+  @override
+  Future<PasswordResetCompleteResponse> completeStoredReset({
+    required String email,
+    required String newPassword,
+  }) async {
+    completedEmail = email;
+    return const PasswordResetCompleteResponse(
+      status: PasswordResetStatus.completed,
+      message: 'Password reset completed',
+    );
+  }
+
+  @override
+  Future<void> clearStoredRequest() async {
+    storedStatus = null;
   }
 }
 
