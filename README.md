@@ -6,9 +6,9 @@ Skopje Price Compass is a capstone project for crowd-sourced supermarket price c
 
 | App | Path | Description |
 | --- | --- | --- |
-| Backend API | `backend/supermarket-api` | Spring Boot REST API with PostgreSQL, Flyway, JWT auth, catalog, submissions, moderation, rewards, uploads, imports, and optional AI support. |
-| Web frontend | `frontend/capfront` | Angular public catalog and admin web dashboard for moderation, submission review, rewards, and product details. |
-| Mobile app | `mobileapp/cap_app` | Flutter shopper app for browsing products, cart comparison, barcode-assisted flows, submissions, and submission status tracking. |
+| Backend API | `backend/supermarket-api` | Spring Boot REST API with PostgreSQL, Flyway, JWT auth, catalog, submissions, moderation, rewards, password resets, uploads, imports, and optional AI support. |
+| Web frontend | `frontend/capfront` | Angular public catalog and admin web dashboard for moderation, submission review, user password reset review, rewards, and product details. |
+| Mobile app | `mobileapp/cap_app` | Flutter shopper app for browsing products, cart comparison, barcode-assisted flows, submissions, password reset requests, and submission status tracking. |
 
 ## Main Features
 
@@ -17,6 +17,7 @@ Skopje Price Compass is a capstone project for crowd-sourced supermarket price c
 - Product and price submissions from the mobile app.
 - Guided product submission flow with barcode scanning and optional image evidence.
 - Admin moderation queue with edit, approve, reject, evidence preview, history, and AI review hints.
+- Admin-approved password reset requests from web or mobile, with local in-app reset prompts after approval.
 - Contributor rewards, score tracking, leaderboard windows, and admin recompute.
 - CSV catalog import dry-run and commit workflow.
 - Local upload storage and optional OpenAI-assisted product extraction/review.

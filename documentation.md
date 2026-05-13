@@ -4,7 +4,7 @@ This document is the detailed technical reference for Skopje Price Compass. The 
 
 ## Project Overview
 
-Skopje Price Compass is a mobile-first supermarket price comparison system for Skopje. It combines a verified product catalog, supermarket-specific prices, crowd-sourced product and price submissions, admin moderation, contributor rewards, and cart comparison.
+Skopje Price Compass is a mobile-first supermarket price comparison system for Skopje. It combines a verified product catalog, supermarket-specific prices, crowd-sourced product and price submissions, admin moderation, contributor rewards, admin-approved password resets, and cart comparison.
 
 The system is built around a single backend API. The Angular web app is used for public browsing and administration. The Flutter mobile app is the primary shopper-facing client.
 
@@ -15,6 +15,7 @@ High-level goals:
 - Let users build a local shopping list and compare the cheapest single supermarket for that list.
 - Let users submit missing products, price updates, images, and nutrition details.
 - Let admins review, edit, approve, or reject submissions before catalog data changes.
+- Let admins approve or deny user password reset requests before a reset is allowed.
 - Reward contributors for approved submissions.
 - Support optional AI-assisted extraction and review without making AI required for core flows.
 
@@ -22,9 +23,9 @@ High-level goals:
 
 | Area | Path | Responsibility |
 | --- | --- | --- |
-| Backend API | `backend/supermarket-api` | Source of truth for users, catalog, prices, submissions, moderation, rewards, imports, uploads, and AI integration. |
-| Angular web app | `frontend/capfront` | Public catalog pages and admin workflows. |
-| Flutter mobile app | `mobileapp/cap_app` | Shopper-first mobile experience, cart comparison, barcode flows, submissions, and status tracking. |
+| Backend API | `backend/supermarket-api` | Source of truth for users, catalog, prices, submissions, moderation, password resets, rewards, imports, uploads, and AI integration. |
+| Angular web app | `frontend/capfront` | Public catalog pages, password reset requests, and admin workflows. |
+| Flutter mobile app | `mobileapp/cap_app` | Shopper-first mobile experience, cart comparison, barcode flows, submissions, password reset requests, and status tracking. |
 
 ## System Architecture
 
@@ -44,6 +45,7 @@ Authentication is JWT-based:
 - Angular stores the admin session in browser storage.
 - Flutter stores the auth token through `flutter_secure_storage`.
 - Flutter also supports remembered credentials on the device when the user opts in.
+- Password reset request tokens are returned once to the requesting client and stored locally. The backend stores only token hashes.
 
 ## Backend
 
@@ -63,11 +65,12 @@ Authentication is JWT-based:
 
 ### Main Modules
 
-- `api/v1/auth`: registration, login, JWT response creation.
+- `api/v1/auth`: registration, login, JWT response creation, and public password reset request/status/completion endpoints.
 - `api/v1/catalog`: products, product detail, price history, supermarkets.
 - `api/v1/cart`: single-supermarket cart comparison.
 - `api/v1/submissions`: product submissions, price submissions, image uploads, AI draft endpoints, current-user submission history.
 - `api/v1/moderation`: admin queue, detail, payload patching, AI review, approval, rejection, history.
+- `api/v1/users`: admin password reset request review endpoints.
 - `api/v1/rewards`: current-user rewards, leaderboard, admin recompute.
 - `api/v1/imports`: admin CSV catalog import dry-run, commit, and job inspection.
 - `api/v1/ai`: OpenAI-backed extraction and moderation analysis support.
@@ -94,8 +97,11 @@ The database schema includes:
 - Contributor score events
 - Import jobs
 - Import job rows
+- Password reset requests
 
 Products include barcode, image URL, normalized name, normalized brand, category, and active status. Verified prices are stored historically, so product detail can return both the latest market price and price history over time.
+
+Password reset requests store requester email, optional matched user, status, hashed request token, expiry, admin decision metadata, and timestamps. Plain reset request tokens are never stored server-side.
 
 ### Flyway Migrations
 
@@ -105,6 +111,7 @@ Products include barcode, image URL, normalized name, normalized brand, category
 - `V4__seed_additional_supermarkets.sql`: Kipper and Kit-go.
 - `V5__seed_zur_reptil_supermarkets.sql`: Zur and Reptil.
 - `V6__remove_example_seed_products.sql`: removes early example/demo products while keeping the real structure.
+- `V7__password_reset_requests.sql`: admin-mediated password reset request table and status constraints.
 
 ### API Summary
 
@@ -112,6 +119,9 @@ Public endpoints:
 
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+- `POST /api/v1/auth/password-reset-requests`
+- `GET /api/v1/auth/password-reset-requests/{token}/status`
+- `POST /api/v1/auth/password-reset-requests/{token}/complete`
 - `GET /api/v1/products`
 - `GET /api/v1/products/{id}`
 - `GET /api/v1/supermarkets`
@@ -146,6 +156,9 @@ Admin endpoints:
 - `POST /api/v1/admin/imports/catalog/dry-run`
 - `POST /api/v1/admin/imports/catalog/commit`
 - `GET /api/v1/admin/imports/{jobId}`
+- `GET /api/v1/admin/users/password-reset-requests`
+- `POST /api/v1/admin/users/password-reset-requests/{id}/approve`
+- `POST /api/v1/admin/users/password-reset-requests/{id}/deny`
 - `GET /actuator/metrics`
 - `GET /actuator/prometheus`
 
@@ -228,6 +241,23 @@ Approval effects:
 - Nutrition submissions update product nutrition.
 - Every decision creates review history and updates contributor rewards.
 
+### Password Resets
+
+Password resets are admin-mediated for this capstone flow. A user starts from the Angular login page or Flutter login screen by submitting an email address. The backend creates a pending request, matches the email to a user when possible, returns a one-time request token to the client, and stores only a hash of that token.
+
+Admins review requests in Angular under **Users**. They can approve or deny pending requests. Denied requests surface a local notification/message to the requesting client, and approved requests allow the same browser or app install that holds the request token to complete the reset.
+
+Reset completion requires:
+
+- Token hash match
+- Email match against the original request
+- `APPROVED` status
+- Unexpired request
+- Request not previously completed
+- Existing matched user
+
+Approved reset requests expire after 24 hours. Completing a reset marks the request as `COMPLETED`; denied or expired requests clear the locally stored token. V1 intentionally uses local/in-app notifications only, with no email provider or push notification service.
+
 ### Rewards
 
 Reward events are recorded from moderation decisions:
@@ -289,6 +319,7 @@ The mobile app no longer relies on AI for barcode extraction. Barcode images go 
 - `/admin`
 - `/admin/submissions`
 - `/admin/submissions/:id`
+- `/admin/users`
 - `/admin/rewards` redirects to `/rewards`
 
 ### Public Catalog
@@ -313,6 +344,7 @@ The admin web app includes:
 - Login
 - Dashboard
 - Moderation queue
+- Users password reset queue
 - Submission detail
 - Payload editor
 - Evidence preview
@@ -321,6 +353,8 @@ The admin web app includes:
 - Rewards page
 - Leaderboard window selector
 - Admin recompute
+
+The login page includes a forgot-password request form. It stores the returned request token in browser storage, checks token status, and presents the reset form when an admin approves the request.
 
 ### Frontend Contracts
 
@@ -335,6 +369,7 @@ The Angular app relies on these backend contracts:
 - Evidence preview uses `payload.imageUrl` when available.
 - Public catalog search uses `q`.
 - Product detail uses `prices` for latest prices and `priceHistory` for charting.
+- Password reset request tokens are stored client-side and checked through the public status endpoint before reset completion.
 
 ### Market Logos
 
@@ -371,6 +406,8 @@ Angular uses a reusable `MarketLogoComponent` with normalized supermarket-name l
 
 - `/login`
 - `/register`
+- `/forgot-password`
+- `/reset-password`
 - `/shop`
 - `/items`
 - `/supermarkets`
@@ -391,6 +428,7 @@ The mobile app supports:
 - Login and registration
 - Session restore
 - Remembered credentials
+- Forgot-password request and approved password reset
 - Logout
 - Product browse/search
 - Product detail
@@ -407,6 +445,7 @@ The mobile app supports:
 - AI-assisted draft merge
 - My submissions status tracking
 - Local notification polling
+- Local notification prompts for approved or denied password reset requests
 - Theme/settings controls
 - Android back-button and gesture exit confirmation on root tabs
 
@@ -463,6 +502,17 @@ For physical devices, use the host computer LAN IP instead.
 6. Admin approves or rejects.
 7. Backend applies catalog changes if approved.
 8. Backend records review history and reward events.
+
+### Admin-Approved Password Reset
+
+1. User opens forgot password from Angular or Flutter and submits their email.
+2. Backend creates a pending password reset request and returns a one-time request token.
+3. Client stores the request token locally in browser storage or secure mobile storage.
+4. Admin opens **Users** in Angular and approves or denies the request.
+5. Client checks request status on launch or auth screens.
+6. Denied requests show a local notification/message and clear the stored token.
+7. Approved requests route the user to a reset form.
+8. Backend completes the reset only when the token, original email, approval state, expiry, and unused request all match.
 
 ## Local Development
 
@@ -556,9 +606,9 @@ flutter build apk --debug
 
 Current verified status:
 
-- Backend tests: 45 passing
-- Angular specs: 37 passing
-- Flutter tests: 31 passing
+- Backend tests: 50 passing
+- Angular specs: 44 passing
+- Flutter tests: 33 passing
 - Flutter analyze: clean
 - Angular build: passing
 
