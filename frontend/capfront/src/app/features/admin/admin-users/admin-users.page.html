@@ -1,0 +1,80 @@
+<section class="page">
+  <app-page-header
+    eyebrow="Admin"
+    title="Users"
+    subtitle="Review password reset requests created from the mobile app or web login."
+  >
+    <button header-actions mat-stroked-button type="button" (click)="refresh()">Refresh</button>
+  </app-page-header>
+
+  <section class="toolbar">
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select [formControl]="statusControl">
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <p class="summary">{{ totalResults() }} result(s)</p>
+  </section>
+
+  @if (loading()) {
+    <app-loading-state message="Loading password reset requests..." />
+  } @else if (errorMessage(); as errorMessage) {
+    <app-empty-state icon="warning" title="Could not load users" [message]="errorMessage" />
+  } @else if (requests().length === 0) {
+    <app-empty-state
+      icon="manage_accounts"
+      title="No password reset requests"
+      message="Requests will appear here after users submit them from login."
+    />
+  } @else {
+    <div class="request-list">
+      @for (request of requests(); track request.id) {
+        <mat-card appearance="outlined" class="request-card">
+          <div class="request-head">
+            <div>
+              <p class="email">{{ request.requesterEmail }}</p>
+              <p class="meta">{{ matchedUserLabel(request) }}</p>
+            </div>
+            <span class="status" [class.pending]="request.status === 'PENDING'">
+              {{ request.status }}
+            </span>
+          </div>
+
+          <div class="meta-grid">
+            <p><span>Created</span>{{ displayDate(request.createdAt) }}</p>
+            <p><span>Expires</span>{{ displayDate(request.expiresAt) }}</p>
+            <p><span>Decided by</span>{{ request.decidedByEmail ?? '-' }}</p>
+            <p><span>Completed</span>{{ displayDate(request.completedAt) }}</p>
+          </div>
+
+          @if (request.decisionReason) {
+            <p class="reason">{{ request.decisionReason }}</p>
+          }
+
+          <div class="actions">
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              [disabled]="!canDecide(request) || processingId() !== null"
+              (click)="approve(request)"
+            >
+              {{ processingId() === request.id ? 'Working...' : 'Approve' }}
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!canDecide(request) || processingId() !== null"
+              (click)="deny(request)"
+            >
+              Deny
+            </button>
+          </div>
+        </mat-card>
+      }
+    </div>
+  }
+</section>

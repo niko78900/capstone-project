@@ -59,6 +59,14 @@ export const routes: Routes = [
         (module) => module.AdminSubmissionDetailPageComponent,
       ),
   },
+  {
+    path: 'admin/users',
+    canActivate: [adminAuthGuard],
+    loadComponent: () =>
+      import('./features/admin/admin-users/admin-users.page').then(
+        (module) => module.AdminUsersPageComponent,
+      ),
+  },
   { path: 'admin/rewards', pathMatch: 'full', redirectTo: 'rewards' },
   { path: '**', redirectTo: 'products' },
 ];
