@@ -203,6 +203,87 @@ class PasswordResetFlowIntegrationTest {
                 .andExpect(status().isUnprocessableEntity());
     }
 
+    @Test
+    void duplicateResetRequest_shouldExpireOlderActiveRequestForSameEmail() throws Exception {
+        String email = "reset.duplicate." + System.nanoTime() + "@example.com";
+        register(email, "Password123!", "Duplicate Reset User", null);
+        String adminToken = registerAdmin("reset.duplicate.admin." + System.nanoTime() + "@example.com");
+
+        String firstToken = createResetRequest(email);
+        Long firstRequestId = latestRequestIdForEmail(email);
+        String secondToken = createResetRequest(email);
+
+        mockMvc.perform(get("/api/v1/auth/password-reset-requests/" + firstToken + "/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRED"));
+        mockMvc.perform(get("/api/v1/auth/password-reset-requests/" + secondToken + "/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+
+        mockMvc.perform(post("/api/v1/admin/users/password-reset-requests/" + firstRequestId + "/approve")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/v1/admin/users/password-reset-requests")
+                        .param("status", "PENDING")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.requesterEmail == '%s')]".formatted(email), hasSize(1)));
+    }
+
+    @Test
+    void duplicateResetRequest_shouldExpireOlderApprovedRequestForSameEmail() throws Exception {
+        String email = "reset.duplicate.approved." + System.nanoTime() + "@example.com";
+        register(email, "Password123!", "Duplicate Approved Reset User", null);
+        String adminToken = registerAdmin("reset.duplicate.approved.admin." + System.nanoTime() + "@example.com");
+
+        String firstToken = createResetRequest(email);
+        Long firstRequestId = latestRequestIdForEmail(email);
+        approve(firstRequestId, adminToken);
+
+        String secondToken = createResetRequest(email);
+
+        mockMvc.perform(get("/api/v1/auth/password-reset-requests/" + firstToken + "/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRED"));
+        mockMvc.perform(get("/api/v1/auth/password-reset-requests/" + secondToken + "/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+        mockMvc.perform(post("/api/v1/auth/password-reset-requests/" + firstToken + "/complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"%s",
+                                  "newPassword":"ShouldNotWork123!"
+                                }
+                                """.formatted(email)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void pendingAdminList_shouldExpireRowsBeforeFilteringAndCounting() throws Exception {
+        passwordResetRequestRepository.deleteAll();
+        String email = "reset.list.expired." + System.nanoTime() + "@example.com";
+        register(email, "Password123!", "Expired List User", null);
+        String adminToken = registerAdmin("reset.list.admin." + System.nanoTime() + "@example.com");
+        createResetRequest(email);
+        Long requestId = latestRequestIdForEmail(email);
+        passwordResetRequestRepository.findById(requestId).ifPresent(request -> {
+            request.setExpiresAt(Instant.now().minusSeconds(1));
+            passwordResetRequestRepository.save(request);
+        });
+
+        mockMvc.perform(get("/api/v1/admin/users/password-reset-requests")
+                        .param("status", "PENDING")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.items", hasSize(0)));
+        org.assertj.core.api.Assertions.assertThat(passwordResetRequestRepository.findById(requestId).orElseThrow().getStatus())
+                .isEqualTo(PasswordResetRequestStatus.EXPIRED);
+    }
+
     private String registerAdmin(String email) throws Exception {
         return register(email, "Password123!", "Admin User", "TEST_ADMIN_BOOTSTRAP");
     }

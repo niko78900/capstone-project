@@ -154,6 +154,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final expiry = response.expiresAt == null
         ? 'within 24 hours'
         : 'by ${MaterialLocalizations.of(context).formatFullDate(response.expiresAt!.toLocal())}';
+    await ref
+        .read(passwordResetGateProvider.notifier)
+        .checkStoredStatus(showNotification: false)
+        .catchError((_) => null);
     setState(() {
       _message = 'Request sent for admin review. Check back $expiry.';
     });
@@ -169,7 +173,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     });
     try {
       final status = await ref
-          .read(passwordResetRepositoryProvider)
+          .read(passwordResetGateProvider.notifier)
           .checkStoredStatus();
       if (!mounted) {
         return;
@@ -187,14 +191,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           context.go(AppRoutes.resetPassword);
           break;
         case PasswordResetStatus.denied:
-          await ref.read(passwordResetRepositoryProvider).clearStoredRequest();
           setState(() {
             _message = 'Your password reset request was denied.';
           });
           break;
         case PasswordResetStatus.completed:
         case PasswordResetStatus.expired:
-          await ref.read(passwordResetRepositoryProvider).clearStoredRequest();
           setState(() {
             _message = status.status == PasswordResetStatus.expired
                 ? 'Your reset request expired. Submit a new request if needed.'

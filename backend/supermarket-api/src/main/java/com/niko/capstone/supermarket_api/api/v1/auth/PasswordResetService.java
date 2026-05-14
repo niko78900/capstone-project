@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,10 @@ public class PasswordResetService {
 
     private static final Duration RESET_TOKEN_TTL = Duration.ofHours(24);
     private static final int RESET_TOKEN_BYTES = 32;
+    private static final List<PasswordResetRequestStatus> ACTIVE_STATUSES = List.of(
+            PasswordResetRequestStatus.PENDING,
+            PasswordResetRequestStatus.APPROVED
+    );
 
     private final PasswordResetRequestRepository passwordResetRequestRepository;
     private final UserRepository userRepository;
@@ -48,13 +53,21 @@ public class PasswordResetService {
     public PasswordResetRequestCreateResponse createRequest(String email) {
         String normalizedEmail = normalizeEmail(email);
         String token = generateToken();
+        Instant now = Instant.now();
+
+        passwordResetRequestRepository.expireActiveByRequesterEmail(
+                normalizedEmail,
+                ACTIVE_STATUSES,
+                PasswordResetRequestStatus.EXPIRED,
+                now
+        );
 
         PasswordResetRequestEntity request = new PasswordResetRequestEntity();
         request.setRequesterEmail(normalizedEmail);
         request.setUser(userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null));
         request.setTokenHash(hashToken(token));
         request.setStatus(PasswordResetRequestStatus.PENDING);
-        request.setExpiresAt(Instant.now().plus(RESET_TOKEN_TTL));
+        request.setExpiresAt(now.plus(RESET_TOKEN_TTL));
 
         PasswordResetRequestEntity saved = passwordResetRequestRepository.save(request);
         return new PasswordResetRequestCreateResponse(token, saved.getStatus(), saved.getExpiresAt());
@@ -103,6 +116,11 @@ public class PasswordResetService {
             Integer page,
             Integer size
     ) {
+        passwordResetRequestRepository.expireActiveBefore(
+                ACTIVE_STATUSES,
+                PasswordResetRequestStatus.EXPIRED,
+                Instant.now()
+        );
         Pageable pageable = PageRequest.of(
                 page == null || page < 0 ? 0 : page,
                 size == null ? 25 : Math.min(Math.max(size, 1), 200),
@@ -111,7 +129,6 @@ public class PasswordResetService {
         Page<PasswordResetRequestEntity> result = status == null
                 ? passwordResetRequestRepository.findAll(pageable)
                 : passwordResetRequestRepository.findByStatus(status, pageable);
-        result.getContent().forEach(this::expireIfNeeded);
         return new AdminPasswordResetPageResponse(
                 result.getContent().stream().map(this::toAdminDto).toList(),
                 result.getTotalElements(),

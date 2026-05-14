@@ -1,4 +1,5 @@
 import 'package:cap_app/app/app_router.dart';
+import 'package:cap_app/core/notifications/local_notifications_service.dart';
 import 'package:cap_app/core/network/auth_token_storage.dart';
 import 'package:cap_app/core/network/api_client.dart';
 import 'package:cap_app/core/network/network_providers.dart';
@@ -195,6 +196,111 @@ void main() {
       expect(find.text('Passwords do not match'), findsOneWidget);
       expect(resetRepository.completedEmail, isNull);
     });
+
+    testWidgets('approved stored reset routes authenticated users to reset', (
+      tester,
+    ) async {
+      final resetRepository = _FakePasswordResetRepository(
+        storedStatus: const PasswordResetStatusResponse(
+          status: PasswordResetStatus.approved,
+          email: 'approved@example.com',
+          expiresAt: null,
+          updatedAt: null,
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authSessionProvider.overrideWith(
+              _LoggedInAuthSessionController.new,
+            ),
+            passwordResetRepositoryProvider.overrideWithValue(resetRepository),
+            localNotificationsServiceProvider.overrideWithValue(
+              _FakeLocalNotificationsService(),
+            ),
+          ],
+          child: Consumer(
+            builder: (context, ref, child) {
+              final router = ref.watch(appRouterProvider);
+              return MaterialApp.router(routerConfig: router);
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set a new password'), findsOneWidget);
+      expect(find.text('Welcome Back'), findsNothing);
+    });
+
+    test('denied stored reset clears token through the shared gate', () async {
+      final resetRepository = _FakePasswordResetRepository(
+        storedStatus: const PasswordResetStatusResponse(
+          status: PasswordResetStatus.denied,
+          email: 'denied@example.com',
+          expiresAt: null,
+          updatedAt: null,
+        ),
+      );
+      final notifications = _FakeLocalNotificationsService();
+      final container = ProviderContainer(
+        overrides: [
+          authSessionProvider.overrideWith(_LoggedInAuthSessionController.new),
+          passwordResetRepositoryProvider.overrideWithValue(resetRepository),
+          localNotificationsServiceProvider.overrideWithValue(notifications),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final status = await container.read(passwordResetGateProvider.future);
+
+      expect(status, isNull);
+      expect(resetRepository.storedStatus, isNull);
+      expect(notifications.shownIds, contains(310002));
+    });
+
+    for (final status in [
+      PasswordResetStatus.completed,
+      PasswordResetStatus.expired,
+    ]) {
+      test(
+        '$status stored reset clears token through the shared gate',
+        () async {
+          final resetRepository = _FakePasswordResetRepository(
+            storedStatus: PasswordResetStatusResponse(
+              status: status,
+              email: 'terminal@example.com',
+              expiresAt: null,
+              updatedAt: null,
+            ),
+          );
+          final notifications = _FakeLocalNotificationsService();
+          final container = ProviderContainer(
+            overrides: [
+              authSessionProvider.overrideWith(
+                _LoggedInAuthSessionController.new,
+              ),
+              passwordResetRepositoryProvider.overrideWithValue(
+                resetRepository,
+              ),
+              localNotificationsServiceProvider.overrideWithValue(
+                notifications,
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final gateStatus = await container.read(
+            passwordResetGateProvider.future,
+          );
+
+          expect(gateStatus, isNull);
+          expect(resetRepository.storedStatus, isNull);
+          expect(notifications.shownIds, isEmpty);
+        },
+      );
+    }
   });
 
   testWidgets('mobile shell bottom navigation uses Markets label', (
@@ -631,6 +737,22 @@ class _FakePasswordResetRepository extends PasswordResetRepository {
   @override
   Future<void> clearStoredRequest() async {
     storedStatus = null;
+  }
+}
+
+class _FakeLocalNotificationsService extends LocalNotificationsService {
+  final shownIds = <int>[];
+
+  @override
+  Future<void> ensureInitialized() async {}
+
+  @override
+  Future<void> show({
+    required int notificationId,
+    required String title,
+    required String body,
+  }) async {
+    shownIds.add(notificationId);
   }
 }
 

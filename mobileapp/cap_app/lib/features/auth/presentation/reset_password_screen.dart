@@ -1,6 +1,7 @@
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/errors/error_presenter.dart';
+import 'package:cap_app/features/auth/models/password_reset_models.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:flutter/material.dart';
@@ -155,10 +156,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   Future<void> _loadApprovedEmail() async {
     try {
-      final status = await ref
-          .read(passwordResetRepositoryProvider)
-          .checkStoredStatus();
-      if (!mounted || status == null) {
+      final status =
+          ref.read(passwordResetGateProvider).valueOrNull ??
+          await ref
+              .read(passwordResetGateProvider.notifier)
+              .checkStoredStatus(showNotification: false);
+      if (!mounted ||
+          status == null ||
+          status.status != PasswordResetStatus.approved) {
         return;
       }
       setState(() {

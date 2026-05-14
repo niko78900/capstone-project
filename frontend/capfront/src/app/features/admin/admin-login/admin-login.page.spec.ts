@@ -185,6 +185,66 @@ describe('AdminLoginPageComponent', () => {
     expect(component.resetCompleteForm.controls.email.value).toBe('approved@example.com');
   });
 
+  it('keeps stored reset token when status check fails transiently', async () => {
+    await createComponent();
+    passwordResetService.checkStoredStatus.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 500,
+            error: { message: 'Server unavailable' },
+          }),
+      ),
+    );
+
+    component.checkStoredResetStatus();
+
+    expect(passwordResetService.clearStoredToken).not.toHaveBeenCalled();
+    expect(component.resetError()).toBe('Server unavailable');
+  });
+
+  it('clears stored reset token when status check returns not found', async () => {
+    await createComponent();
+    passwordResetService.checkStoredStatus.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 404,
+            error: { message: 'Reset request not found' },
+          }),
+      ),
+    );
+
+    component.checkStoredResetStatus();
+
+    expect(passwordResetService.clearStoredToken).toHaveBeenCalled();
+    expect(component.resetError()).toBe('Reset request not found');
+  });
+
+  [
+    { status: 'DENIED' as const, notice: 'denied' },
+    { status: 'COMPLETED' as const, notice: 'completed' },
+    { status: 'EXPIRED' as const, notice: 'expired' },
+  ].forEach(({ status, notice }) => {
+    it(`clears stored reset token when status is ${status}`, async () => {
+      await createComponent();
+      passwordResetService.checkStoredStatus.and.returnValue(
+        of({
+          status,
+          email: 'user@example.com',
+          expiresAt: '2026-05-14T10:00:00Z',
+          updatedAt: '2026-05-13T10:00:00Z',
+        }),
+      );
+
+      component.checkStoredResetStatus();
+
+      expect(passwordResetService.clearStoredToken).toHaveBeenCalled();
+      expect(component.mode()).toBe('login');
+      expect(component.noticeMessage()?.toLowerCase()).toContain(notice);
+    });
+  });
+
   it('completes password reset when confirmation matches', async () => {
     await createComponent();
     passwordResetService.completeStoredReset.and.returnValue(

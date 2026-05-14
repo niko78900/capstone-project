@@ -40,6 +40,12 @@ final passwordResetCompletionControllerProvider =
       PasswordResetCompleteResponse?
     >(PasswordResetCompletionController.new);
 
+final passwordResetGateProvider =
+    AsyncNotifierProvider<
+      PasswordResetGateController,
+      PasswordResetStatusResponse?
+    >(PasswordResetGateController.new);
+
 final isAuthenticatedProvider = Provider<bool>((ref) {
   return ref.watch(authSessionProvider).valueOrNull != null;
 });
@@ -123,44 +129,140 @@ class PasswordResetCompletionController
     state = await AsyncValue.guard(
       () => _repo.completeStoredReset(email: email, newPassword: newPassword),
     );
+    if (state.hasValue) {
+      ref.read(passwordResetGateProvider.notifier).markCleared();
+    }
     return state.valueOrNull;
   }
 }
 
-Future<void> handleStoredPasswordResetStatus(WidgetRef ref) async {
-  final status = await ref
-      .read(passwordResetRepositoryProvider)
-      .checkStoredStatus();
-  if (status == null) {
-    return;
+class PasswordResetGateController
+    extends AsyncNotifier<PasswordResetStatusResponse?> {
+  PasswordResetRepository get _repo =>
+      ref.read(passwordResetRepositoryProvider);
+
+  String? _lastApprovedNotificationKey;
+
+  @override
+  Future<PasswordResetStatusResponse?> build() async {
+    try {
+      await ref.watch(authSessionProvider.future);
+    } catch (_) {
+      // Reset recovery should not block the auth error flow.
+    }
+    return _resolveStoredStatus(keepTerminalStatus: false);
   }
 
-  switch (status.status) {
-    case PasswordResetStatus.approved:
-      await ref
-          .read(localNotificationsServiceProvider)
-          .show(
-            notificationId: 310001,
-            title: 'Password reset approved',
-            body: 'Open the app to set a new password.',
-          );
-      break;
-    case PasswordResetStatus.denied:
-      await ref
-          .read(localNotificationsServiceProvider)
-          .show(
-            notificationId: 310002,
-            title: 'Password reset denied',
-            body: 'Your password reset request was denied.',
-          );
-      await ref.read(passwordResetRepositoryProvider).clearStoredRequest();
-      break;
-    case PasswordResetStatus.completed:
-    case PasswordResetStatus.expired:
-      await ref.read(passwordResetRepositoryProvider).clearStoredRequest();
-      break;
-    case PasswordResetStatus.pending:
-    case PasswordResetStatus.unknown:
-      break;
+  Future<PasswordResetStatusResponse?> checkStoredStatus({
+    bool showNotification = true,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final status = await _resolveStoredStatus(
+        keepTerminalStatus: true,
+        showNotification: showNotification,
+      );
+      state = AsyncData(_gateStatus(status));
+      return status;
+    } catch (error, stackTrace) {
+      if (error is AppException && error.statusCode == 404) {
+        await _repo.clearStoredRequest();
+        state = const AsyncData(null);
+        return null;
+      }
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
   }
+
+  Future<void> clearStoredRequest() async {
+    await _repo.clearStoredRequest();
+    markCleared();
+  }
+
+  void markCleared() {
+    _lastApprovedNotificationKey = null;
+    state = const AsyncData(null);
+  }
+
+  Future<PasswordResetStatusResponse?> _resolveStoredStatus({
+    bool keepTerminalStatus = false,
+    bool showNotification = true,
+  }) async {
+    try {
+      final status = await _repo.checkStoredStatus();
+      if (status == null) {
+        return null;
+      }
+
+      switch (status.status) {
+        case PasswordResetStatus.approved:
+          if (showNotification) {
+            await _notifyApproved(status);
+          }
+          return status;
+        case PasswordResetStatus.denied:
+          if (showNotification) {
+            await ref
+                .read(localNotificationsServiceProvider)
+                .show(
+                  notificationId: 310002,
+                  title: 'Password reset denied',
+                  body: 'Your password reset request was denied.',
+                );
+          }
+          await _repo.clearStoredRequest();
+          return keepTerminalStatus ? status : null;
+        case PasswordResetStatus.completed:
+        case PasswordResetStatus.expired:
+          await _repo.clearStoredRequest();
+          return keepTerminalStatus ? status : null;
+        case PasswordResetStatus.pending:
+        case PasswordResetStatus.unknown:
+          return status;
+      }
+    } catch (error) {
+      if (error is AppException && error.statusCode == 404) {
+        await _repo.clearStoredRequest();
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  PasswordResetStatusResponse? _gateStatus(
+    PasswordResetStatusResponse? status,
+  ) {
+    if (status == null) {
+      return null;
+    }
+    return switch (status.status) {
+      PasswordResetStatus.approved ||
+      PasswordResetStatus.pending ||
+      PasswordResetStatus.unknown => status,
+      PasswordResetStatus.denied ||
+      PasswordResetStatus.completed ||
+      PasswordResetStatus.expired => null,
+    };
+  }
+
+  Future<void> _notifyApproved(PasswordResetStatusResponse status) async {
+    final key =
+        '${status.email}|${status.expiresAt?.toIso8601String()}|${status.updatedAt?.toIso8601String()}';
+    if (_lastApprovedNotificationKey == key) {
+      return;
+    }
+    _lastApprovedNotificationKey = key;
+    await ref
+        .read(localNotificationsServiceProvider)
+        .show(
+          notificationId: 310001,
+          title: 'Password reset approved',
+          body: 'Open the app to set a new password.',
+        );
+  }
+}
+
+Future<void> handleStoredPasswordResetStatus(WidgetRef ref) async {
+  await ref.read(passwordResetGateProvider.notifier).checkStoredStatus();
 }

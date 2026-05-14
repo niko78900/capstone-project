@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -166,7 +167,9 @@ export class AdminLoginPageComponent {
       .pipe(
         catchError((error: unknown) => {
           this.resetError.set(mapApiError(error).message);
-          this.passwordResetService.clearStoredToken();
+          if (error instanceof HttpErrorResponse && error.status === 404) {
+            this.passwordResetService.clearStoredToken();
+          }
           return of(null);
         }),
         finalize(() => this.checkingResetStatus.set(false)),

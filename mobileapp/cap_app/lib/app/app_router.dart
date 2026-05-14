@@ -2,6 +2,7 @@ import 'package:cap_app/features/auth/presentation/forgot_password_screen.dart';
 import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';
 import 'package:cap_app/features/auth/presentation/reset_password_screen.dart';
+import 'package:cap_app/features/auth/models/password_reset_models.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/presentation/cart_screen.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
@@ -51,27 +52,44 @@ class AppRoutes {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authSessionProvider);
+  final resetGateState = ref.watch(passwordResetGateProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.login,
     redirect: (context, state) {
       final matchedLocation = state.matchedLocation;
       final session = authState.valueOrNull;
+      final resetStatus = resetGateState.valueOrNull;
+      final hasApprovedReset =
+          resetStatus?.status == PasswordResetStatus.approved;
       final isAuthRoute =
           matchedLocation == AppRoutes.login ||
           matchedLocation == AppRoutes.register ||
           matchedLocation == AppRoutes.forgotPassword ||
           matchedLocation == AppRoutes.resetPassword;
+      final isResetRoute = matchedLocation == AppRoutes.resetPassword;
 
       if (authState.isLoading) {
         return null;
+      }
+
+      if (resetGateState.isLoading) {
+        return null;
+      }
+
+      if (hasApprovedReset && !isResetRoute) {
+        return AppRoutes.resetPassword;
       }
 
       if (session == null && !isAuthRoute) {
         return AppRoutes.login;
       }
 
-      if (session != null && isAuthRoute) {
+      if (session != null && isAuthRoute && !isResetRoute) {
+        return AppRoutes.shop;
+      }
+
+      if (session != null && isResetRoute && !hasApprovedReset) {
         return AppRoutes.shop;
       }
 
