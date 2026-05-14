@@ -35,7 +35,7 @@ describe('AdminUsersPageComponent', () => {
         items: [pendingRequest],
         totalElements: 1,
         page: 0,
-        size: 50,
+        size: 10,
         totalPages: 1,
       }),
     );
@@ -67,10 +67,99 @@ describe('AdminUsersPageComponent', () => {
     expect(passwordResetService.listAdminRequests).toHaveBeenCalledWith({
       status: 'PENDING',
       page: 0,
-      size: 50,
+      size: 10,
     });
     expect(component.requests()).toEqual([pendingRequest]);
     expect(fixture.nativeElement.textContent).toContain('user@example.com');
+  });
+
+  it('loads the next page with current size and status', () => {
+    passwordResetService.listAdminRequests.calls.reset();
+    passwordResetService.listAdminRequests.and.returnValue(
+      of({
+        items: [],
+        totalElements: 22,
+        page: 1,
+        size: 10,
+        totalPages: 3,
+      }),
+    );
+    component.totalResults.set(22);
+
+    component.goToNextPage();
+
+    expect(passwordResetService.listAdminRequests).toHaveBeenCalledWith({
+      status: 'PENDING',
+      page: 1,
+      size: 10,
+    });
+  });
+
+  it('resets to the first page when page size changes', () => {
+    passwordResetService.listAdminRequests.calls.reset();
+    passwordResetService.listAdminRequests.and.returnValue(
+      of({
+        items: [pendingRequest],
+        totalElements: 1,
+        page: 0,
+        size: 25,
+        totalPages: 1,
+      }),
+    );
+    component.pageIndex.set(2);
+
+    component.pageSizeControl.setValue(25);
+
+    expect(component.pageIndex()).toBe(0);
+    expect(passwordResetService.listAdminRequests).toHaveBeenCalledWith({
+      status: 'PENDING',
+      page: 0,
+      size: 25,
+    });
+  });
+
+  it('resets to the first page when status filter changes', () => {
+    passwordResetService.listAdminRequests.calls.reset();
+    passwordResetService.listAdminRequests.and.returnValue(
+      of({
+        items: [],
+        totalElements: 0,
+        page: 0,
+        size: 10,
+        totalPages: 0,
+      }),
+    );
+    component.pageIndex.set(2);
+
+    component.statusControl.setValue('APPROVED');
+
+    expect(component.pageIndex()).toBe(0);
+    expect(passwordResetService.listAdminRequests).toHaveBeenCalledWith({
+      status: 'APPROVED',
+      page: 0,
+      size: 10,
+    });
+  });
+
+  it('omits status when all statuses filter is selected', () => {
+    passwordResetService.listAdminRequests.calls.reset();
+    passwordResetService.listAdminRequests.and.returnValue(
+      of({
+        items: [pendingRequest],
+        totalElements: 1,
+        page: 0,
+        size: 10,
+        totalPages: 1,
+      }),
+    );
+
+    component.statusControl.setValue('ALL');
+
+    expect(passwordResetService.listAdminRequests).toHaveBeenCalledWith({
+      status: undefined,
+      page: 0,
+      size: 10,
+    });
   });
 
   it('approves a pending request and reloads the list', () => {
@@ -78,6 +167,40 @@ describe('AdminUsersPageComponent', () => {
 
     expect(passwordResetService.approveAdminRequest).toHaveBeenCalledWith(7);
     expect(passwordResetService.listAdminRequests).toHaveBeenCalledTimes(2);
+  });
+
+  it('reloads previous page when approve empties the current page', () => {
+    passwordResetService.listAdminRequests.calls.reset();
+    passwordResetService.listAdminRequests.and.returnValues(
+      of({
+        items: [],
+        totalElements: 10,
+        page: 1,
+        size: 10,
+        totalPages: 1,
+      }),
+      of({
+        items: [pendingRequest],
+        totalElements: 10,
+        page: 0,
+        size: 10,
+        totalPages: 1,
+      }),
+    );
+    component.pageIndex.set(1);
+
+    component.approve(pendingRequest);
+
+    expect(passwordResetService.listAdminRequests.calls.argsFor(0)[0]).toEqual({
+      status: 'PENDING',
+      page: 1,
+      size: 10,
+    });
+    expect(passwordResetService.listAdminRequests.calls.argsFor(1)[0]).toEqual({
+      status: 'PENDING',
+      page: 0,
+      size: 10,
+    });
   });
 
   it('denies a pending request and reloads the list', () => {

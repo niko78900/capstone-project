@@ -16,7 +16,33 @@
         }
       </mat-select>
     </mat-form-field>
-    <p class="summary">{{ totalResults() }} result(s)</p>
+    <mat-form-field appearance="outline" class="page-size">
+      <mat-label>Rows</mat-label>
+      <mat-select [formControl]="pageSizeControl">
+        @for (size of pageSizeOptions; track size) {
+          <mat-option [value]="size">{{ size }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <div class="pagination" aria-label="Password reset request pagination">
+      <p class="summary">{{ paginationSummary() }}</p>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!canGoToPreviousPage() || loading()"
+        (click)="goToPreviousPage()"
+      >
+        Previous
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!canGoToNextPage() || loading()"
+        (click)="goToNextPage()"
+      >
+        Next
+      </button>
+    </div>
   </section>
 
   @if (loading()) {
