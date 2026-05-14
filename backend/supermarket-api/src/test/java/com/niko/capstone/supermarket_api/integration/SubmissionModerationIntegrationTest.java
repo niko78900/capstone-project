@@ -55,7 +55,8 @@ class SubmissionModerationIntegrationTest {
                 {
                   "productId": %d,
                   "supermarketId": %d,
-                  "price": 123.45
+                  "price": 123.45,
+                  "imageUrl": "http://localhost:8080/uploads/price-evidence.jpg"
                 }
                 """.formatted(product.getId(), supermarketId);
 
@@ -65,7 +66,10 @@ class SubmissionModerationIntegrationTest {
                         .content(submitPricePayload))
                 .andExpect(status().isCreated())
                 .andReturn();
-        Long submissionId = readJson(submissionResult).get("id").asLong();
+        JsonNode submissionJson = readJson(submissionResult);
+        assertThat(submissionJson.path("payload").path("imageUrl").asText())
+                .isEqualTo("http://localhost:8080/uploads/price-evidence.jpg");
+        Long submissionId = submissionJson.get("id").asLong();
 
         mockMvc.perform(post("/api/v1/admin/submissions/" + submissionId + "/approve")
                         .header("Authorization", "Bearer " + adminToken)

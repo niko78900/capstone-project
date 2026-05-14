@@ -8,6 +8,7 @@ public record PriceSubmissionPayload(
         Long supermarketId,
         Long branchId,
         BigDecimal price,
-        Instant observedAt
+        Instant observedAt,
+        String imageUrl
 ) {
 }

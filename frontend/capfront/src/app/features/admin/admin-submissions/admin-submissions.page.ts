@@ -429,9 +429,6 @@ export class AdminSubmissionsPageComponent {
   }
 
   evidenceImageUrl(submission: ModerationSubmissionDto): string | null {
-    if (submission.type !== 'PRODUCT') {
-      return null;
-    }
     const payload = this.asRecord(submission.payload);
     if (payload == null) {
       return null;
@@ -913,6 +910,16 @@ export class AdminSubmissionsPageComponent {
         'Observed at',
         currentPrice?.observedAt ? this.displayDate(currentPrice.observedAt) : '-',
         this.asDateText(payload['observedAt']) ?? 'On approval time',
+        { canCompare: false },
+      ),
+    );
+
+    rows.push(
+      this.makeRow(
+        'imageUrl',
+        'Image',
+        '-',
+        this.asText(payload['imageUrl'], 'No image'),
         { canCompare: false },
       ),
     );

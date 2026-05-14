@@ -46,6 +46,7 @@ describe('AdminSubmissionsPageComponent', () => {
       productId: 1,
       supermarketId: 2,
       price: 59.99,
+      imageUrl: '/uploads/price-evidence.jpg',
     },
     notes: null,
     reviewReason: 'Already verified by another admin',
@@ -192,6 +193,10 @@ describe('AdminSubmissionsPageComponent', () => {
     });
     expect(component.totalResults()).toBe(2);
     expect(component.pagedSubmissions().length).toBe(2);
+  });
+
+  it('exposes evidence image urls for price submissions', () => {
+    expect(component.evidenceImageUrl(secondPendingSubmission)).toBe('/uploads/price-evidence.jpg');
   });
 
   it('updates search query and triggers route sync', fakeAsync(() => {

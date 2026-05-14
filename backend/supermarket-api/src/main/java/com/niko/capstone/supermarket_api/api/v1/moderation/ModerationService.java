@@ -544,6 +544,7 @@ public class ModerationService {
         requireId(payload.productId(), "Product is required in price submission");
         requireId(payload.supermarketId(), "Supermarket is required in price submission");
         requirePositive(payload.price(), "Price is required in price submission", "Price must be positive");
+        requireMaxLength(payload.imageUrl(), 500, "Image URL must be at most 500 characters");
         productRepository.findById(payload.productId())
                 .orElseThrow(() -> new NotFoundException("Product not found"));
         SupermarketEntity supermarket = supermarketRepository.findById(payload.supermarketId())

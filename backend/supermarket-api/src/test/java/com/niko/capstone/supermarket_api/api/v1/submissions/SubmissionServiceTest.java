@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionRequest;
@@ -74,7 +75,7 @@ class SubmissionServiceTest {
     @BeforeEach
     void setUp() {
         submissionService = new SubmissionService(
-                new ObjectMapper(),
+                new ObjectMapper().findAndRegisterModules(),
                 userRepository,
                 categoryRepository,
                 productRepository,
@@ -196,7 +197,7 @@ class SubmissionServiceTest {
         ArgumentCaptor<com.niko.capstone.supermarket_api.domain.model.SubmissionEntity> captor =
                 ArgumentCaptor.forClass(com.niko.capstone.supermarket_api.domain.model.SubmissionEntity.class);
         verify(submissionRepository).save(captor.capture());
-        ProductSubmissionPayload payload = new ObjectMapper()
+        ProductSubmissionPayload payload = new ObjectMapper().findAndRegisterModules()
                 .readValue(captor.getValue().getPayload(), ProductSubmissionPayload.class);
         assertThat(payload.name()).isEqualTo("Mleko Bitolsko");
         assertThat(payload.brand()).isEqualTo("Mlekara");
@@ -231,6 +232,7 @@ class SubmissionServiceTest {
                 99L,
                 new BigDecimal("55.00"),
                 null,
+                null,
                 null
         );
 
@@ -239,6 +241,49 @@ class SubmissionServiceTest {
                 .hasMessageContaining("Branch does not belong to the selected supermarket");
 
         verify(submissionRepository, never()).save(any());
+    }
+
+    @Test
+    void createPriceSubmission_shouldStoreOptionalEvidenceImageUrl() throws Exception {
+        UserEntity user = new UserEntity();
+        user.setId(1L);
+        user.setEmail("user@example.com");
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+
+        ProductEntity product = new ProductEntity();
+        product.setId(10L);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
+        SupermarketEntity supermarket = new SupermarketEntity();
+        supermarket.setId(1L);
+        when(supermarketRepository.findById(1L)).thenReturn(Optional.of(supermarket));
+        when(submissionRepository.save(any())).thenAnswer(invocation -> {
+            var saved = invocation.getArgument(0, com.niko.capstone.supermarket_api.domain.model.SubmissionEntity.class);
+            saved.setId(20L);
+            saved.setCreatedAt(Instant.now());
+            saved.setUpdatedAt(Instant.now());
+            return saved;
+        });
+
+        PriceSubmissionRequest request = new PriceSubmissionRequest(
+                10L,
+                1L,
+                null,
+                new BigDecimal("55.00"),
+                null,
+                "http://localhost:8080/uploads/evidence.jpg",
+                "receipt photo"
+        );
+
+        submissionService.createPriceSubmission("user@example.com", request);
+
+        ArgumentCaptor<com.niko.capstone.supermarket_api.domain.model.SubmissionEntity> captor =
+                ArgumentCaptor.forClass(com.niko.capstone.supermarket_api.domain.model.SubmissionEntity.class);
+        verify(submissionRepository).save(captor.capture());
+        PriceSubmissionPayload payload = new ObjectMapper().findAndRegisterModules()
+                .readValue(captor.getValue().getPayload(), PriceSubmissionPayload.class);
+        assertThat(payload.imageUrl()).isEqualTo("http://localhost:8080/uploads/evidence.jpg");
+        assertThat(captor.getValue().getNotes()).isEqualTo("receipt photo");
     }
 
     @Test

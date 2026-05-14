@@ -59,4 +59,30 @@ void main() {
       expect(resolution.requiresManualSelection, isTrue);
     });
   });
+
+  group('PriceSubmissionRequestDto', () {
+    test('serializes optional image evidence', () {
+      final request = PriceSubmissionRequestDto(
+        productId: 7,
+        supermarketId: 2,
+        price: 129.99,
+        imageUrl: 'http://localhost:8080/uploads/evidence.jpg',
+      );
+
+      expect(
+        request.toJson()['imageUrl'],
+        'http://localhost:8080/uploads/evidence.jpg',
+      );
+    });
+
+    test('allows missing image evidence', () {
+      final request = PriceSubmissionRequestDto(
+        productId: 7,
+        supermarketId: 2,
+        price: 129.99,
+      );
+
+      expect(request.toJson()['imageUrl'], isNull);
+    });
+  });
 }

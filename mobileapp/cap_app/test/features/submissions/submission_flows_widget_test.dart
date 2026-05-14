@@ -4,8 +4,11 @@ import 'package:cap_app/features/catalog/data/catalog_repository.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
+import 'package:cap_app/features/submissions/data/submission_repository.dart';
+import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/presentation/guided_product_submission_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_price_screen.dart';
+import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,7 +117,56 @@ void main() {
 
     expect(find.text('Market'), findsOneWidget);
     expect(find.text('Price (MKD)'), findsOneWidget);
+    expect(find.text('Add evidence image'), findsOneWidget);
     expect(find.text('Submit price update'), findsOneWidget);
+  });
+
+  testWidgets('price update can submit without evidence image', (tester) async {
+    final submissionRepository = _FakeSubmissionRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          debugModeEnabledProvider.overrideWithValue(false),
+          catalogRepositoryProvider.overrideWithValue(
+            _FakeCatalogRepository(
+              products: const [
+                ProductSummaryDto(
+                  id: 12,
+                  name: 'Cola 2L',
+                  brand: 'Skopsko',
+                  barcode: '55555',
+                  category: 'Beverages',
+                ),
+              ],
+            ),
+          ),
+          supermarketsProvider.overrideWith(
+            (ref) async => const [SupermarketDto(id: 1, name: 'Zur')],
+          ),
+          submissionRepositoryProvider.overrideWithValue(submissionRepository),
+        ],
+        child: const MaterialApp(home: SubmitPriceScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '55555');
+    await tester.tap(find.text('Search barcode'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('This is the product'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Market'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Zur').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '59.99');
+    await tester.tap(find.text('Submit price update'));
+    await tester.pumpAndSettle();
+
+    expect(submissionRepository.lastPriceRequest?.imageUrl, isNull);
+    expect(submissionRepository.lastPriceRequest?.price, 59.99);
+    expect(find.textContaining('pending moderation'), findsOneWidget);
   });
 }
 
@@ -130,5 +182,28 @@ class _FakeCatalogRepository extends CatalogRepository {
     int? supermarketId,
   }) async {
     return products;
+  }
+}
+
+class _FakeSubmissionRepository extends SubmissionRepository {
+  _FakeSubmissionRepository() : super(ApiClient(const AuthTokenStorage()));
+
+  PriceSubmissionRequestDto? lastPriceRequest;
+
+  @override
+  Future<SubmissionResponse> submitPrice(
+    PriceSubmissionRequestDto request,
+  ) async {
+    lastPriceRequest = request;
+    return SubmissionResponse(
+      id: 42,
+      type: SubmissionType.price,
+      status: SubmissionStatus.pending,
+      payload: request.toJson(),
+      notes: null,
+      reviewReason: null,
+      createdAt: DateTime.utc(2026, 5, 13),
+      updatedAt: DateTime.utc(2026, 5, 13),
+    );
   }
 }

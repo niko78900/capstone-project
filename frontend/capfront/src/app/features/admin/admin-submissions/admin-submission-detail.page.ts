@@ -576,6 +576,7 @@ export class AdminSubmissionDetailPageComponent {
         supermarketId: controls.supermarketId.value,
         branchId: controls.branchId.value,
         price: controls.price.value,
+        imageUrl: this.trimToNull(controls.imageUrl.value ?? ''),
         observedAt: this.toIsoInstant(controls.observedAt.value ?? ''),
       };
     }

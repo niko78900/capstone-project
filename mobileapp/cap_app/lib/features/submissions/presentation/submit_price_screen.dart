@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/errors/error_presenter.dart';
@@ -14,6 +16,7 @@ import 'package:cap_app/shared/widgets/barcode_asset_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 enum _PriceUpdateStage { scan, confirm, submit, notFound }
 
@@ -30,15 +33,19 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _barcodeController = TextEditingController();
   final _priceController = TextEditingController();
+  final _imagePicker = ImagePicker();
 
   _PriceUpdateStage _stage = _PriceUpdateStage.scan;
   ProductSummaryDto? _matchedProduct;
   int? _productId;
   int? _supermarketId;
+  String? _imageUrl;
+  String? _selectedImagePath;
   String? _scannedBarcode;
   String? _serverMessage;
   Map<String, String> _fieldErrors = const {};
   bool _isSearching = false;
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -61,7 +68,7 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
   Widget build(BuildContext context) {
     final submitState = ref.watch(priceSubmissionControllerProvider);
     final isSubmitting = submitState.isLoading;
-    final isBusy = isSubmitting || _isSearching;
+    final isBusy = isSubmitting || _isSearching || _isUploadingImage;
 
     return BackToHomeScope(
       child: Scaffold(
@@ -296,6 +303,104 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: isBusy ? null : _chooseImageSource,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: Text(
+                  ((_selectedImagePath == null ||
+                              _selectedImagePath!.trim().isEmpty) &&
+                          (_imageUrl == null || _imageUrl!.trim().isEmpty))
+                      ? 'Add evidence image'
+                      : 'Change evidence image',
+                ),
+              ),
+              if (_fieldErrors['imageUrl'] != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _fieldErrors['imageUrl']!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+              if (_selectedImagePath != null &&
+                  _selectedImagePath!.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    File(_selectedImagePath!),
+                    fit: BoxFit.cover,
+                    height: 180,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const InputDecorator(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Evidence image',
+                        ),
+                        child: Text('Unable to preview selected image.'),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: isBusy
+                        ? null
+                        : () {
+                            setState(() {
+                              _selectedImagePath = null;
+                              _imageUrl = null;
+                            });
+                          },
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Remove image'),
+                  ),
+                ),
+              ] else if (_imageUrl != null && _imageUrl!.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    _imageUrl!,
+                    fit: BoxFit.cover,
+                    height: 180,
+                    errorBuilder: (context, error, stackTrace) {
+                      return InputDecorator(
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Evidence image',
+                        ),
+                        child: Text(
+                          _imageUrl!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: isBusy
+                        ? null
+                        : () {
+                            setState(() {
+                              _selectedImagePath = null;
+                              _imageUrl = null;
+                            });
+                          },
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Remove image'),
+                  ),
+                ),
+              ],
+              if (_isUploadingImage) ...[
+                const SizedBox(height: 8),
+                const _LoadingField(label: 'Uploading evidence image...'),
+              ],
             ],
           ),
         ),
@@ -400,6 +505,9 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
       _matchedProduct = null;
       _productId = null;
       _supermarketId = null;
+      _imageUrl = null;
+      _selectedImagePath = null;
+      _isUploadingImage = false;
       _scannedBarcode = null;
       _serverMessage = null;
       _fieldErrors = const {};
@@ -426,10 +534,42 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
       _fieldErrors = const {};
     });
 
+    String? imageUrl = _imageUrl;
+    if (_selectedImagePath != null && _selectedImagePath!.trim().isNotEmpty) {
+      setState(() {
+        _isUploadingImage = true;
+      });
+      try {
+        imageUrl = await ref
+            .read(submissionRepositoryProvider)
+            .uploadProductImage(_selectedImagePath!);
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _imageUrl = imageUrl;
+          _selectedImagePath = null;
+        });
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        _applyError(error);
+        return;
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isUploadingImage = false;
+          });
+        }
+      }
+    }
+
     final request = PriceSubmissionRequestDto(
       productId: _productId!,
       supermarketId: _supermarketId!,
       price: double.parse(_priceController.text.trim()),
+      imageUrl: imageUrl,
     );
 
     final result = await ref
@@ -458,10 +598,77 @@ class _SubmitPriceScreenState extends ConsumerState<SubmitPriceScreen> {
     _priceController.clear();
     setState(() {
       _supermarketId = null;
+      _imageUrl = null;
+      _selectedImagePath = null;
+      _isUploadingImage = false;
       _serverMessage = null;
       _fieldErrors = const {};
     });
     ref.read(priceSubmissionControllerProvider.notifier).clear();
+  }
+
+  Future<void> _chooseImageSource() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.of(context).pop(ImageSource.camera),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted || source == null) {
+      return;
+    }
+    final path = await _pickImagePathFromSource(source);
+    if (!mounted || path == null || path.trim().isEmpty) {
+      return;
+    }
+    final nextFieldErrors = Map<String, String>.from(_fieldErrors);
+    nextFieldErrors.remove('imageUrl');
+    setState(() {
+      _selectedImagePath = path;
+      _imageUrl = null;
+      _fieldErrors = nextFieldErrors;
+    });
+  }
+
+  Future<String?> _pickImagePathFromSource(ImageSource source) async {
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+      if (!mounted || picked == null) {
+        return null;
+      }
+      return picked.path;
+    } catch (error) {
+      if (!mounted) {
+        return null;
+      }
+      setState(() {
+        _serverMessage = formatErrorMessageForUi(
+          error,
+          debugModeEnabled: ref.read(debugModeEnabledProvider),
+        );
+      });
+      return null;
+    }
   }
 
   void _applyError(Object error) {

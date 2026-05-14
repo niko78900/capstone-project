@@ -247,6 +247,7 @@ class PriceSubmissionRequestDto {
     this.branchId,
     required this.price,
     this.observedAt,
+    this.imageUrl,
     this.notes,
   });
 
@@ -255,6 +256,7 @@ class PriceSubmissionRequestDto {
   final int? branchId;
   final double price;
   final DateTime? observedAt;
+  final String? imageUrl;
   final String? notes;
 
   Map<String, dynamic> toJson() {
@@ -264,6 +266,7 @@ class PriceSubmissionRequestDto {
       'branchId': branchId,
       'price': price,
       'observedAt': observedAt?.toUtc().toIso8601String(),
+      'imageUrl': _nullIfBlank(imageUrl),
       'notes': _nullIfBlank(notes),
     };
   }

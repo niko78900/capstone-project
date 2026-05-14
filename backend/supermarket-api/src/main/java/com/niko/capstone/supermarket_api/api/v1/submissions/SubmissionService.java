@@ -126,7 +126,8 @@ public class SubmissionService {
                 supermarket.getId(),
                 request.branchId(),
                 request.price(),
-                request.observedAt() == null ? Instant.now() : request.observedAt()
+                request.observedAt() == null ? Instant.now() : request.observedAt(),
+                normalizeOptional(request.imageUrl())
         );
 
         SubmissionEntity submission = new SubmissionEntity();

@@ -158,6 +158,11 @@
                 <mat-label>Observed at</mat-label>
                 <input matInput type="datetime-local" formControlName="observedAt" />
               </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Image URL</mat-label>
+                <input matInput formControlName="imageUrl" />
+              </mat-form-field>
             }
 
             @if (isNutritionType()) {
