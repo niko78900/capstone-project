@@ -1,11 +1,11 @@
 {
-    "name": "cap_app",
-    "short_name": "cap_app",
+    "name": "Skopje Price Compass",
+    "short_name": "Price Compass",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Mobile shopper app for Skopje Price Compass.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
