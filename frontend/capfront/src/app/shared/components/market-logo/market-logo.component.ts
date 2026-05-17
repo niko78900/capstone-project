@@ -10,13 +10,13 @@ interface MarketLogoConfig {
 }
 
 const MARKET_LOGOS_BY_NAME: Partial<Record<string, MarketLogoConfig>> = {
-  tinex: { src: '/market-logos/tinex.png' },
-  vero: { src: '/market-logos/vero.png' },
+  tinex: { src: '/market-logos/tinex.png?v=20260517' },
+  vero: { src: '/market-logos/vero.png?v=20260517' },
   'kam market': { src: '/market-logos/kam.svg' },
   ramstore: { src: '/market-logos/ramstore.png' },
   stokomak: { src: '/market-logos/stokomak.png', darkTile: true },
   'kit-go market': { src: '/market-logos/kit-go.png' },
-  kipper: { src: '/market-logos/kipper.png' },
+  kipper: { src: '/market-logos/kipper.png?v=20260517' },
   zur: { src: '/market-logos/zur.png' },
   reptil: { src: '/market-logos/reptil.png' },
   zhito: { src: '/market-logos/zhito.png' },

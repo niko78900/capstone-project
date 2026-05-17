@@ -108,10 +108,10 @@ describe('ProductDetailPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Vero');
     expect(fixture.nativeElement.querySelector('svg.history-chart')).not.toBeNull();
     expect(
-      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/tinex.png"]'),
+      fixture.nativeElement.querySelector('app-market-logo img[src^="/market-logos/tinex.png"]'),
     ).not.toBeNull();
     expect(
-      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/vero.png"]'),
+      fixture.nativeElement.querySelector('app-market-logo img[src^="/market-logos/vero.png"]'),
     ).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('CM');
   });

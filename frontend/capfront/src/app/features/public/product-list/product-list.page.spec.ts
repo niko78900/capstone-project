@@ -81,10 +81,10 @@ describe('ProductListPageComponent', () => {
     expect(catalogService.getProducts).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('Milk 3.2% 1L');
     expect(
-      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/tinex.png"]'),
+      fixture.nativeElement.querySelector('app-market-logo img[src^="/market-logos/tinex.png"]'),
     ).not.toBeNull();
     expect(
-      fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/vero.png"]'),
+      fixture.nativeElement.querySelector('app-market-logo img[src^="/market-logos/vero.png"]'),
     ).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('CM');
   }));
