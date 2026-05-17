@@ -124,7 +124,13 @@ export class AdminSubmissionsPageComponent {
   readonly pageIndex = signal(0);
 
   readonly statuses: SubmissionStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
-  readonly submissionTypes: SubmissionTypeFilter[] = ['ALL', 'PRODUCT', 'PRICE', 'NUTRITION'];
+  readonly submissionTypes: SubmissionTypeFilter[] = [
+    'ALL',
+    'PRODUCT',
+    'PRICE',
+    'NUTRITION',
+    'AVAILABILITY',
+  ];
   readonly pageSizeOptions: number[] = [10, 25, 50];
 
   readonly hasActiveClientFilters = computed(
@@ -282,6 +288,8 @@ export class AdminSubmissionsPageComponent {
         return this.buildPriceRows(submission);
       case 'NUTRITION':
         return this.buildNutritionRows(submission);
+      case 'AVAILABILITY':
+        return this.buildAvailabilityRows(submission);
       default:
         return [];
     }
@@ -551,8 +559,8 @@ export class AdminSubmissionsPageComponent {
       return undefined;
     }
 
-    // Support admin reference search (PRD/PRC/NTR/SUB-YYYYMMDD-<base36Id>) by converting it back to numeric id.
-    const refMatch = /^(PRD|PRC|NTR|SUB)-\d{8}-([0-9A-Z]+)$/i.exec(trimmed);
+    // Support admin reference search (PRD/PRC/NTR/AVL/SUB-YYYYMMDD-<base36Id>) by converting it back to numeric id.
+    const refMatch = /^(PRD|PRC|NTR|AVL|SUB)-\d{8}-([0-9A-Z]+)$/i.exec(trimmed);
     if (refMatch) {
       const parsedId = Number.parseInt(refMatch[2], 36);
       if (Number.isFinite(parsedId) && parsedId > 0) {
@@ -1013,6 +1021,72 @@ export class AdminSubmissionsPageComponent {
     return rows;
   }
 
+  private buildAvailabilityRows(submission: ModerationSubmissionDto): SubmissionDiffRow[] {
+    const payload = this.asRecord(submission.payload);
+    if (payload == null) {
+      return [];
+    }
+
+    const productId = this.asNumber(payload['productId']);
+    const supermarketId = this.asNumber(payload['supermarketId']);
+    const available = this.asBoolean(payload['available']);
+    const current = productId == null ? null : (this.productDetailsById()[productId] ?? null);
+    const currentPrice =
+      current?.prices.find(
+        (entry) => supermarketId != null && entry.supermarketId === supermarketId,
+      ) ?? null;
+    const currentUnavailable =
+      current?.unavailableMarkets.find(
+        (entry) => supermarketId != null && entry.supermarketId === supermarketId,
+      ) ?? null;
+
+    return [
+      this.makeRow(
+        'product',
+        'Product',
+        current ? `${current.name} (#${current.id})` : this.productFallback(productId),
+        current ? `${current.name} (#${current.id})` : this.productFallback(productId),
+        { canCompare: false },
+      ),
+      this.makeRow(
+        'supermarket',
+        'Supermarket',
+        currentPrice?.supermarketName ??
+          currentUnavailable?.supermarketName ??
+          this.supermarketFallback(supermarketId),
+        currentPrice?.supermarketName ??
+          currentUnavailable?.supermarketName ??
+          this.supermarketFallback(supermarketId),
+        { canCompare: false },
+      ),
+      this.makeRow(
+        'availability',
+        'Availability',
+        currentUnavailable ? 'Not available' : currentPrice ? 'Available with verified price' : 'Unknown',
+        available === false ? 'Not available' : available === true ? 'Available' : 'Unknown',
+        { canCompare: currentPrice != null || currentUnavailable != null },
+      ),
+      this.makeRow(
+        'observedAt',
+        'Observed at',
+        currentUnavailable?.observedAt
+          ? this.displayDate(currentUnavailable.observedAt)
+          : currentPrice?.observedAt
+            ? this.displayDate(currentPrice.observedAt)
+            : '-',
+        this.asDateText(payload['observedAt']) ?? 'On approval time',
+        { canCompare: false },
+      ),
+      this.makeRow(
+        'imageUrl',
+        'Image',
+        '-',
+        this.asText(payload['imageUrl'], 'No image'),
+        { canCompare: false },
+      ),
+    ];
+  }
+
   private referenceProductId(submission: ModerationSubmissionDto): number | null {
     const payload = this.asRecord(submission.payload);
     if (payload == null) {
@@ -1023,7 +1097,11 @@ export class AdminSubmissionsPageComponent {
       return this.asNumber(payload['sourceProductId']);
     }
 
-    if (submission.type === 'PRICE' || submission.type === 'NUTRITION') {
+    if (
+      submission.type === 'PRICE' ||
+      submission.type === 'NUTRITION' ||
+      submission.type === 'AVAILABILITY'
+    ) {
       return this.asNumber(payload['productId']);
     }
 
@@ -1114,6 +1192,22 @@ export class AdminSubmissionsPageComponent {
     return null;
   }
 
+  private asBoolean(value: unknown): boolean | null {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true') {
+        return true;
+      }
+      if (normalized === 'false') {
+        return false;
+      }
+    }
+    return null;
+  }
+
   private asDateText(value: unknown): string | null {
     if (typeof value !== 'string' || value.trim().length === 0) {
       return null;
@@ -1152,6 +1246,8 @@ export class AdminSubmissionsPageComponent {
         return 'PRC';
       case 'NUTRITION':
         return 'NTR';
+      case 'AVAILABILITY':
+        return 'AVL';
       default:
         return 'SUB';
     }
@@ -1181,7 +1277,13 @@ export class AdminSubmissionsPageComponent {
   }
 
   private normalizeTypeFilter(value: string): SubmissionTypeFilter | null {
-    if (value === 'ALL' || value === 'PRODUCT' || value === 'PRICE' || value === 'NUTRITION') {
+    if (
+      value === 'ALL' ||
+      value === 'PRODUCT' ||
+      value === 'PRICE' ||
+      value === 'NUTRITION' ||
+      value === 'AVAILABILITY'
+    ) {
       return value;
     }
     return null;

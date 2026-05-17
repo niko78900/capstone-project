@@ -18,6 +18,7 @@ import 'package:cap_app/features/settings/presentation/settings_screen.dart';
 import 'package:cap_app/features/rewards/presentation/rewards_screen.dart';
 import 'package:cap_app/features/submissions/presentation/guided_product_submission_screen.dart';
 import 'package:cap_app/features/submissions/presentation/my_submissions_screen.dart';
+import 'package:cap_app/features/submissions/presentation/submit_availability_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_price_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_product_screen.dart';
 import 'package:cap_app/app/mobile_shell.dart';
@@ -43,6 +44,7 @@ class AppRoutes {
   static const submitProduct = '/submit/product';
   static const submitProductGuided = '/submit/product/guided';
   static const submitPrice = '/submit/price';
+  static const submitAvailability = '/submit/availability';
   static const submissions = '/submissions';
   static const rewards = '/rewards';
   static const settings = '/settings';
@@ -229,6 +231,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ? state.extra as int
               : null;
           return SubmitPriceScreen(initialProductId: initialProductId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.submitAvailability,
+        builder: (context, state) {
+          final data = state.extra is Map
+              ? state.extra as Map<Object?, Object?>
+              : const <Object?, Object?>{};
+          final productId = data['productId'] is int
+              ? data['productId'] as int
+              : int.tryParse(data['productId']?.toString() ?? '');
+          final supermarketId = data['supermarketId'] is int
+              ? data['supermarketId'] as int
+              : int.tryParse(data['supermarketId']?.toString() ?? '');
+          if (productId == null || supermarketId == null) {
+            return const _RouteErrorScreen(
+              message: 'Invalid availability report target',
+            );
+          }
+          return SubmitAvailabilityScreen(
+            productId: productId,
+            productName:
+                data['productName']?.toString() ?? 'Product #$productId',
+            supermarketId: supermarketId,
+            supermarketName:
+                data['supermarketName']?.toString() ?? 'Market #$supermarketId',
+          );
         },
       ),
       GoRoute(

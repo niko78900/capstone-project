@@ -75,6 +75,14 @@ describe('ProductDetailPageComponent', () => {
             observedAt: '2026-04-11T11:00:00Z',
           },
         ],
+        unavailableMarkets: [
+          {
+            supermarketId: 2,
+            supermarketName: 'Vero',
+            available: false,
+            observedAt: '2026-05-02T10:00:00Z',
+          },
+        ],
       }),
     );
 
@@ -106,6 +114,7 @@ describe('ProductDetailPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Price History');
     expect(fixture.nativeElement.textContent).toContain('Tinex');
     expect(fixture.nativeElement.textContent).toContain('Vero');
+    expect(fixture.nativeElement.textContent).toContain('Marked no longer available');
     expect(fixture.nativeElement.querySelector('svg.history-chart')).not.toBeNull();
     expect(
       fixture.nativeElement.querySelector('app-market-logo img[src^="/market-logos/tinex.png"]'),

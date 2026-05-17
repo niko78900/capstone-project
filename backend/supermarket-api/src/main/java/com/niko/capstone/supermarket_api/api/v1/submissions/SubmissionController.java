@@ -2,6 +2,7 @@ package com.niko.capstone.supermarket_api.api.v1.submissions;
 
 import com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.AvailabilitySubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ImageUploadResponse;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiDraftRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductAiDraftResponse;
@@ -50,6 +51,15 @@ public class SubmissionController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(submissionService.createPriceSubmission(currentEmail(authentication), request));
+    }
+
+    @PostMapping("/availability")
+    public ResponseEntity<SubmissionResponse> submitAvailability(
+            Authentication authentication,
+            @Valid @RequestBody AvailabilitySubmissionRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(submissionService.createAvailabilitySubmission(currentEmail(authentication), request));
     }
 
     @PostMapping("/product/ai-draft")

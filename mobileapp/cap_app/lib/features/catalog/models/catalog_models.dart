@@ -90,6 +90,31 @@ class ProductPriceHistoryPointDto {
   }
 }
 
+class ProductAvailabilityDto {
+  const ProductAvailabilityDto({
+    required this.supermarketId,
+    required this.supermarketName,
+    required this.available,
+    required this.observedAt,
+  });
+
+  final int supermarketId;
+  final String supermarketName;
+  final bool available;
+  final DateTime observedAt;
+
+  factory ProductAvailabilityDto.fromJson(Map<String, dynamic> json) {
+    return ProductAvailabilityDto(
+      supermarketId: _toInt(json['supermarketId']),
+      supermarketName: _toString(json['supermarketName']),
+      available: _toBool(json['available']),
+      observedAt:
+          DateTime.tryParse(_toString(json['observedAt'])) ??
+          DateTime.now().toUtc(),
+    );
+  }
+}
+
 class ProductSummaryDto {
   const ProductSummaryDto({
     required this.id,
@@ -142,6 +167,7 @@ class ProductDetailDto {
     this.nutrition,
     required this.prices,
     this.priceHistory = const [],
+    this.unavailableMarkets = const [],
   });
 
   final int id;
@@ -153,11 +179,13 @@ class ProductDetailDto {
   final ProductNutritionDto? nutrition;
   final List<ProductPriceDto> prices;
   final List<ProductPriceHistoryPointDto> priceHistory;
+  final List<ProductAvailabilityDto> unavailableMarkets;
 
   factory ProductDetailDto.fromJson(Map<String, dynamic> json) {
     final nutritionRaw = json['nutrition'];
     final pricesRaw = json['prices'];
     final priceHistoryRaw = json['priceHistory'];
+    final unavailableRaw = json['unavailableMarkets'];
     return ProductDetailDto(
       id: _toInt(json['id']),
       name: _toString(json['name']),
@@ -182,6 +210,16 @@ class ProductDetailDto {
                 .whereType<Map>()
                 .map(
                   (item) => ProductPriceHistoryPointDto.fromJson(
+                    item.cast<String, dynamic>(),
+                  ),
+                )
+                .toList()
+          : const [],
+      unavailableMarkets: unavailableRaw is List
+          ? unavailableRaw
+                .whereType<Map>()
+                .map(
+                  (item) => ProductAvailabilityDto.fromJson(
                     item.cast<String, dynamic>(),
                   ),
                 )
@@ -237,6 +275,16 @@ double? _toDouble(dynamic value) {
 String _toString(dynamic value, {String fallback = ''}) {
   final raw = value?.toString() ?? fallback;
   return raw;
+}
+
+bool _toBool(dynamic value) {
+  if (value is bool) {
+    return value;
+  }
+  if (value is String) {
+    return value.trim().toLowerCase() == 'true';
+  }
+  return false;
 }
 
 String? _toNullableString(dynamic value) {

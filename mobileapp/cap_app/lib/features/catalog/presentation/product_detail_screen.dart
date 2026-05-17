@@ -124,13 +124,55 @@ class ProductDetailScreen extends ConsumerWidget {
                         subtitle: Text(
                           'Observed ${AppFormatters.asRelativeDateTime(price.observedAt)}',
                         ),
-                        trailing: Text(
-                          AppFormatters.asCurrency(price.price),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              AppFormatters.asCurrency(price.price),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => context.push(
+                                AppRoutes.submitAvailability,
+                                extra: {
+                                  'productId': detail.id,
+                                  'productName': detail.name,
+                                  'supermarketId': price.supermarketId,
+                                  'supermarketName': price.supermarketName,
+                                },
+                              ),
+                              icon: const Icon(Icons.block_outlined),
+                              tooltip: 'Report not sold here',
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
+                if (detail.unavailableMarkets.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Marked no longer available',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  ...detail.unavailableMarkets.map(
+                    (market) => Card(
+                      child: ListTile(
+                        leading: MarketLogo(
+                          supermarketName: market.supermarketName,
+                        ),
+                        title: Text(market.supermarketName),
+                        subtitle: Text(
+                          'Reported ${AppFormatters.asRelativeDateTime(market.observedAt)}',
+                        ),
+                        trailing: const Icon(Icons.block_outlined),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 PriceHistoryChart(points: detail.priceHistory),
               ],

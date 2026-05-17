@@ -172,6 +172,40 @@
               </mat-form-field>
             }
 
+            @if (isAvailabilityType()) {
+              <mat-form-field appearance="outline">
+                <mat-label>Product id</mat-label>
+                <input matInput type="number" formControlName="productId" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Supermarket</mat-label>
+                <mat-select formControlName="supermarketId">
+                  @for (supermarket of supermarkets(); track supermarket.id) {
+                    <mat-option [value]="supermarket.id">{{ supermarket.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Availability</mat-label>
+                <mat-select formControlName="available">
+                  <mat-option [value]="false">Not available</mat-option>
+                  <mat-option [value]="true">Available</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Observed at</mat-label>
+                <input matInput type="datetime-local" formControlName="observedAt" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="wide">
+                <mat-label>Image URL</mat-label>
+                <input matInput formControlName="imageUrl" />
+              </mat-form-field>
+            }
+
             @if (isProductType() || isNutritionType()) {
               <mat-form-field appearance="outline">
                 <mat-label>Calories</mat-label>

@@ -146,6 +146,7 @@ describe('AdminSubmissionsPageComponent', () => {
         nutrition: null,
         prices: [],
         priceHistory: [],
+        unavailableMarkets: [],
       }),
     );
     catalogService.getSupermarkets.and.returnValue(of([{ id: 2, name: 'Tinex' }]));

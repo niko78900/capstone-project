@@ -39,6 +39,13 @@ export interface ProductPriceHistoryPointDto {
   observedAt: string;
 }
 
+export interface ProductAvailabilityDto {
+  supermarketId: number;
+  supermarketName: string;
+  available: boolean;
+  observedAt: string;
+}
+
 export interface ProductDetailDto {
   id: number;
   name: string;
@@ -49,4 +56,5 @@ export interface ProductDetailDto {
   nutrition: ProductNutritionDto | null;
   prices: ProductPriceDto[];
   priceHistory: ProductPriceHistoryPointDto[];
+  unavailableMarkets: ProductAvailabilityDto[];
 }

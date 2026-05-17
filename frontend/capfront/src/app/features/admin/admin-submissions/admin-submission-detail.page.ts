@@ -128,6 +128,7 @@ export class AdminSubmissionDetailPageComponent {
     imageUrl: [''],
     productId: [null as number | null],
     branchId: [null as number | null],
+    available: [null as boolean | null],
     observedAt: [''],
     calories: [null as number | null],
     proteinG: [null as number | null],
@@ -157,6 +158,7 @@ export class AdminSubmissionDetailPageComponent {
   readonly isProductType = computed(() => this.submission()?.type === 'PRODUCT');
   readonly isPriceType = computed(() => this.submission()?.type === 'PRICE');
   readonly isNutritionType = computed(() => this.submission()?.type === 'NUTRITION');
+  readonly isAvailabilityType = computed(() => this.submission()?.type === 'AVAILABILITY');
 
   readonly imagePreviewUrl = computed(() => {
     const payload = this.asRecord(this.submission()?.payload);
@@ -505,6 +507,7 @@ export class AdminSubmissionDetailPageComponent {
         imageUrl: this.asText(payload['imageUrl'], ''),
         productId: this.asNumber(payload['productId']),
         branchId: this.asNumber(payload['branchId']),
+        available: this.asBoolean(payload['available']),
         observedAt: this.toDateInputValue(this.asText(payload['observedAt'], '')),
         calories: this.asNumber(nutrition?.['calories']),
         proteinG: this.asNumber(nutrition?.['proteinG']),
@@ -549,6 +552,17 @@ export class AdminSubmissionDetailPageComponent {
     if (type === 'NUTRITION' && controls.productId.value == null) {
       return 'Product id is required.';
     }
+    if (type === 'AVAILABILITY') {
+      if (controls.productId.value == null) {
+        return 'Product id is required.';
+      }
+      if (controls.supermarketId.value == null) {
+        return 'Supermarket is required.';
+      }
+      if (controls.available.value == null) {
+        return 'Availability status is required.';
+      }
+    }
     return null;
   }
 
@@ -585,6 +599,16 @@ export class AdminSubmissionDetailPageComponent {
       return {
         productId: controls.productId.value,
         nutrition: this.buildNutritionPayload(),
+      };
+    }
+
+    if (type === 'AVAILABILITY') {
+      return {
+        productId: controls.productId.value,
+        supermarketId: controls.supermarketId.value,
+        available: controls.available.value,
+        imageUrl: this.trimToNull(controls.imageUrl.value ?? ''),
+        observedAt: this.toIsoInstant(controls.observedAt.value ?? ''),
       };
     }
 
@@ -645,7 +669,11 @@ export class AdminSubmissionDetailPageComponent {
       return this.asNumber(payload['sourceProductId']);
     }
 
-    if (submission.type === 'PRICE' || submission.type === 'NUTRITION') {
+    if (
+      submission.type === 'PRICE' ||
+      submission.type === 'NUTRITION' ||
+      submission.type === 'AVAILABILITY'
+    ) {
       return this.asNumber(payload['productId']);
     }
 
@@ -761,6 +789,22 @@ export class AdminSubmissionDetailPageComponent {
     return null;
   }
 
+  private asBoolean(value: unknown): boolean | null {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true') {
+        return true;
+      }
+      if (normalized === 'false') {
+        return false;
+      }
+    }
+    return null;
+  }
+
   private typePrefix(type: ModerationSubmissionDetail['type']): string {
     switch (type) {
       case 'PRODUCT':
@@ -769,6 +813,8 @@ export class AdminSubmissionDetailPageComponent {
         return 'PRC';
       case 'NUTRITION':
         return 'NTR';
+      case 'AVAILABILITY':
+        return 'AVL';
       default:
         return 'SUB';
     }

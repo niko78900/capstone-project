@@ -23,11 +23,21 @@ void main() {
             'observedAt': '2026-04-10T10:00:00Z',
           },
         ],
+        'unavailableMarkets': [
+          {
+            'supermarketId': 2,
+            'supermarketName': 'Vero',
+            'available': false,
+            'observedAt': '2026-05-10T10:00:00Z',
+          },
+        ],
       });
 
       expect(detail.priceHistory, hasLength(1));
       expect(detail.priceHistory.first.supermarketName, 'Tinex');
       expect(detail.priceHistory.first.price, 62.5);
+      expect(detail.unavailableMarkets, hasLength(1));
+      expect(detail.unavailableMarkets.first.supermarketName, 'Vero');
 
       final legacyDetail = ProductDetailDto.fromJson({
         'id': 2,
@@ -36,6 +46,7 @@ void main() {
         'prices': const [],
       });
       expect(legacyDetail.priceHistory, isEmpty);
+      expect(legacyDetail.unavailableMarkets, isEmpty);
     },
   );
 }

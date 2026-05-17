@@ -1,6 +1,7 @@
 package com.niko.capstone.supermarket_api.api.v1.catalog;
 
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductDetailDto;
+import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductAvailabilityDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductNutritionDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductPriceHistoryPointDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductPriceDto;
@@ -10,8 +11,10 @@ import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundExcepti
 import com.niko.capstone.supermarket_api.api.v1.pricing.PricingService;
 import com.niko.capstone.supermarket_api.api.v1.pricing.dto.LatestPricePoint;
 import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
+import com.niko.capstone.supermarket_api.domain.model.ProductMarketAvailabilityEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductNutritionEntity;
 import com.niko.capstone.supermarket_api.domain.model.VerifiedPriceEntity;
+import com.niko.capstone.supermarket_api.domain.repository.ProductMarketAvailabilityRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductNutritionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SupermarketRepository;
@@ -34,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CatalogService {
 
     private final ProductRepository productRepository;
+    private final ProductMarketAvailabilityRepository productMarketAvailabilityRepository;
     private final ProductNutritionRepository productNutritionRepository;
     private final SupermarketRepository supermarketRepository;
     private final VerifiedPriceRepository verifiedPriceRepository;
@@ -103,6 +107,7 @@ public class CatalogService {
                         point.observedAt()
                 ))
                 .toList();
+        List<ProductAvailabilityDto> unavailableMarkets = unavailableMarketsForProduct(productId, prices);
 
         List<ProductPriceHistoryPointDto> priceHistory = verifiedPriceRepository
                 .findByProductIdOrderByObservedAtAsc(productId)
@@ -119,7 +124,8 @@ public class CatalogService {
                 product.getCategory().getName(),
                 nutritionDto,
                 prices,
-                priceHistory
+                priceHistory,
+                unavailableMarkets
         );
     }
 
@@ -161,6 +167,36 @@ public class CatalogService {
                 price.getCurrency(),
                 price.getObservedAt()
         );
+    }
+
+    private List<ProductAvailabilityDto> unavailableMarketsForProduct(
+            Long productId,
+            List<ProductPriceDto> currentPrices
+    ) {
+        Map<Long, ProductPriceDto> latestPriceBySupermarket = currentPrices.stream()
+                .collect(Collectors.toMap(ProductPriceDto::supermarketId, Function.identity()));
+        Map<Long, ProductMarketAvailabilityEntity> latestAvailabilityBySupermarket = new java.util.LinkedHashMap<>();
+
+        for (ProductMarketAvailabilityEntity event : productMarketAvailabilityRepository
+                .findByProductIdOrderByObservedAtDesc(productId)) {
+            latestAvailabilityBySupermarket.putIfAbsent(event.getSupermarket().getId(), event);
+        }
+
+        return latestAvailabilityBySupermarket.values()
+                .stream()
+                .filter(event -> !event.isAvailable())
+                .filter(event -> {
+                    ProductPriceDto currentPrice = latestPriceBySupermarket.get(event.getSupermarket().getId());
+                    return currentPrice == null || !event.getObservedAt().isBefore(currentPrice.observedAt());
+                })
+                .map(event -> new ProductAvailabilityDto(
+                        event.getSupermarket().getId(),
+                        event.getSupermarket().getName(),
+                        event.isAvailable(),
+                        event.getObservedAt()
+                ))
+                .sorted(Comparator.comparing(ProductAvailabilityDto::supermarketName))
+                .toList();
     }
 
     private boolean matchesQuery(ProductEntity product, String normalizedQuery) {

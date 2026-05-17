@@ -28,6 +28,16 @@ class SubmissionRepository {
     return SubmissionResponse.fromJson((raw as Map).cast<String, dynamic>());
   }
 
+  Future<SubmissionResponse> submitAvailability(
+    AvailabilitySubmissionRequestDto request,
+  ) async {
+    final raw = await _apiClient.post(
+      '/api/v1/submissions/availability',
+      data: request.toJson(),
+    );
+    return SubmissionResponse.fromJson((raw as Map).cast<String, dynamic>());
+  }
+
   Future<List<SubmissionResponse>> getMySubmissions() async {
     final raw = await _apiClient.get('/api/v1/submissions/me');
     if (raw is! List) {

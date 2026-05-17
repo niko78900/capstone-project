@@ -19,6 +19,7 @@ import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionHistory
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionHistoryResponse;
 import com.niko.capstone.supermarket_api.api.v1.moderation.dto.SubmissionPayloadPatchResponse;
 import com.niko.capstone.supermarket_api.api.v1.rewards.RewardsService;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.AvailabilitySubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.NutritionSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
@@ -31,6 +32,7 @@ import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
 import com.niko.capstone.supermarket_api.domain.model.CategoryEntity;
 import com.niko.capstone.supermarket_api.domain.model.ContributorStatsEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
+import com.niko.capstone.supermarket_api.domain.model.ProductMarketAvailabilityEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductNutritionEntity;
 import com.niko.capstone.supermarket_api.domain.model.SubmissionEditEntity;
 import com.niko.capstone.supermarket_api.domain.model.SubmissionEntity;
@@ -41,6 +43,7 @@ import com.niko.capstone.supermarket_api.domain.model.VerifiedPriceEntity;
 import com.niko.capstone.supermarket_api.domain.repository.BranchRepository;
 import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ContributorStatsRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ProductMarketAvailabilityRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductNutritionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
 import com.niko.capstone.supermarket_api.domain.repository.SubmissionEditRepository;
@@ -78,6 +81,7 @@ public class ModerationService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final ProductMarketAvailabilityRepository productMarketAvailabilityRepository;
     private final ProductNutritionRepository productNutritionRepository;
     private final SupermarketRepository supermarketRepository;
     private final BranchRepository branchRepository;
@@ -217,6 +221,7 @@ public class ModerationService {
             case PRODUCT -> approveProductSubmission(submission);
             case PRICE -> approvePriceSubmission(submission);
             case NUTRITION -> approveNutritionSubmission(submission);
+            case AVAILABILITY -> approveAvailabilitySubmission(submission);
             default -> throw new UnprocessableEntityException("Unsupported submission type");
         }
 
@@ -372,6 +377,23 @@ public class ModerationService {
         productNutritionRepository.save(nutrition);
     }
 
+    private void approveAvailabilitySubmission(SubmissionEntity submission) {
+        AvailabilitySubmissionPayload payload = readPayload(submission, AvailabilitySubmissionPayload.class);
+        ProductEntity product = productRepository.findById(payload.productId())
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        SupermarketEntity supermarket = supermarketRepository.findById(payload.supermarketId())
+                .orElseThrow(() -> new NotFoundException("Supermarket not found"));
+
+        ProductMarketAvailabilityEntity availability = new ProductMarketAvailabilityEntity();
+        availability.setProduct(product);
+        availability.setSupermarket(supermarket);
+        availability.setAvailable(Boolean.TRUE.equals(payload.available()));
+        availability.setObservedAt(payload.observedAt() == null ? Instant.now() : payload.observedAt());
+        availability.setSourceType(PriceSourceType.USER);
+        availability.setSubmission(submission);
+        productMarketAvailabilityRepository.save(availability);
+    }
+
     private void applyNutritionValues(ProductNutritionEntity nutrition, SubmissionNutritionInput input) {
         nutrition.setCalories(input.calories());
         nutrition.setProteinG(input.proteinG());
@@ -500,6 +522,11 @@ public class ModerationService {
                 validateNutritionPatchPayload(payload);
                 yield payload;
             }
+            case AVAILABILITY -> {
+                AvailabilitySubmissionPayload payload = convertPatchPayload(replacementPayload, AvailabilitySubmissionPayload.class);
+                validateAvailabilityPatchPayload(payload);
+                yield payload;
+            }
             default -> throw new UnprocessableEntityException("Unsupported submission type");
         };
     }
@@ -563,6 +590,19 @@ public class ModerationService {
         productRepository.findById(payload.productId())
                 .orElseThrow(() -> new NotFoundException("Product not found"));
         validateNutritionInput(payload.nutrition(), true);
+    }
+
+    private void validateAvailabilityPatchPayload(AvailabilitySubmissionPayload payload) {
+        requireId(payload.productId(), "Product is required in availability submission");
+        requireId(payload.supermarketId(), "Supermarket is required in availability submission");
+        if (payload.available() == null) {
+            throw new UnprocessableEntityException("Availability status is required");
+        }
+        requireMaxLength(payload.imageUrl(), 500, "Image URL must be at most 500 characters");
+        productRepository.findById(payload.productId())
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        supermarketRepository.findById(payload.supermarketId())
+                .orElseThrow(() -> new NotFoundException("Supermarket not found"));
     }
 
     private void validateNutritionInput(SubmissionNutritionInput input, boolean required) {

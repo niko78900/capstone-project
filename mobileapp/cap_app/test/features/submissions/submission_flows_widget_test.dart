@@ -7,6 +7,7 @@ import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/data/submission_repository.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/presentation/guided_product_submission_screen.dart';
+import 'package:cap_app/features/submissions/presentation/submit_availability_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_price_screen.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:flutter/material.dart';
@@ -168,6 +169,46 @@ void main() {
     expect(submissionRepository.lastPriceRequest?.price, 59.99);
     expect(find.textContaining('pending moderation'), findsOneWidget);
   });
+
+  testWidgets('availability report submits a not-available request', (
+    tester,
+  ) async {
+    final submissionRepository = _FakeSubmissionRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          debugModeEnabledProvider.overrideWithValue(false),
+          submissionRepositoryProvider.overrideWithValue(submissionRepository),
+        ],
+        child: const MaterialApp(
+          home: SubmitAvailabilityScreen(
+            productId: 12,
+            productName: 'Cola 2L',
+            supermarketId: 1,
+            supermarketName: 'Zur',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Notes for moderator'),
+      'Checked the shelf today.',
+    );
+    await tester.tap(find.text('Mark as not sold here'));
+    await tester.pumpAndSettle();
+
+    expect(submissionRepository.lastAvailabilityRequest?.productId, 12);
+    expect(submissionRepository.lastAvailabilityRequest?.supermarketId, 1);
+    expect(submissionRepository.lastAvailabilityRequest?.available, isFalse);
+    expect(
+      submissionRepository.lastAvailabilityRequest?.notes,
+      'Checked the shelf today.',
+    );
+    expect(find.textContaining('pending moderation'), findsOneWidget);
+  });
 }
 
 class _FakeCatalogRepository extends CatalogRepository {
@@ -189,6 +230,7 @@ class _FakeSubmissionRepository extends SubmissionRepository {
   _FakeSubmissionRepository() : super(ApiClient(const AuthTokenStorage()));
 
   PriceSubmissionRequestDto? lastPriceRequest;
+  AvailabilitySubmissionRequestDto? lastAvailabilityRequest;
 
   @override
   Future<SubmissionResponse> submitPrice(
@@ -201,6 +243,23 @@ class _FakeSubmissionRepository extends SubmissionRepository {
       status: SubmissionStatus.pending,
       payload: request.toJson(),
       notes: null,
+      reviewReason: null,
+      createdAt: DateTime.utc(2026, 5, 13),
+      updatedAt: DateTime.utc(2026, 5, 13),
+    );
+  }
+
+  @override
+  Future<SubmissionResponse> submitAvailability(
+    AvailabilitySubmissionRequestDto request,
+  ) async {
+    lastAvailabilityRequest = request;
+    return SubmissionResponse(
+      id: 43,
+      type: SubmissionType.availability,
+      status: SubmissionStatus.pending,
+      payload: request.toJson(),
+      notes: request.notes,
       reviewReason: null,
       createdAt: DateTime.utc(2026, 5, 13),
       updatedAt: DateTime.utc(2026, 5, 13),

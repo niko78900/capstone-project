@@ -10,6 +10,8 @@ import com.niko.capstone.supermarket_api.api.v1.common.util.NameNormalizer;
 import com.niko.capstone.supermarket_api.api.v1.common.util.SafeImageUploadValidator;
 import com.niko.capstone.supermarket_api.api.v1.common.util.SafeImageUploadValidator.VerifiedImage;
 import com.niko.capstone.supermarket_api.api.v1.common.util.TextTransliterator;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.AvailabilitySubmissionPayload;
+import com.niko.capstone.supermarket_api.api.v1.submissions.dto.AvailabilitySubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionRequest;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
@@ -133,6 +135,34 @@ public class SubmissionService {
         SubmissionEntity submission = new SubmissionEntity();
         submission.setUser(user);
         submission.setType(SubmissionType.PRICE);
+        submission.setStatus(SubmissionStatus.PENDING);
+        submission.setPayload(writeJson(payload));
+        submission.setNotes(normalizeOptional(TextTransliterator.toLatin(request.notes())));
+
+        SubmissionEntity saved = submissionRepository.save(submission);
+        aiAnalysisService.analyzeSubmissionAsync(saved.getId());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public SubmissionResponse createAvailabilitySubmission(String userEmail, AvailabilitySubmissionRequest request) {
+        UserEntity user = findUserByEmail(userEmail);
+        ProductEntity product = productRepository.findById(request.productId())
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        SupermarketEntity supermarket = supermarketRepository.findById(request.supermarketId())
+                .orElseThrow(() -> new NotFoundException("Supermarket not found"));
+
+        AvailabilitySubmissionPayload payload = new AvailabilitySubmissionPayload(
+                product.getId(),
+                supermarket.getId(),
+                request.available(),
+                request.observedAt() == null ? Instant.now() : request.observedAt(),
+                normalizeOptional(request.imageUrl())
+        );
+
+        SubmissionEntity submission = new SubmissionEntity();
+        submission.setUser(user);
+        submission.setType(SubmissionType.AVAILABILITY);
         submission.setStatus(SubmissionStatus.PENDING);
         submission.setPayload(writeJson(payload));
         submission.setNotes(normalizeOptional(TextTransliterator.toLatin(request.notes())));

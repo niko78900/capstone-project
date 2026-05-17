@@ -261,6 +261,16 @@ public class AiAnalysisService {
                 flags.add("missing_observed_at");
             }
         }
+        if (submissionType == SubmissionType.AVAILABILITY) {
+            if (!payload.path("available").isBoolean()) {
+                warnings.add("Availability status missing");
+                flags.add("missing_availability");
+            }
+            if (payload.path("observedAt").isMissingNode() || payload.path("observedAt").isNull()) {
+                warnings.add("Observed timestamp missing; approval time will be used");
+                flags.add("missing_observed_at");
+            }
+        }
     }
 
     private ProductAiDraftResponse toDraftResponse(SubmissionAiAnalysisEntity analysis, AiExtractionResult extraction) {

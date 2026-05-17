@@ -18,7 +18,7 @@ const categoryOptions = <CategoryOption>[
   CategoryOption(id: 10, name: 'Household'),
 ];
 
-enum SubmissionType { product, price, nutrition, unknown }
+enum SubmissionType { product, price, nutrition, availability, unknown }
 
 enum SubmissionStatus { pending, approved, rejected, unknown }
 
@@ -30,6 +30,8 @@ SubmissionType parseSubmissionType(String? raw) {
       return SubmissionType.price;
     case 'NUTRITION':
       return SubmissionType.nutrition;
+    case 'AVAILABILITY':
+      return SubmissionType.availability;
     default:
       return SubmissionType.unknown;
   }
@@ -265,6 +267,35 @@ class PriceSubmissionRequestDto {
       'supermarketId': supermarketId,
       'branchId': branchId,
       'price': price,
+      'observedAt': observedAt?.toUtc().toIso8601String(),
+      'imageUrl': _nullIfBlank(imageUrl),
+      'notes': _nullIfBlank(notes),
+    };
+  }
+}
+
+class AvailabilitySubmissionRequestDto {
+  const AvailabilitySubmissionRequestDto({
+    required this.productId,
+    required this.supermarketId,
+    required this.available,
+    this.observedAt,
+    this.imageUrl,
+    this.notes,
+  });
+
+  final int productId;
+  final int supermarketId;
+  final bool available;
+  final DateTime? observedAt;
+  final String? imageUrl;
+  final String? notes;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'productId': productId,
+      'supermarketId': supermarketId,
+      'available': available,
       'observedAt': observedAt?.toUtc().toIso8601String(),
       'imageUrl': _nullIfBlank(imageUrl),
       'notes': _nullIfBlank(notes),

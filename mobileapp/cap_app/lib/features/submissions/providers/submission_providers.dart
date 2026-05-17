@@ -30,7 +30,9 @@ final submissionNotificationBootstrapProvider = Provider<void>((ref) {
   );
 });
 
-final mySubmissionsProvider = FutureProvider<List<SubmissionResponse>>((ref) async {
+final mySubmissionsProvider = FutureProvider<List<SubmissionResponse>>((
+  ref,
+) async {
   ref.watch(
     authSessionProvider.select((state) => state.valueOrNull?.accessToken),
   );
@@ -38,17 +40,21 @@ final mySubmissionsProvider = FutureProvider<List<SubmissionResponse>>((ref) asy
   try {
     return await repo.getMySubmissions();
   } catch (error) {
-    await ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+    await ref
+        .read(authSessionProvider.notifier)
+        .forceLogoutOnUnauthorized(error);
     rethrow;
   }
 });
 
 final productSubmissionControllerProvider =
-    AutoDisposeAsyncNotifierProvider<ProductSubmissionController, SubmissionResponse?>(
-  ProductSubmissionController.new,
-);
+    AutoDisposeAsyncNotifierProvider<
+      ProductSubmissionController,
+      SubmissionResponse?
+    >(ProductSubmissionController.new);
 
-class ProductSubmissionController extends AutoDisposeAsyncNotifier<SubmissionResponse?> {
+class ProductSubmissionController
+    extends AutoDisposeAsyncNotifier<SubmissionResponse?> {
   SubmissionRepository get _repo => ref.read(submissionRepositoryProvider);
 
   @override
@@ -56,12 +62,16 @@ class ProductSubmissionController extends AutoDisposeAsyncNotifier<SubmissionRes
     return null;
   }
 
-  Future<SubmissionResponse?> submit(ProductSubmissionRequestDto request) async {
+  Future<SubmissionResponse?> submit(
+    ProductSubmissionRequestDto request,
+  ) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _repo.submitProduct(request));
     final error = state.asError?.error;
     if (error != null) {
-      await ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+      await ref
+          .read(authSessionProvider.notifier)
+          .forceLogoutOnUnauthorized(error);
       return null;
     }
     ref.invalidate(mySubmissionsProvider);
@@ -74,11 +84,13 @@ class ProductSubmissionController extends AutoDisposeAsyncNotifier<SubmissionRes
 }
 
 final priceSubmissionControllerProvider =
-    AutoDisposeAsyncNotifierProvider<PriceSubmissionController, SubmissionResponse?>(
-  PriceSubmissionController.new,
-);
+    AutoDisposeAsyncNotifierProvider<
+      PriceSubmissionController,
+      SubmissionResponse?
+    >(PriceSubmissionController.new);
 
-class PriceSubmissionController extends AutoDisposeAsyncNotifier<SubmissionResponse?> {
+class PriceSubmissionController
+    extends AutoDisposeAsyncNotifier<SubmissionResponse?> {
   SubmissionRepository get _repo => ref.read(submissionRepositoryProvider);
 
   @override
@@ -91,7 +103,45 @@ class PriceSubmissionController extends AutoDisposeAsyncNotifier<SubmissionRespo
     state = await AsyncValue.guard(() => _repo.submitPrice(request));
     final error = state.asError?.error;
     if (error != null) {
-      await ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+      await ref
+          .read(authSessionProvider.notifier)
+          .forceLogoutOnUnauthorized(error);
+      return null;
+    }
+    ref.invalidate(mySubmissionsProvider);
+    return state.valueOrNull;
+  }
+
+  void clear() {
+    state = const AsyncData(null);
+  }
+}
+
+final availabilitySubmissionControllerProvider =
+    AutoDisposeAsyncNotifierProvider<
+      AvailabilitySubmissionController,
+      SubmissionResponse?
+    >(AvailabilitySubmissionController.new);
+
+class AvailabilitySubmissionController
+    extends AutoDisposeAsyncNotifier<SubmissionResponse?> {
+  SubmissionRepository get _repo => ref.read(submissionRepositoryProvider);
+
+  @override
+  Future<SubmissionResponse?> build() async {
+    return null;
+  }
+
+  Future<SubmissionResponse?> submit(
+    AvailabilitySubmissionRequestDto request,
+  ) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _repo.submitAvailability(request));
+    final error = state.asError?.error;
+    if (error != null) {
+      await ref
+          .read(authSessionProvider.notifier)
+          .forceLogoutOnUnauthorized(error);
       return null;
     }
     ref.invalidate(mySubmissionsProvider);
@@ -142,13 +192,17 @@ class _SubmissionStatusPoller {
 
     _isChecking = true;
     try {
-      final submissions = await _ref.read(submissionRepositoryProvider).getMySubmissions();
+      final submissions = await _ref
+          .read(submissionRepositoryProvider)
+          .getMySubmissions();
       await _processSubmissionChanges(
         userId: session.user.id,
         submissions: submissions,
       );
     } catch (error) {
-      await _ref.read(authSessionProvider.notifier).forceLogoutOnUnauthorized(error);
+      await _ref
+          .read(authSessionProvider.notifier)
+          .forceLogoutOnUnauthorized(error);
     } finally {
       _isChecking = false;
     }
@@ -233,6 +287,7 @@ class _SubmissionStatusPoller {
       SubmissionType.product => 'product',
       SubmissionType.price => 'price',
       SubmissionType.nutrition => 'nutrition',
+      SubmissionType.availability => 'availability',
       SubmissionType.unknown => 'submission',
     };
     final title = 'Submission $statusWord';
@@ -241,10 +296,6 @@ class _SubmissionStatusPoller {
     final notificationId = (submission.id.abs() % 100000) + 200000;
     await _ref
         .read(localNotificationsServiceProvider)
-        .show(
-          notificationId: notificationId,
-          title: title,
-          body: body,
-        );
+        .show(notificationId: notificationId, title: title, body: body);
   }
 }

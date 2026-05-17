@@ -11,6 +11,7 @@ public record ProductDetailDto(
         String category,
         ProductNutritionDto nutrition,
         List<ProductPriceDto> prices,
-        List<ProductPriceHistoryPointDto> priceHistory
+        List<ProductPriceHistoryPointDto> priceHistory,
+        List<ProductAvailabilityDto> unavailableMarkets
 ) {
 }

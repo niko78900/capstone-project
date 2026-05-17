@@ -185,6 +185,11 @@ class _SubmissionPayloadView extends StatelessWidget {
         payload: payload,
         productNamesById: productNamesById,
       ),
+      SubmissionType.availability => _AvailabilityPayloadView(
+        payload: payload,
+        productNamesById: productNamesById,
+        supermarketNamesById: supermarketNamesById,
+      ),
       SubmissionType.unknown => _GenericPayloadView(payload: payload),
     };
   }
@@ -347,6 +352,55 @@ class _PricePayloadView extends StatelessWidget {
   }
 }
 
+class _AvailabilityPayloadView extends StatelessWidget {
+  const _AvailabilityPayloadView({
+    required this.payload,
+    required this.productNamesById,
+    required this.supermarketNamesById,
+  });
+
+  final Map<String, dynamic> payload;
+  final Map<int, String> productNamesById;
+  final Map<int, String> supermarketNamesById;
+
+  @override
+  Widget build(BuildContext context) {
+    final productId = _asInt(payload['productId']);
+    final supermarketId = _asInt(payload['supermarketId']);
+    final observedAt = _asDateTime(payload['observedAt']);
+    final available = _asBool(payload['available']);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Availability update proposal',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        _LabeledValue(
+          label: 'Product',
+          value: _productLabel(productId, productNamesById),
+        ),
+        _LabeledValue(
+          label: 'Supermarket',
+          value: _supermarketLabel(supermarketId, supermarketNamesById),
+        ),
+        _LabeledValue(
+          label: 'Status',
+          value: available == true ? 'Available' : 'Not available',
+        ),
+        _LabeledValue(
+          label: 'Observed',
+          value: observedAt == null
+              ? '-'
+              : AppFormatters.asRelativeDateTime(observedAt),
+        ),
+      ],
+    );
+  }
+}
+
 class _NutritionPayloadView extends StatelessWidget {
   const _NutritionPayloadView({
     required this.payload,
@@ -466,6 +520,7 @@ String _typeLabel(SubmissionType type) {
     SubmissionType.product => 'PRODUCT',
     SubmissionType.price => 'PRICE',
     SubmissionType.nutrition => 'NUTRITION',
+    SubmissionType.availability => 'AVAILABILITY',
     SubmissionType.unknown => 'UNKNOWN',
   };
 }
@@ -475,6 +530,7 @@ String _submissionReference(SubmissionResponse item) {
     SubmissionType.product => 'PRD',
     SubmissionType.price => 'PRC',
     SubmissionType.nutrition => 'NTR',
+    SubmissionType.availability => 'AVL',
     SubmissionType.unknown => 'SUB',
   };
   final created = item.createdAt.toUtc();
@@ -527,6 +583,22 @@ num? _asNum(dynamic value) {
   }
   if (value is String) {
     return num.tryParse(value);
+  }
+  return null;
+}
+
+bool? _asBool(dynamic value) {
+  if (value is bool) {
+    return value;
+  }
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'true') {
+      return true;
+    }
+    if (normalized == 'false') {
+      return false;
+    }
   }
   return null;
 }

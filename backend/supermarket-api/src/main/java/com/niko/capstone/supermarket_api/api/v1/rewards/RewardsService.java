@@ -208,6 +208,7 @@ public class RewardsService {
             case PRODUCT -> 10;
             case PRICE -> 6;
             case NUTRITION -> 5;
+            case AVAILABILITY -> 4;
         };
     }
 

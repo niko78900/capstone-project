@@ -203,6 +203,8 @@ export class AdminDashboardPageComponent {
         return 'PRC';
       case 'NUTRITION':
         return 'NTR';
+      case 'AVAILABILITY':
+        return 'AVL';
       default:
         return 'SUB';
     }
