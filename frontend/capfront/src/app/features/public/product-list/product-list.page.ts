@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import {
   catchError,
+  combineLatest,
   debounceTime,
   distinctUntilChanged,
   finalize,
@@ -18,7 +19,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { mapApiError } from '../../../core/models/api-error.model';
-import { ProductSummaryDto } from '../../../core/models/catalog.model';
+import { ProductSummaryDto, SupermarketDto } from '../../../core/models/catalog.model';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { FilterToolbarComponent } from '../../../shared/components/filter-toolbar/filter-toolbar.component';
@@ -27,7 +28,8 @@ import { MarketLogoComponent } from '../../../shared/components/market-logo/mark
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 type ProductSortOrder = 'RELEVANCE' | 'NAME_ASC' | 'PRICE_ASC' | 'PRICE_DESC';
-type ProductFilterValue = 'ALL' | string;
+type CategoryFilterValue = 'ALL' | string;
+type SupermarketFilterValue = 'ALL' | number;
 
 @Component({
   selector: 'app-product-list-page',
@@ -55,16 +57,16 @@ export class ProductListPageComponent {
 
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly sortControl = new FormControl<ProductSortOrder>('RELEVANCE', { nonNullable: true });
-  readonly categoryControl = new FormControl<ProductFilterValue>('ALL', { nonNullable: true });
-  readonly supermarketControl = new FormControl<ProductFilterValue>('ALL', { nonNullable: true });
+  readonly categoryControl = new FormControl<CategoryFilterValue>('ALL', { nonNullable: true });
+  readonly supermarketControl = new FormControl<SupermarketFilterValue>('ALL', { nonNullable: true });
 
   readonly products = signal<ProductSummaryDto[]>([]);
-  readonly supermarkets = signal<string[]>([]);
+  readonly supermarkets = signal<SupermarketDto[]>([]);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly selectedSort = signal<ProductSortOrder>('RELEVANCE');
-  readonly selectedCategory = signal<ProductFilterValue>('ALL');
-  readonly selectedSupermarket = signal<ProductFilterValue>('ALL');
+  readonly selectedCategory = signal<CategoryFilterValue>('ALL');
+  readonly selectedSupermarketId = signal<SupermarketFilterValue>('ALL');
 
   readonly hasQuery = computed(() => this.searchControl.value.trim().length > 0);
   readonly categoryOptions = computed(() => {
@@ -72,30 +74,13 @@ export class ProductListPageComponent {
     for (const product of this.products()) {
       categories.add(product.category);
     }
-    return ['ALL', ...Array.from(categories).sort()] as ProductFilterValue[];
-  });
-
-  readonly supermarketOptions = computed(() => {
-    const names = new Set<string>(this.supermarkets());
-    for (const product of this.products()) {
-      if (product.bestPriceSupermarket) {
-        names.add(product.bestPriceSupermarket);
-      }
-    }
-    return ['ALL', ...Array.from(names).sort()] as ProductFilterValue[];
+    return ['ALL', ...Array.from(categories).sort()] as CategoryFilterValue[];
   });
 
   readonly filteredProducts = computed(() => {
     const selectedCategory = this.selectedCategory();
-    const selectedSupermarket = this.selectedSupermarket();
     return this.products().filter((product) => {
       if (selectedCategory !== 'ALL' && product.category !== selectedCategory) {
-        return false;
-      }
-      if (
-        selectedSupermarket !== 'ALL' &&
-        (product.bestPriceSupermarket ?? '') !== selectedSupermarket
-      ) {
         return false;
       }
       return true;
@@ -127,7 +112,7 @@ export class ProductListPageComponent {
   });
 
   readonly hasActiveFilters = computed(
-    () => this.selectedCategory() !== 'ALL' || this.selectedSupermarket() !== 'ALL',
+    () => this.selectedCategory() !== 'ALL' || this.selectedSupermarketId() !== 'ALL',
   );
 
   constructor() {
@@ -138,19 +123,30 @@ export class ProductListPageComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((supermarkets) => {
-        this.supermarkets.set(supermarkets.map((item) => item.name));
+        this.supermarkets.set(supermarkets);
       });
 
-    this.searchControl.valueChanges
-      .pipe(
+    combineLatest([
+      this.searchControl.valueChanges.pipe(
         startWith(this.searchControl.value),
         debounceTime(260),
         distinctUntilChanged(),
-        switchMap((query) => {
+      ),
+      this.supermarketControl.valueChanges.pipe(
+        startWith(this.supermarketControl.value),
+        distinctUntilChanged(),
+      ),
+    ])
+      .pipe(
+        switchMap(([query, supermarketId]) => {
+          this.selectedSupermarketId.set(supermarketId);
           this.loading.set(true);
           this.errorMessage.set(null);
 
-          return this.catalogService.getProducts(query).pipe(
+          return this.catalogService.getProducts(
+            query,
+            supermarketId === 'ALL' ? undefined : supermarketId,
+          ).pipe(
             catchError((error: unknown) => {
               const apiError = mapApiError(error);
               this.errorMessage.set(apiError.message);
@@ -170,10 +166,6 @@ export class ProductListPageComponent {
     this.categoryControl.valueChanges
       .pipe(startWith(this.categoryControl.value), takeUntilDestroyed(this.destroyRef))
       .subscribe((category) => this.selectedCategory.set(category));
-
-    this.supermarketControl.valueChanges
-      .pipe(startWith(this.supermarketControl.value), takeUntilDestroyed(this.destroyRef))
-      .subscribe((supermarket) => this.selectedSupermarket.set(supermarket));
   }
 
   clearSearch(): void {

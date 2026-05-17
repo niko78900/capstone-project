@@ -8,8 +8,15 @@ import { ProductDetailDto, ProductSummaryDto, SupermarketDto } from '../models/c
 export class CatalogService {
   private readonly http = inject(HttpClient);
 
-  getProducts(query?: string): Observable<ProductSummaryDto[]> {
-    const params = query ? new HttpParams().set('q', query) : undefined;
+  getProducts(query?: string, supermarketId?: number): Observable<ProductSummaryDto[]> {
+    let params = new HttpParams();
+    const normalizedQuery = query?.trim();
+    if (normalizedQuery) {
+      params = params.set('q', normalizedQuery);
+    }
+    if (supermarketId != null) {
+      params = params.set('supermarketId', String(supermarketId));
+    }
     return this.http.get<ProductSummaryDto[]>(`${API_BASE}/products`, { params });
   }
 

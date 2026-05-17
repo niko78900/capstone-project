@@ -97,7 +97,7 @@ describe('ProductListPageComponent', () => {
     component.searchControl.setValue('milk');
     tick(300);
 
-    expect(catalogService.getProducts).toHaveBeenCalledWith('milk');
+    expect(catalogService.getProducts).toHaveBeenCalledWith('milk', undefined);
   }));
 
   it('sorts products by price ascending when selected', fakeAsync(() => {
@@ -111,16 +111,45 @@ describe('ProductListPageComponent', () => {
     expect(component.sortedProducts()[0].id).toBe(2);
   }));
 
-  it('filters products by category and supermarket', fakeAsync(() => {
+  it('filters products by category client-side', fakeAsync(() => {
     createComponent();
     fixture.detectChanges();
     tick(300);
 
     component.categoryControl.setValue('Fruits & Vegetables');
-    component.supermarketControl.setValue('Vero');
     fixture.detectChanges();
 
     expect(component.sortedProducts().length).toBe(1);
     expect(component.sortedProducts()[0].name).toBe('Apple Gala');
+  }));
+
+  it('reloads products by supermarket id instead of filtering by best-price supermarket', fakeAsync(() => {
+    const veroAvailableButTinexCheapest = {
+      id: 4,
+      name: 'Corn Flakes',
+      brand: 'Breakfast Co',
+      barcode: '111',
+      category: 'Cereals',
+      nutrition: null,
+      bestPrice: 99,
+      bestPriceSupermarket: 'Tinex',
+      currency: 'MKD',
+    };
+    catalogService.getProducts.and.callFake((_query?: string, supermarketId?: number) =>
+      of(supermarketId === 2 ? [veroAvailableButTinexCheapest] : items),
+    );
+
+    createComponent();
+    fixture.detectChanges();
+    tick(300);
+    catalogService.getProducts.calls.reset();
+
+    component.supermarketControl.setValue(2);
+    tick();
+    fixture.detectChanges();
+
+    expect(catalogService.getProducts).toHaveBeenCalledWith('', 2);
+    expect(component.sortedProducts().map((product) => product.name)).toEqual(['Corn Flakes']);
+    expect(fixture.nativeElement.textContent).toContain('Tinex');
   }));
 });

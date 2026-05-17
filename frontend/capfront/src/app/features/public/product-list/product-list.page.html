@@ -54,12 +54,11 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>Best-price supermarket</mat-label>
+      <mat-label>Supermarket</mat-label>
       <mat-select [formControl]="supermarketControl">
-        @for (supermarket of supermarketOptions(); track supermarket) {
-          <mat-option [value]="supermarket">
-            {{ supermarket === 'ALL' ? 'All supermarkets' : supermarket }}
-          </mat-option>
+        <mat-option value="ALL">All supermarkets</mat-option>
+        @for (supermarket of supermarkets(); track supermarket.id) {
+          <mat-option [value]="supermarket.id">{{ supermarket.name }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
