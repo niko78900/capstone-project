@@ -16,6 +16,7 @@ import 'package:cap_app/features/cart/presentation/compare_result_screen.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
+import 'package:cap_app/features/catalog/presentation/price_history_chart.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/account/presentation/account_screen.dart';
@@ -545,6 +546,28 @@ void main() {
     expect(find.text('Vero'), findsOneWidget);
     expect(find.textContaining('latest'), findsWidgets);
     expect(find.byType(MarketLogo), findsAtLeastNWidgets(2));
+
+    final chart = find.byType(PriceHistoryChart);
+    await tester.ensureVisible(chart);
+    await tester.pumpAndSettle();
+
+    final chartCanvas = find.byKey(
+      const ValueKey('price-history-chart-canvas'),
+    );
+    final chartOrigin = tester.getTopLeft(chartCanvas);
+    await tester.tapAt(chartOrigin + const Offset(56, 112));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tinex - 65.00 MKD'), findsOneWidget);
+    expect(find.textContaining('Observed'), findsWidgets);
+
+    await tester.dragFrom(
+      chartOrigin + const Offset(56, 112),
+      const Offset(20, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('MKD'), findsWidgets);
   });
 
   testWidgets(

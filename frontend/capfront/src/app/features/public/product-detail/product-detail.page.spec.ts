@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { ProductDetailPageComponent } from './product-detail.page';
@@ -113,5 +114,41 @@ describe('ProductDetailPageComponent', () => {
       fixture.nativeElement.querySelector('app-market-logo img[src="/market-logos/vero.png"]'),
     ).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('CM');
+  });
+
+  it('shows a visible price tooltip when a history point is hovered or clicked', () => {
+    const point = fixture.debugElement
+      .queryAll(By.css('circle.history-point'))
+      .find((item) => item.nativeElement.getAttribute('aria-label')?.includes('Tinex'));
+
+    expect(point).toBeDefined();
+
+    point!.triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+
+    let tooltip = fixture.nativeElement.querySelector('.history-tooltip');
+    expect(tooltip).not.toBeNull();
+    expect(tooltip.textContent).toContain('Tinex');
+    expect(tooltip.textContent).toContain('69.50 MKD');
+
+    point!.triggerEventHandler('click', {});
+    fixture.detectChanges();
+
+    tooltip = fixture.nativeElement.querySelector('.history-tooltip');
+    expect(tooltip.textContent).toContain('Observed');
+  });
+
+  it('shows the latest series price tooltip when a history line is clicked', () => {
+    const hitLine = fixture.debugElement.query(By.css('polyline.history-line-hit'));
+
+    expect(hitLine).not.toBeNull();
+
+    hitLine.triggerEventHandler('click', {});
+    fixture.detectChanges();
+
+    const tooltip = fixture.nativeElement.querySelector('.history-tooltip');
+    expect(tooltip).not.toBeNull();
+    expect(tooltip.textContent).toContain('Tinex');
+    expect(tooltip.textContent).toContain('65.50 MKD');
   });
 });

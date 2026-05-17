@@ -144,47 +144,84 @@
         <mat-card-content>
           @if (priceHistoryChart(); as chart) {
             <div class="history-chart-wrap">
-              <svg
-                class="history-chart"
-                viewBox="0 0 720 260"
-                role="img"
-                aria-label="Price history chart by supermarket"
-              >
-                <line class="chart-axis" x1="58" y1="24" x2="58" y2="210" />
-                <line class="chart-axis" x1="58" y1="210" x2="700" y2="210" />
-                <line class="chart-grid" x1="58" y1="24" x2="700" y2="24" />
-                <line class="chart-grid" x1="58" y1="117" x2="700" y2="117" />
-                <text class="chart-label" x="8" y="29">{{ chart.maxPriceLabel }}</text>
-                <text class="chart-label" x="8" y="214">{{ chart.minPriceLabel }}</text>
-                <text class="chart-label" x="58" y="244">{{ chart.startDateLabel }}</text>
-                <text class="chart-label chart-label-end" x="700" y="244">
-                  {{ chart.endDateLabel }}
-                </text>
+              <div class="history-chart-stage">
+                <svg
+                  class="history-chart"
+                  viewBox="0 0 720 260"
+                  role="img"
+                  aria-label="Price history chart by supermarket"
+                  (mouseleave)="clearHistoryPoint()"
+                >
+                  <line class="chart-axis" x1="58" y1="24" x2="58" y2="210" />
+                  <line class="chart-axis" x1="58" y1="210" x2="700" y2="210" />
+                  <line class="chart-grid" x1="58" y1="24" x2="700" y2="24" />
+                  <line class="chart-grid" x1="58" y1="117" x2="700" y2="117" />
+                  <text class="chart-label" x="8" y="29">{{ chart.maxPriceLabel }}</text>
+                  <text class="chart-label" x="8" y="214">{{ chart.minPriceLabel }}</text>
+                  <text class="chart-label" x="58" y="244">{{ chart.startDateLabel }}</text>
+                  <text class="chart-label chart-label-end" x="700" y="244">
+                    {{ chart.endDateLabel }}
+                  </text>
 
-                @for (series of chart.series; track series.supermarketId) {
-                  @if (series.points.length > 1) {
-                    <polyline
-                      class="history-line"
-                      fill="none"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      [attr.stroke]="series.color"
-                      [attr.points]="series.svgPoints"
-                    />
+                  @for (series of chart.series; track series.supermarketId) {
+                    @if (series.points.length > 1) {
+                      <polyline
+                        class="history-line"
+                        fill="none"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        [attr.stroke]="series.color"
+                        [attr.points]="series.svgPoints"
+                      />
+                      <polyline
+                        class="history-line-hit"
+                        fill="none"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        tabindex="0"
+                        role="button"
+                        [attr.aria-label]="'Inspect latest ' + series.supermarketName + ' price'"
+                        [attr.points]="series.svgPoints"
+                        (mouseenter)="showHistoryPoint(series.latestPoint)"
+                        (focus)="showHistoryPoint(series.latestPoint)"
+                        (click)="showHistoryPoint(series.latestPoint)"
+                        (keydown.enter)="showHistoryPoint(series.latestPoint)"
+                        (keydown.space)="showHistoryPoint(series.latestPoint)"
+                      />
+                    }
+                    @for (point of series.points; track point.key) {
+                      <circle
+                        class="history-point"
+                        r="4"
+                        tabindex="0"
+                        role="button"
+                        [attr.cx]="point.cx"
+                        [attr.cy]="point.cy"
+                        [attr.fill]="series.color"
+                        [attr.aria-label]="point.label"
+                        (mouseenter)="showHistoryPoint(point)"
+                        (focus)="showHistoryPoint(point)"
+                        (click)="showHistoryPoint(point)"
+                        (keydown.enter)="showHistoryPoint(point)"
+                        (keydown.space)="showHistoryPoint(point)"
+                      />
+                    }
                   }
-                  @for (point of series.points; track point.key) {
-                    <circle
-                      class="history-point"
-                      r="4"
-                      [attr.cx]="point.cx"
-                      [attr.cy]="point.cy"
-                      [attr.fill]="series.color"
-                    >
-                      <title>{{ point.label }}</title>
-                    </circle>
-                  }
+                </svg>
+                @if (selectedHistoryPoint(); as point) {
+                  <div
+                    class="history-tooltip"
+                    role="status"
+                    aria-live="polite"
+                    [style.left.%]="historyTooltipLeft(point)"
+                    [style.top.%]="historyTooltipTop(point)"
+                  >
+                    <strong>{{ point.supermarketName }}</strong>
+                    <span>{{ point.priceLabel }}</span>
+                    <span>Observed {{ point.observedDateLabel }}</span>
+                  </div>
                 }
-              </svg>
+              </div>
             </div>
             <div class="history-legend" aria-label="Price history markets">
               @for (series of chart.series; track series.supermarketId) {

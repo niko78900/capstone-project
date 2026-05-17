@@ -5,14 +5,31 @@ import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 
-class PriceHistoryChart extends StatelessWidget {
+class PriceHistoryChart extends StatefulWidget {
   const PriceHistoryChart({required this.points, super.key});
 
   final List<ProductPriceHistoryPointDto> points;
 
   @override
+  State<PriceHistoryChart> createState() => _PriceHistoryChartState();
+}
+
+class _PriceHistoryChartState extends State<PriceHistoryChart> {
+  static const _chartHeight = 220.0;
+
+  _SelectedHistoryPoint? _selectedPoint;
+
+  @override
+  void didUpdateWidget(covariant PriceHistoryChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.points, widget.points)) {
+      _selectedPoint = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final series = _buildSeries(points);
+    final series = _buildSeries(widget.points);
     final theme = Theme.of(context);
     return Card(
       child: Padding(
@@ -30,17 +47,50 @@ class PriceHistoryChart extends StatelessWidget {
             if (series.isEmpty)
               const Text('No price history is available for this product.')
             else ...[
-              SizedBox(
-                height: 220,
-                width: double.infinity,
-                child: CustomPaint(
-                  painter: _PriceHistoryChartPainter(
-                    series: series,
-                    colorScheme: theme.colorScheme,
-                    textStyle: theme.textTheme.labelSmall,
-                  ),
-                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth.isFinite
+                      ? constraints.maxWidth
+                      : MediaQuery.sizeOf(context).width;
+                  final chartSize = Size(width, _chartHeight);
+                  return SizedBox(
+                    height: _chartHeight,
+                    width: double.infinity,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (details) => _selectNearestPoint(
+                        details.localPosition,
+                        chartSize,
+                        series,
+                      ),
+                      onPanStart: (details) => _selectNearestPoint(
+                        details.localPosition,
+                        chartSize,
+                        series,
+                      ),
+                      onPanUpdate: (details) => _selectNearestPoint(
+                        details.localPosition,
+                        chartSize,
+                        series,
+                      ),
+                      child: CustomPaint(
+                        key: const ValueKey('price-history-chart-canvas'),
+                        painter: _PriceHistoryChartPainter(
+                          series: series,
+                          colorScheme: theme.colorScheme,
+                          textStyle: theme.textTheme.labelSmall,
+                          selectedPoint: _selectedPoint,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
+              if (_selectedPoint case final selected?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: _HistoryTooltip(selection: selected),
+                ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
@@ -61,6 +111,80 @@ class PriceHistoryChart extends StatelessWidget {
       ),
     );
   }
+
+  void _selectNearestPoint(
+    Offset localPosition,
+    Size size,
+    List<_HistorySeries> series,
+  ) {
+    final layout = _PriceHistoryChartLayout.fromSeries(series, size);
+    final nearest = layout.nearestPoint(localPosition);
+    if (nearest == null) {
+      return;
+    }
+    setState(() {
+      _selectedPoint = _SelectedHistoryPoint(
+        point: nearest.point,
+        color: nearest.color,
+      );
+    });
+  }
+}
+
+class _HistoryTooltip extends StatelessWidget {
+  const _HistoryTooltip({required this.selection});
+
+  final _SelectedHistoryPoint selection;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final point = selection.point;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            margin: const EdgeInsets.only(top: 5),
+            decoration: BoxDecoration(
+              color: selection.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${point.supermarketName} - ${_formatHistoryPrice(point)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Observed ${AppFormatters.asRelativeDateTime(point.observedAt)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _HistorySeries {
@@ -75,6 +199,142 @@ class _HistorySeries {
   final List<ProductPriceHistoryPointDto> points;
 
   ProductPriceHistoryPointDto get latest => points.last;
+}
+
+class _SelectedHistoryPoint {
+  const _SelectedHistoryPoint({required this.point, required this.color});
+
+  final ProductPriceHistoryPointDto point;
+  final Color color;
+}
+
+class _HistoryPointLayout {
+  const _HistoryPointLayout({
+    required this.point,
+    required this.color,
+    required this.offset,
+  });
+
+  final ProductPriceHistoryPointDto point;
+  final Color color;
+  final Offset offset;
+}
+
+class _PriceHistoryChartLayout {
+  const _PriceHistoryChartLayout({
+    required this.plot,
+    required this.minTime,
+    required this.maxTime,
+    required this.minPriceRaw,
+    required this.maxPriceRaw,
+    required this.points,
+    required this.pointsBySeries,
+  });
+
+  final Rect plot;
+  final int minTime;
+  final int maxTime;
+  final double minPriceRaw;
+  final double maxPriceRaw;
+  final List<_HistoryPointLayout> points;
+  final Map<_HistorySeries, List<_HistoryPointLayout>> pointsBySeries;
+
+  static _PriceHistoryChartLayout fromSeries(
+    List<_HistorySeries> series,
+    Size size,
+  ) {
+    final allPoints = series.expand((item) => item.points).toList();
+    final minTime = allPoints
+        .map((point) => point.observedAt.millisecondsSinceEpoch)
+        .reduce(math.min);
+    final maxTime = allPoints
+        .map((point) => point.observedAt.millisecondsSinceEpoch)
+        .reduce(math.max);
+    final minPriceRaw = allPoints.map((point) => point.price).reduce(math.min);
+    final maxPriceRaw = allPoints.map((point) => point.price).reduce(math.max);
+    final padding = math.max((maxPriceRaw - minPriceRaw) * 0.08, 1.0);
+    final minPrice = math.max(0.0, minPriceRaw - padding);
+    final maxPrice = maxPriceRaw + padding;
+    final plot = Rect.fromLTWH(
+      48,
+      14,
+      math.max(1, size.width - 60),
+      math.max(1, size.height - 48),
+    );
+    final layouts = <_HistoryPointLayout>[];
+    final bySeries = <_HistorySeries, List<_HistoryPointLayout>>{};
+
+    for (final item in series) {
+      final itemLayouts = [
+        for (final point in item.points)
+          _HistoryPointLayout(
+            point: point,
+            color: item.color,
+            offset: Offset(
+              _scale(
+                point.observedAt.millisecondsSinceEpoch.toDouble(),
+                minTime.toDouble(),
+                maxTime.toDouble(),
+                plot.left,
+                plot.right,
+              ),
+              _scale(point.price, minPrice, maxPrice, plot.bottom, plot.top),
+            ),
+          ),
+      ];
+      layouts.addAll(itemLayouts);
+      bySeries[item] = itemLayouts;
+    }
+
+    return _PriceHistoryChartLayout(
+      plot: plot,
+      minTime: minTime,
+      maxTime: maxTime,
+      minPriceRaw: minPriceRaw,
+      maxPriceRaw: maxPriceRaw,
+      points: layouts,
+      pointsBySeries: bySeries,
+    );
+  }
+
+  _HistoryPointLayout? nearestPoint(Offset position) {
+    const hitThreshold = 42.0;
+    _HistoryPointLayout? nearest;
+    var nearestDistance = double.infinity;
+
+    for (final point in points) {
+      final distance = (point.offset - position).distance;
+      if (distance < nearestDistance) {
+        nearest = point;
+        nearestDistance = distance;
+      }
+    }
+
+    for (final item in pointsBySeries.values) {
+      if (item.length < 2) {
+        continue;
+      }
+      for (var index = 1; index < item.length; index += 1) {
+        final previous = item[index - 1];
+        final current = item[index];
+        final distance = _distanceToSegment(
+          position,
+          previous.offset,
+          current.offset,
+        );
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest =
+              (previous.offset - position).distance <=
+                  (current.offset - position).distance
+              ? previous
+              : current;
+        }
+      }
+    }
+
+    return nearestDistance <= hitThreshold ? nearest : null;
+  }
 }
 
 class _LegendItem extends StatelessWidget {
@@ -122,11 +382,13 @@ class _PriceHistoryChartPainter extends CustomPainter {
     required this.series,
     required this.colorScheme,
     required this.textStyle,
+    required this.selectedPoint,
   });
 
   final List<_HistorySeries> series;
   final ColorScheme colorScheme;
   final TextStyle? textStyle;
+  final _SelectedHistoryPoint? selectedPoint;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -135,23 +397,8 @@ class _PriceHistoryChartPainter extends CustomPainter {
       return;
     }
 
-    final minTime = allPoints
-        .map((point) => point.observedAt.millisecondsSinceEpoch)
-        .reduce(math.min);
-    final maxTime = allPoints
-        .map((point) => point.observedAt.millisecondsSinceEpoch)
-        .reduce(math.max);
-    final minPriceRaw = allPoints.map((point) => point.price).reduce(math.min);
-    final maxPriceRaw = allPoints.map((point) => point.price).reduce(math.max);
-    final padding = math.max((maxPriceRaw - minPriceRaw) * 0.08, 1.0);
-    final minPrice = math.max(0.0, minPriceRaw - padding);
-    final maxPrice = maxPriceRaw + padding;
-    final plot = Rect.fromLTWH(
-      48,
-      14,
-      math.max(1, size.width - 60),
-      math.max(1, size.height - 48),
-    );
+    final layout = _PriceHistoryChartLayout.fromSeries(series, size);
+    final plot = layout.plot;
 
     final axisPaint = Paint()
       ..color = colorScheme.outlineVariant
@@ -167,42 +414,35 @@ class _PriceHistoryChartPainter extends CustomPainter {
     canvas.drawLine(plot.topLeft, plot.bottomLeft, axisPaint);
     canvas.drawLine(plot.bottomLeft, plot.bottomRight, axisPaint);
 
-    _drawLabel(canvas, maxPriceRaw.toStringAsFixed(0), Offset(0, plot.top - 6));
     _drawLabel(
       canvas,
-      minPriceRaw.toStringAsFixed(0),
+      layout.maxPriceRaw.toStringAsFixed(0),
+      Offset(0, plot.top - 6),
+    );
+    _drawLabel(
+      canvas,
+      layout.minPriceRaw.toStringAsFixed(0),
       Offset(0, plot.bottom - 8),
     );
     _drawLabel(
       canvas,
       AppFormatters.asShortDate(
-        DateTime.fromMillisecondsSinceEpoch(minTime, isUtc: true),
+        DateTime.fromMillisecondsSinceEpoch(layout.minTime, isUtc: true),
       ),
       Offset(plot.left, plot.bottom + 10),
     );
     _drawLabel(
       canvas,
       AppFormatters.asShortDate(
-        DateTime.fromMillisecondsSinceEpoch(maxTime, isUtc: true),
+        DateTime.fromMillisecondsSinceEpoch(layout.maxTime, isUtc: true),
       ),
       Offset(plot.right - 72, plot.bottom + 10),
     );
 
     for (final item in series) {
-      final offsets = item.points
-          .map(
-            (point) => Offset(
-              _scale(
-                point.observedAt.millisecondsSinceEpoch.toDouble(),
-                minTime.toDouble(),
-                maxTime.toDouble(),
-                plot.left,
-                plot.right,
-              ),
-              _scale(point.price, minPrice, maxPrice, plot.bottom, plot.top),
-            ),
-          )
-          .toList();
+      final itemPoints =
+          layout.pointsBySeries[item] ?? const <_HistoryPointLayout>[];
+      final offsets = itemPoints.map((point) => point.offset).toList();
 
       final linePaint = Paint()
         ..color = item.color
@@ -224,9 +464,24 @@ class _PriceHistoryChartPainter extends CustomPainter {
         ..color = colorScheme.surface
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
-      for (final offset in offsets) {
-        canvas.drawCircle(offset, 4, pointPaint);
-        canvas.drawCircle(offset, 4, pointBorderPaint);
+      final selectedHaloPaint = Paint()
+        ..color = item.color.withValues(alpha: 0.18);
+      final selectedBorderPaint = Paint()
+        ..color = item.color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      for (final point in itemPoints) {
+        final selected =
+            selectedPoint != null &&
+            _sameHistoryPoint(point.point, selectedPoint!.point);
+        if (selected) {
+          canvas.drawCircle(point.offset, 10, selectedHaloPaint);
+        }
+        canvas.drawCircle(point.offset, selected ? 5.5 : 4, pointPaint);
+        canvas.drawCircle(point.offset, selected ? 5.5 : 4, pointBorderPaint);
+        if (selected) {
+          canvas.drawCircle(point.offset, 8, selectedBorderPaint);
+        }
       }
     }
   }
@@ -235,20 +490,8 @@ class _PriceHistoryChartPainter extends CustomPainter {
   bool shouldRepaint(covariant _PriceHistoryChartPainter oldDelegate) {
     return oldDelegate.series != series ||
         oldDelegate.colorScheme != colorScheme ||
-        oldDelegate.textStyle != textStyle;
-  }
-
-  double _scale(
-    double value,
-    double min,
-    double max,
-    double targetMin,
-    double targetMax,
-  ) {
-    if (max <= min) {
-      return (targetMin + targetMax) / 2;
-    }
-    return targetMin + ((value - min) / (max - min)) * (targetMax - targetMin);
+        oldDelegate.textStyle != textStyle ||
+        oldDelegate.selectedPoint != selectedPoint;
   }
 
   void _drawLabel(Canvas canvas, String text, Offset offset) {
@@ -262,6 +505,51 @@ class _PriceHistoryChartPainter extends CustomPainter {
     )..layout(maxWidth: 90);
     painter.paint(canvas, offset);
   }
+}
+
+double _scale(
+  double value,
+  double min,
+  double max,
+  double targetMin,
+  double targetMax,
+) {
+  if (max <= min) {
+    return (targetMin + targetMax) / 2;
+  }
+  return targetMin + ((value - min) / (max - min)) * (targetMax - targetMin);
+}
+
+double _distanceToSegment(Offset point, Offset start, Offset end) {
+  final segment = end - start;
+  final lengthSquared = segment.dx * segment.dx + segment.dy * segment.dy;
+  if (lengthSquared == 0) {
+    return (point - start).distance;
+  }
+
+  final rawT =
+      ((point.dx - start.dx) * segment.dx +
+          (point.dy - start.dy) * segment.dy) /
+      lengthSquared;
+  final t = rawT.clamp(0.0, 1.0).toDouble();
+  final projection = Offset(
+    start.dx + segment.dx * t,
+    start.dy + segment.dy * t,
+  );
+  return (point - projection).distance;
+}
+
+bool _sameHistoryPoint(
+  ProductPriceHistoryPointDto left,
+  ProductPriceHistoryPointDto right,
+) {
+  return left.supermarketId == right.supermarketId &&
+      left.observedAt == right.observedAt &&
+      left.price == right.price;
+}
+
+String _formatHistoryPrice(ProductPriceHistoryPointDto point) {
+  return '${point.price.toStringAsFixed(2)} ${point.currency}';
 }
 
 List<_HistorySeries> _buildSeries(List<ProductPriceHistoryPointDto> points) {

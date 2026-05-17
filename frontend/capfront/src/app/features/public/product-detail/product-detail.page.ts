@@ -27,6 +27,12 @@ interface PriceHistoryChartPoint {
   key: string;
   cx: number;
   cy: number;
+  supermarketName: string;
+  price: number;
+  currency: string;
+  observedAt: string;
+  priceLabel: string;
+  observedDateLabel: string;
   label: string;
 }
 
@@ -36,6 +42,7 @@ interface PriceHistorySeries {
   color: string;
   points: PriceHistoryChartPoint[];
   svgPoints: string;
+  latestPoint: PriceHistoryChartPoint;
   latestPrice: number;
   currency: string;
 }
@@ -56,6 +63,8 @@ const CHART_LEFT = 58;
 const CHART_RIGHT = 700;
 const CHART_TOP = 24;
 const CHART_BOTTOM = 210;
+const CHART_WIDTH = 720;
+const CHART_HEIGHT = 260;
 const MARKET_COLORS_BY_NAME: Record<string, string> = {
   tinex: '#1A7F64',
   vero: '#2563EB',
@@ -92,6 +101,7 @@ export class ProductDetailPageComponent {
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly imageLoadFailed = signal(false);
+  readonly selectedHistoryPoint = signal<PriceHistoryChartPoint | null>(null);
 
   readonly subtitle = computed(() => {
     const detail = this.detail();
@@ -156,11 +166,20 @@ export class ProductDetailPageComponent {
         const chartPoints = points.map((point) => {
           const cx = this.scale(point.timeMs, minTime, maxTime, CHART_LEFT, CHART_RIGHT);
           const cy = this.scale(point.price, minPrice, maxPrice, CHART_BOTTOM, CHART_TOP);
+          const currency = point.currency || 'MKD';
+          const priceLabel = this.formatMoney(point.price, currency);
+          const observedDateLabel = this.formatShortDate(point.observedAt);
           return {
             key: `${point.supermarketId}-${point.observedAt}-${point.price}`,
             cx,
             cy,
-            label: `${point.supermarketName}: ${this.formatMoney(point.price, point.currency)} on ${this.formatShortDate(point.observedAt)}`,
+            supermarketName: point.supermarketName,
+            price: point.price,
+            currency,
+            observedAt: point.observedAt,
+            priceLabel,
+            observedDateLabel,
+            label: `${point.supermarketName}: ${priceLabel} on ${observedDateLabel}`,
           };
         });
         return {
@@ -169,6 +188,7 @@ export class ProductDetailPageComponent {
           color: this.marketColor(supermarketId, latest.supermarketName),
           points: chartPoints,
           svgPoints: chartPoints.map((point) => `${point.cx},${point.cy}`).join(' '),
+          latestPoint: chartPoints[chartPoints.length - 1],
           latestPrice: latest.price,
           currency: latest.currency || 'MKD',
         };
@@ -191,6 +211,7 @@ export class ProductDetailPageComponent {
           this.loading.set(true);
           this.errorMessage.set(null);
           this.imageLoadFailed.set(false);
+          this.selectedHistoryPoint.set(null);
 
           const id = Number(params.get('id'));
           if (!Number.isFinite(id) || id < 1) {
@@ -265,6 +286,22 @@ export class ProductDetailPageComponent {
     this.imageLoadFailed.set(true);
   }
 
+  showHistoryPoint(point: PriceHistoryChartPoint): void {
+    this.selectedHistoryPoint.set(point);
+  }
+
+  clearHistoryPoint(): void {
+    this.selectedHistoryPoint.set(null);
+  }
+
+  historyTooltipLeft(point: PriceHistoryChartPoint): number {
+    return this.clamp((point.cx / CHART_WIDTH) * 100, 12, 88);
+  }
+
+  historyTooltipTop(point: PriceHistoryChartPoint): number {
+    return this.clamp((point.cy / CHART_HEIGHT) * 100, 22, 82);
+  }
+
   private scale(
     value: number,
     min: number,
@@ -289,6 +326,10 @@ export class ProductDetailPageComponent {
 
   private normalizeMarketName(value: string): string {
     return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, value));
   }
 
   private formatMeasure(value: number | null, unit: string): string {
