@@ -18,6 +18,11 @@ import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
+import 'package:cap_app/features/account/presentation/account_screen.dart';
+import 'package:cap_app/features/rewards/models/rewards_models.dart';
+import 'package:cap_app/features/rewards/presentation/rewards_screen.dart';
+import 'package:cap_app/features/rewards/providers/rewards_providers.dart';
+import 'package:cap_app/shared/widgets/main_drawer.dart';
 import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -355,6 +360,97 @@ void main() {
     expect(find.text('Submit a product guided'), findsOneWidget);
     expect(find.text('Submit a price update'), findsOneWidget);
     expect(find.text('Upload / attach product image'), findsNothing);
+  });
+
+  testWidgets('account and drawer expose scoreboard entry', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authSessionProvider.overrideWith(_LoggedInAuthSessionController.new),
+        ],
+        child: const MaterialApp(home: AccountScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Scoreboard'), findsOneWidget);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authSessionProvider.overrideWith(_LoggedInAuthSessionController.new),
+        ],
+        child: const MaterialApp(home: MainDrawer()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Scoreboard'), findsOneWidget);
+  });
+
+  testWidgets('scoreboard renders stats, leaderboard, and switches window', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authSessionProvider.overrideWith(_LoggedInAuthSessionController.new),
+          rewardsDashboardProvider.overrideWith((ref) async {
+            final window = ref.watch(rewardWindowProvider);
+            return _dashboardForWindow(window);
+          }),
+        ],
+        child: const MaterialApp(home: RewardsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('My score'), findsOneWidget);
+    expect(find.text('42'), findsWidgets);
+    expect(find.text('all@example.com'), findsOneWidget);
+
+    await tester.tap(find.text('Last 30 days'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('thirty@example.com'), findsOneWidget);
+    expect(find.text('all@example.com'), findsNothing);
+  });
+
+  testWidgets('scoreboard renders empty leaderboard state', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authSessionProvider.overrideWith(_LoggedInAuthSessionController.new),
+          rewardsDashboardProvider.overrideWith(
+            (ref) async => const RewardsDashboard(
+              me: RewardsMeResponse(
+                stats: ContributorStatsDto(
+                  userId: 1,
+                  email: 'tester@example.com',
+                  approvedProductCount: 0,
+                  approvedPriceCount: 0,
+                  approvedNutritionCount: 0,
+                  approvedTotalCount: 0,
+                  rejectedCount: 0,
+                  score: 0,
+                  lastEventAt: null,
+                ),
+                recentEvents: [],
+              ),
+              leaderboard: LeaderboardResponse(
+                window: RewardWindow.allTime,
+                limit: 50,
+                entries: [],
+              ),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: RewardsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No leaderboard entries'), findsOneWidget);
   });
 
   testWidgets('home screen renders products from provider', (tester) async {
@@ -754,6 +850,43 @@ class _FakeLocalNotificationsService extends LocalNotificationsService {
   }) async {
     shownIds.add(notificationId);
   }
+}
+
+RewardsDashboard _dashboardForWindow(RewardWindow window) {
+  final email = window == RewardWindow.thirtyDays
+      ? 'thirty@example.com'
+      : 'all@example.com';
+  return RewardsDashboard(
+    me: RewardsMeResponse(
+      stats: ContributorStatsDto(
+        userId: 1,
+        email: 'tester@example.com',
+        approvedProductCount: 2,
+        approvedPriceCount: 3,
+        approvedNutritionCount: 1,
+        approvedTotalCount: 6,
+        rejectedCount: 1,
+        score: 42,
+        lastEventAt: DateTime.utc(2026, 5, 12),
+      ),
+      recentEvents: const [],
+    ),
+    leaderboard: LeaderboardResponse(
+      window: window,
+      limit: 50,
+      entries: [
+        LeaderboardEntryDto(
+          rank: 1,
+          userId: 7,
+          email: email,
+          score: 42,
+          approvedCount: 6,
+          rejectedCount: 1,
+          lastEventAt: DateTime.utc(2026, 5, 12),
+        ),
+      ],
+    ),
+  );
 }
 
 const _demoSession = AuthSession(

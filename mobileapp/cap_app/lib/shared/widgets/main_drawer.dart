@@ -70,6 +70,12 @@ class MainDrawer extends ConsumerWidget {
           ),
           _entry(
             context,
+            icon: Icons.leaderboard_outlined,
+            label: 'Scoreboard',
+            route: AppRoutes.rewards,
+          ),
+          _entry(
+            context,
             icon: Icons.settings_outlined,
             label: 'Settings',
             route: AppRoutes.settings,
@@ -107,4 +113,3 @@ class MainDrawer extends ConsumerWidget {
     );
   }
 }
-

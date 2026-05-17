@@ -15,6 +15,7 @@ import 'package:cap_app/features/catalog/presentation/home_screen.dart';
 import 'package:cap_app/features/catalog/presentation/product_detail_screen.dart';
 import 'package:cap_app/features/account/presentation/account_screen.dart';
 import 'package:cap_app/features/settings/presentation/settings_screen.dart';
+import 'package:cap_app/features/rewards/presentation/rewards_screen.dart';
 import 'package:cap_app/features/submissions/presentation/guided_product_submission_screen.dart';
 import 'package:cap_app/features/submissions/presentation/my_submissions_screen.dart';
 import 'package:cap_app/features/submissions/presentation/submit_price_screen.dart';
@@ -43,6 +44,7 @@ class AppRoutes {
   static const submitProductGuided = '/submit/product/guided';
   static const submitPrice = '/submit/price';
   static const submissions = '/submissions';
+  static const rewards = '/rewards';
   static const settings = '/settings';
 
   static String productDetail(int productId) => '/product/$productId';
@@ -232,6 +234,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.submissions,
         builder: (context, state) => const MySubmissionsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.rewards,
+        builder: (context, state) => const RewardsScreen(),
       ),
       GoRoute(
         path: AppRoutes.settings,

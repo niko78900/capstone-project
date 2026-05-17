@@ -49,6 +49,15 @@ class AccountScreen extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.leaderboard_outlined),
+                  title: const Text('Scoreboard'),
+                  subtitle: const Text(
+                    'View your rewards and leaderboard rank',
+                  ),
+                  onTap: () => context.push(AppRoutes.rewards),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.settings_outlined),
                   title: const Text('Settings'),
                   subtitle: const Text('Theme and notification preferences'),
