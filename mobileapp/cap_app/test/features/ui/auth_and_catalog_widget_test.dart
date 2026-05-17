@@ -125,6 +125,67 @@ void main() {
       expect(storage.remembered, isNull);
     });
 
+    testWidgets(
+      'successful login saves remembered credentials and opens shop',
+      (tester) async {
+        final storage = _FakeAuthTokenStorage();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authSessionProvider.overrideWith(
+                _LoginSuccessAuthSessionController.new,
+              ),
+              authTokenStorageProvider.overrideWithValue(storage),
+              passwordResetRepositoryProvider.overrideWithValue(
+                _FakePasswordResetRepository(),
+              ),
+              localNotificationsServiceProvider.overrideWithValue(
+                _FakeLocalNotificationsService(),
+              ),
+              productListProvider.overrideWith((ref) async => const []),
+            ],
+            child: Consumer(
+              builder: (context, ref, child) {
+                final router = ref.watch(appRouterProvider);
+                return MaterialApp.router(routerConfig: router);
+              },
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        await tester.enterText(
+          find.byType(TextFormField).at(0),
+          'shopper@example.com',
+        );
+        await tester.enterText(
+          find.byType(TextFormField).at(1),
+          'Password123!',
+        );
+        final rememberTile = tester.widget<CheckboxListTile>(
+          find.byType(CheckboxListTile),
+        );
+        expect(rememberTile.onChanged, isNotNull);
+        rememberTile.onChanged!(true);
+        await tester.pump();
+        expect(
+          tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+          isTrue,
+        );
+        await tester.tap(find.text('Login'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(seconds: 1));
+
+        expect(storage.remembered?.email, 'shopper@example.com');
+        expect(storage.remembered?.password, 'Password123!');
+        expect(find.text('Welcome Back'), findsNothing);
+        expect(find.text('Skopje Price Compass'), findsOneWidget);
+      },
+    );
+
     testWidgets('register validates password confirmation mismatch', (
       tester,
     ) async {
@@ -718,6 +779,30 @@ class _FakeAuthSessionController extends AuthSessionController {
     required String displayName,
   }) async {
     state = const AsyncData(null);
+  }
+
+  @override
+  Future<void> logout() async {
+    state = const AsyncData(null);
+  }
+}
+
+class _LoginSuccessAuthSessionController extends AuthSessionController {
+  @override
+  Future<AuthSession?> build() async => null;
+
+  @override
+  Future<void> login({required String email, required String password}) async {
+    state = const AsyncData(_demoSession);
+  }
+
+  @override
+  Future<void> register({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    state = const AsyncData(_demoSession);
   }
 
   @override

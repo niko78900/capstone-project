@@ -13,6 +13,7 @@ class PasswordResetRepository {
     final raw = await _apiClient.post(
       '/api/v1/auth/password-reset-requests',
       data: {'email': email},
+      authenticated: false,
     );
     if (raw is! Map) {
       throw const AppException(message: 'Password reset request failed');
@@ -34,6 +35,7 @@ class PasswordResetRepository {
     }
     final raw = await _apiClient.get(
       '/api/v1/auth/password-reset-requests/$token/status',
+      authenticated: false,
     );
     if (raw is! Map) {
       throw const AppException(message: 'Could not check reset request');
@@ -54,6 +56,7 @@ class PasswordResetRepository {
     final raw = await _apiClient.post(
       '/api/v1/auth/password-reset-requests/$token/complete',
       data: {'email': email, 'newPassword': newPassword},
+      authenticated: false,
     );
     if (raw is! Map) {
       throw const AppException(message: 'Password reset failed');

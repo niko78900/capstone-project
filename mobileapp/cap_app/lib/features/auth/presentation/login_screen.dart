@@ -20,17 +20,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
     _loadRememberedCredentials();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(passwordResetGateProvider.notifier)
-          .checkStoredStatus()
-          .catchError((_) => null);
-    });
   }
 
   @override
@@ -44,7 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authSessionProvider);
     final debugModeEnabled = ref.watch(debugModeEnabledProvider);
-    final isLoading = authState.isLoading;
+    final isLoading = _isSubmitting;
     final authError = _resolveError(
       authState.asError?.error,
       debugModeEnabled: debugModeEnabled,
@@ -176,21 +171,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    await ref
-        .read(authSessionProvider.notifier)
-        .login(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    final state = ref.read(authSessionProvider);
-    if (state.hasError) {
-      return;
-    }
+    try {
+      await ref
+          .read(authSessionProvider.notifier)
+          .login(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
 
-    await _syncRememberedCredentials();
-    if (mounted && state.valueOrNull != null) {
-      context.go(AppRoutes.shop);
+      final state = ref.read(authSessionProvider);
+      if (state.hasError) {
+        return;
+      }
+
+      await _syncRememberedCredentials();
+      if (mounted && state.valueOrNull != null) {
+        context.go(AppRoutes.shop);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 

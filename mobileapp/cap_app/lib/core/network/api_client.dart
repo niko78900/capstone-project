@@ -38,9 +38,10 @@ class ApiClient {
   Future<dynamic> get(
     String path, {
     Map<String, dynamic>? queryParameters,
+    bool authenticated = true,
   }) async {
     try {
-      final options = await _authorizedOptions();
+      final options = authenticated ? await _authorizedOptions() : null;
       final response = await _dio.get<dynamic>(
         path,
         queryParameters: queryParameters,
@@ -58,9 +59,10 @@ class ApiClient {
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
+    bool authenticated = true,
   }) async {
     try {
-      final options = await _authorizedOptions();
+      final options = authenticated ? await _authorizedOptions() : null;
       final response = await _dio.post<dynamic>(
         path,
         data: data,
@@ -81,7 +83,9 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final options = await _authorizedOptions(contentType: 'multipart/form-data');
+      final options = await _authorizedOptions(
+        contentType: 'multipart/form-data',
+      );
       final response = await _dio.post<dynamic>(
         path,
         data: formData,
@@ -169,7 +173,9 @@ class ApiClient {
     );
   }
 
-  Future<Response<dynamic>?> _retryWithAuthHeaderIfNeeded(DioException error) async {
+  Future<Response<dynamic>?> _retryWithAuthHeaderIfNeeded(
+    DioException error,
+  ) async {
     final request = error.requestOptions;
     final response = error.response;
     if (response?.statusCode != 401) {

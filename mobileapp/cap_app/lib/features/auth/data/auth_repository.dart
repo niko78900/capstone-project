@@ -25,6 +25,7 @@ class AuthRepository {
     final raw = await _apiClient.post(
       '/api/v1/auth/register',
       data: {'email': email, 'password': password, 'displayName': displayName},
+      authenticated: false,
     );
 
     final session = AuthSession.fromJson((raw as Map).cast<String, dynamic>());
@@ -39,6 +40,7 @@ class AuthRepository {
     final raw = await _apiClient.post(
       '/api/v1/auth/login',
       data: {'email': email, 'password': password},
+      authenticated: false,
     );
 
     final session = AuthSession.fromJson((raw as Map).cast<String, dynamic>());
