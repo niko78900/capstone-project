@@ -28,6 +28,7 @@
               submission.status
             }}</span>
             <p class="summary-meta">Updated {{ displayDate(submission.updatedAt) }}</p>
+            <p class="summary-meta">Contributor score {{ submission.contributorScore ?? 0 }}</p>
             @if (submission.aiSummary; as aiSummary) {
               <p class="summary-meta">
                 AI {{ aiSummary.status }} | {{ aiSummary.warnings.length }} warning(s) |
@@ -369,6 +370,9 @@
                 </p>
                 @if (entry.reason) {
                   <p class="history-note">Reason: {{ entry.reason }}</p>
+                }
+                @if (entry.rejectionSeverity) {
+                  <p class="history-note">Severity: {{ entry.rejectionSeverity }}</p>
                 }
                 @if (entry.changedFieldCount != null) {
                   <p class="history-note">Changed fields: {{ entry.changedFieldCount }}</p>

@@ -4,6 +4,7 @@ import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
+import 'package:cap_app/features/submissions/utils/submission_flow_helpers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +31,7 @@ class SubmitAvailabilityScreen extends ConsumerStatefulWidget {
 class _SubmitAvailabilityScreenState
     extends ConsumerState<SubmitAvailabilityScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _notesFieldKey = GlobalKey();
   final _notesController = TextEditingController();
   String? _serverMessage;
   Map<String, String> _fieldErrors = const {};
@@ -76,6 +78,7 @@ class _SubmitAvailabilityScreenState
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
+                  key: _notesFieldKey,
                   controller: _notesController,
                   enabled: !isSubmitting,
                   maxLines: 4,
@@ -125,6 +128,7 @@ class _SubmitAvailabilityScreenState
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
+      await _scrollToFirstInvalidField(_fieldErrors);
       return;
     }
 
@@ -150,7 +154,7 @@ class _SubmitAvailabilityScreenState
           .asError
           ?.error;
       if (error != null) {
-        _applyError(error);
+        await _applyError(error);
       }
       return;
     }
@@ -168,7 +172,7 @@ class _SubmitAvailabilityScreenState
     }
   }
 
-  void _applyError(Object error) {
+  Future<void> _applyError(Object error) async {
     final debugModeEnabled = ref.read(debugModeEnabledProvider);
     if (error is AppException) {
       setState(() {
@@ -178,6 +182,7 @@ class _SubmitAvailabilityScreenState
         );
         _fieldErrors = error.fieldErrors;
       });
+      await _scrollToFirstInvalidField(error.fieldErrors);
       return;
     }
     setState(() {
@@ -187,5 +192,18 @@ class _SubmitAvailabilityScreenState
       );
       _fieldErrors = const {};
     });
+  }
+
+  Future<void> _scrollToFirstInvalidField(
+    Map<String, String> fieldErrors,
+  ) async {
+    await scrollToFirstInvalidSubmissionField(
+      invalidFieldKeys: [
+        if (_notesController.text.length > 1000 ||
+            fieldErrors.containsKey('notes'))
+          'notes',
+      ],
+      fieldAnchors: {'notes': _notesFieldKey},
+    );
   }
 }

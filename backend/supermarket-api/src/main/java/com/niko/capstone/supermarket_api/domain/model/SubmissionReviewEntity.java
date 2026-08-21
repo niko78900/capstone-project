@@ -1,6 +1,7 @@
 // File purpose: Maps the submission review entity database record to a JPA entity.
 package com.niko.capstone.supermarket_api.domain.model;
 
+import com.niko.capstone.supermarket_api.domain.enums.RejectionSeverity;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionReviewAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,6 +45,10 @@ public class SubmissionReviewEntity {
 
     @Column
     private String reason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rejection_severity", length = 20)
+    private RejectionSeverity rejectionSeverity;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

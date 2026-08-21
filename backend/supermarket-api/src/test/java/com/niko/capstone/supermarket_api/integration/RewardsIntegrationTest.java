@@ -138,6 +138,63 @@ class RewardsIntegrationTest {
                 .isLessThan(entries.get(lowIndex).path("rank").asInt());
     }
 
+    @Test
+    void approvedSubmissionWithEvidenceImage_shouldApplyImageBonusAndRecompute() throws Exception {
+        String unique = String.valueOf(System.nanoTime());
+        String userToken = registerUser("rewards.image." + unique + "@example.com", null);
+        String adminToken = registerUser("rewards.image.admin." + unique + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Image Bonus Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
+
+        approveSubmission(
+                submitPrice(
+                        userToken,
+                        product.getId(),
+                        supermarketId,
+                        "144.00",
+                        "http://localhost/uploads/evidence.jpg"
+                ),
+                adminToken
+        );
+
+        assertMyScore(userToken, 8);
+
+        mockMvc.perform(post("/api/v1/admin/rewards/recompute")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        assertMyScore(userToken, 8);
+    }
+
+    @Test
+    void rejectedSubmissions_shouldApplySeverityDeductionsAndRecompute() throws Exception {
+        String unique = String.valueOf(System.nanoTime());
+        String userToken = registerUser("rewards.reject." + unique + "@example.com", null);
+        String adminToken = registerUser("rewards.reject.admin." + unique + "@example.com", "TEST_ADMIN_BOOTSTRAP");
+        ProductEntity product = IntegrationTestCatalog.createProduct(
+                productRepository,
+                categoryRepository,
+                "Reject Severity Product"
+        );
+        Long supermarketId = IntegrationTestCatalog.defaultSupermarketId(supermarketRepository);
+
+        rejectSubmission(submitPrice(userToken, product.getId(), supermarketId, "101.00"), adminToken, "MISTAKE");
+        rejectSubmission(submitPrice(userToken, product.getId(), supermarketId, "102.00"), adminToken, "BAD");
+        rejectSubmission(submitPrice(userToken, product.getId(), supermarketId, "103.00"), adminToken, "FRAUD");
+
+        assertMyScore(userToken, -14);
+
+        mockMvc.perform(post("/api/v1/admin/rewards/recompute")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        assertMyScore(userToken, -14);
+    }
+
     private String registerUser(String email, String adminBootstrapToken) throws Exception {
         String rolePart = adminBootstrapToken == null
                 ? ""
@@ -161,13 +218,28 @@ class RewardsIntegrationTest {
     }
 
     private Long submitPrice(String userToken, Long productId, Long supermarketId, String price) throws Exception {
+        return submitPrice(userToken, productId, supermarketId, price, null);
+    }
+
+    private Long submitPrice(
+            String userToken,
+            Long productId,
+            Long supermarketId,
+            String price,
+            String imageUrl
+    ) throws Exception {
+        String imagePart = imageUrl == null
+                ? ""
+                : """
+                  ,"imageUrl":"%s"
+                """.formatted(imageUrl);
         String submissionPayload = """
                 {
                   "productId": %d,
                   "supermarketId": %d,
-                  "price": %s
+                  "price": %s%s
                 }
-                """.formatted(productId, supermarketId, price);
+                """.formatted(productId, supermarketId, price, imagePart);
         MvcResult submissionResult = mockMvc.perform(post("/api/v1/submissions/price")
                         .header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -183,6 +255,28 @@ class RewardsIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"reward sort test\"}"))
                 .andExpect(status().isOk());
+    }
+
+    private void rejectSubmission(Long submissionId, String adminToken, String severity) throws Exception {
+        String payload = """
+                {
+                  "reason":"severity test",
+                  "rejectionSeverity":"%s"
+                }
+                """.formatted(severity);
+        mockMvc.perform(post("/api/v1/admin/submissions/" + submissionId + "/reject")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk());
+    }
+
+    private void assertMyScore(String userToken, int expectedScore) throws Exception {
+        MvcResult myRewardsResult = mockMvc.perform(get("/api/v1/rewards/me")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(readJson(myRewardsResult).path("stats").path("score").asInt()).isEqualTo(expectedScore);
     }
 
     private int indexOfEmail(JsonNode entries, String email) {

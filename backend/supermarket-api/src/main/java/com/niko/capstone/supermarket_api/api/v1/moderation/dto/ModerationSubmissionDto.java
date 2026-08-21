@@ -14,6 +14,7 @@ public record ModerationSubmissionDto(
         String reviewReason,
         Long submittedByUserId,
         String submittedByEmail,
+        Integer contributorScore,
         Instant createdAt,
         Instant updatedAt
 ) {

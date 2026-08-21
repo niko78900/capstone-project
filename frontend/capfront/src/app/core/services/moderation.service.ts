@@ -90,8 +90,12 @@ export class ModerationService {
     );
   }
 
-  reject(submissionId: number, reason?: string): Observable<SubmissionDecisionResponse> {
-    const body: SubmissionDecisionRequest = reason ? { reason } : {};
+  reject(
+    submissionId: number,
+    reason: string,
+    rejectionSeverity: SubmissionDecisionRequest['rejectionSeverity'],
+  ): Observable<SubmissionDecisionResponse> {
+    const body: SubmissionDecisionRequest = { reason, rejectionSeverity };
     return this.http.post<SubmissionDecisionResponse>(
       `${API_BASE}/admin/submissions/${submissionId}/reject`,
       body,

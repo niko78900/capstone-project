@@ -25,7 +25,7 @@ import { ModerationService } from '../../../core/services/moderation.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
-import { DecisionDialogComponent } from './decision-dialog.component';
+import { DecisionDialogComponent, DecisionDialogResult } from './decision-dialog.component';
 
 interface FlattenedPayloadField {
   key: string;
@@ -379,13 +379,17 @@ export class AdminSubmissionDetailPageComponent {
     dialogRef
       .afterClosed()
       .pipe(
-        filter((reason) => reason !== undefined),
-        switchMap((reason) => {
+        filter((result): result is DecisionDialogResult => result !== undefined),
+        switchMap((result) => {
           this.processingDecision.set(true);
           const request$ =
             mode === 'approve'
-              ? this.moderationService.approve(submission.id, reason)
-              : this.moderationService.reject(submission.id, reason);
+              ? this.moderationService.approve(submission.id, result.reason)
+              : this.moderationService.reject(
+                  submission.id,
+                  result.reason,
+                  result.rejectionSeverity,
+                );
 
           return request$.pipe(
             catchError((error: unknown) => {

@@ -35,6 +35,7 @@ describe('AdminSubmissionsPageComponent', () => {
     reviewReason: null,
     submittedByUserId: 2,
     submittedByEmail: 'user@example.com',
+    contributorScore: 3,
     createdAt: '2026-04-15T13:20:00Z',
     updatedAt: '2026-04-15T13:20:00Z',
   };
@@ -53,6 +54,7 @@ describe('AdminSubmissionsPageComponent', () => {
     reviewReason: 'Already verified by another admin',
     submittedByUserId: 3,
     submittedByEmail: 'another@example.com',
+    contributorScore: 0,
     createdAt: '2026-04-16T08:10:00Z',
     updatedAt: '2026-04-16T08:10:00Z',
   };
@@ -106,6 +108,7 @@ describe('AdminSubmissionsPageComponent', () => {
         status: 'APPROVED',
         action: 'APPROVED',
         reason: null,
+        rejectionSeverity: null,
         reviewedAt: new Date().toISOString(),
       }),
     );
@@ -132,6 +135,7 @@ describe('AdminSubmissionsPageComponent', () => {
         status: 'REJECTED',
         action: 'REJECTED',
         reason: 'Wrong data',
+        rejectionSeverity: 'BAD',
         reviewedAt: new Date().toISOString(),
       }),
     );
@@ -209,7 +213,7 @@ describe('AdminSubmissionsPageComponent', () => {
 
   it('approves a submission when dialog returns reason', () => {
     dialog.open.and.returnValue({
-      afterClosed: () => of('looks valid'),
+      afterClosed: () => of({ reason: 'looks valid' }),
     } as never);
 
     component.onApprove(pendingSubmission);
@@ -219,12 +223,28 @@ describe('AdminSubmissionsPageComponent', () => {
 
   it('rejects a submission when dialog returns required reason', () => {
     dialog.open.and.returnValue({
-      afterClosed: () => of('wrong barcode'),
+      afterClosed: () => of({ reason: 'wrong barcode', rejectionSeverity: 'BAD' }),
     } as never);
 
     component.onReject(pendingSubmission);
 
-    expect(moderationService.reject).toHaveBeenCalledWith(10, 'wrong barcode');
+    expect(moderationService.reject).toHaveBeenCalledWith(10, 'wrong barcode', 'BAD');
+  });
+
+  it('maps contributor score sort to server token', () => {
+    moderationService.listSubmissions.calls.reset();
+
+    component.sortControl.setValue('CONTRIBUTOR_SCORE', { emitEvent: false });
+    (component as unknown as { loadSubmissionsFromServer: () => void }).loadSubmissionsFromServer();
+
+    expect(moderationService.listSubmissions).toHaveBeenCalledWith({
+      status: 'PENDING',
+      type: undefined,
+      q: undefined,
+      sort: 'contributorScore,desc',
+      page: 0,
+      size: 10,
+    });
   });
 
   it('patches submission payload when edit dialog returns updated payload', () => {

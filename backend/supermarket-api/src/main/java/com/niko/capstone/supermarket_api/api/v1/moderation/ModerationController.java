@@ -90,7 +90,12 @@ public class ModerationController {
             @Valid @RequestBody(required = false) SubmissionDecisionRequest request
     ) {
         String reason = request == null ? null : request.reason();
-        return moderationService.reject(submissionId, currentEmail(authentication), reason);
+        return moderationService.reject(
+                submissionId,
+                currentEmail(authentication),
+                reason,
+                request == null ? null : request.rejectionSeverity()
+        );
     }
 
     private String currentEmail(Authentication authentication) {

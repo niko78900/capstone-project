@@ -1,6 +1,9 @@
 // File purpose: Implements business logic for rewards service workflows.
 package com.niko.capstone.supermarket_api.api.v1.rewards;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.rewards.dto.ContributorScoreEventDto;
 import com.niko.capstone.supermarket_api.api.v1.rewards.dto.ContributorStatsDto;
@@ -9,6 +12,7 @@ import com.niko.capstone.supermarket_api.api.v1.rewards.dto.LeaderboardResponse;
 import com.niko.capstone.supermarket_api.api.v1.rewards.dto.RecomputeRewardsResponse;
 import com.niko.capstone.supermarket_api.api.v1.rewards.dto.RewardWindow;
 import com.niko.capstone.supermarket_api.api.v1.rewards.dto.RewardsMeResponse;
+import com.niko.capstone.supermarket_api.domain.enums.RejectionSeverity;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionReviewAction;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionType;
 import com.niko.capstone.supermarket_api.domain.model.ContributorScoreEventEntity;
@@ -41,22 +45,30 @@ public class RewardsService {
     private final ContributorScoreEventRepository contributorScoreEventRepository;
     private final SubmissionReviewRepository submissionReviewRepository;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public void recordDecision(SubmissionEntity submission, SubmissionReviewEntity review) {
-        int points = pointsForDecision(submission.getType(), review.getAction());
+        ScoreDecision scoreDecision = scoreDecision(submission, review);
         ContributorScoreEventEntity event = new ContributorScoreEventEntity();
         event.setUser(submission.getUser());
         event.setSubmission(submission);
         event.setReview(review);
         event.setEventType(buildEventType(submission.getType(), review.getAction()));
-        event.setPoints(points);
+        event.setPoints(scoreDecision.points());
+        event.setMetadata(scoreDecision.metadataJson());
         event.setCreatedAt(review.getCreatedAt() == null ? Instant.now() : review.getCreatedAt());
         contributorScoreEventRepository.save(event);
 
         ContributorStatsEntity stats = contributorStatsRepository.findById(submission.getUser().getId())
                 .orElseGet(() -> createEmptyStats(submission.getUser()));
-        applyDecisionToStats(stats, submission.getType(), review.getAction(), points, event.getCreatedAt());
+        applyDecisionToStats(
+                stats,
+                submission.getType(),
+                review.getAction(),
+                scoreDecision.points(),
+                event.getCreatedAt()
+        );
         contributorStatsRepository.save(stats);
     }
 
@@ -201,16 +213,65 @@ public class RewardsService {
         stats.setLastEventAt(eventAt);
     }
 
-    private int pointsForDecision(SubmissionType type, SubmissionReviewAction action) {
-        if (action == SubmissionReviewAction.REJECTED) {
-            return -2;
+    private ScoreDecision scoreDecision(SubmissionEntity submission, SubmissionReviewEntity review) {
+        if (review.getAction() == SubmissionReviewAction.REJECTED) {
+            RejectionSeverity severity = rejectionSeverityOrDefault(review.getRejectionSeverity());
+            int points = pointsForRejection(severity);
+            return new ScoreDecision(points, metadataJson(Map.of(
+                    "basePoints", points,
+                    "imageBonus", 0,
+                    "rejectionSeverity", severity.name()
+            )));
         }
+
+        int basePoints = pointsForApproval(submission.getType());
+        int imageBonus = hasEvidenceImage(submission) ? 2 : 0;
+        return new ScoreDecision(basePoints + imageBonus, metadataJson(Map.of(
+                "basePoints", basePoints,
+                "imageBonus", imageBonus
+        )));
+    }
+
+    private int pointsForApproval(SubmissionType type) {
         return switch (type) {
             case PRODUCT -> 10;
             case PRICE -> 6;
             case NUTRITION -> 5;
             case AVAILABILITY -> 4;
         };
+    }
+
+    private int pointsForRejection(RejectionSeverity severity) {
+        return switch (severity) {
+            case MISTAKE -> -1;
+            case BAD -> -3;
+            case FRAUD -> -10;
+        };
+    }
+
+    private RejectionSeverity rejectionSeverityOrDefault(RejectionSeverity severity) {
+        return severity == null ? RejectionSeverity.BAD : severity;
+    }
+
+    private boolean hasEvidenceImage(SubmissionEntity submission) {
+        if (submission.getPayload() == null || submission.getPayload().isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode payload = objectMapper.readTree(submission.getPayload());
+            JsonNode imageUrl = payload.path("imageUrl");
+            return imageUrl.isTextual() && !imageUrl.asText().trim().isEmpty();
+        } catch (JsonProcessingException ex) {
+            return false;
+        }
+    }
+
+    private String metadataJson(Map<String, Object> metadata) {
+        try {
+            return objectMapper.writeValueAsString(metadata);
+        } catch (JsonProcessingException ex) {
+            return null;
+        }
     }
 
     private String buildEventType(SubmissionType type, SubmissionReviewAction action) {
@@ -262,5 +323,8 @@ public class RewardsService {
             this.userId = userId;
             this.email = email;
         }
+    }
+
+    private record ScoreDecision(int points, String metadataJson) {
     }
 }

@@ -35,6 +35,13 @@ class _GuidedProductSubmissionScreenState
   static const _fixedServingSize = '100 g';
 
   final _reviewFormKey = GlobalKey<FormState>();
+  final _barcodeFieldKey = GlobalKey();
+  final _categoryFieldKey = GlobalKey();
+  final _nameFieldKey = GlobalKey();
+  final _supermarketFieldKey = GlobalKey();
+  final _priceFieldKey = GlobalKey();
+  final _imageFieldKey = GlobalKey();
+  final _nutritionFieldKey = GlobalKey();
   final _barcodeController = TextEditingController();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
@@ -433,6 +440,7 @@ class _GuidedProductSubmissionScreenState
             const SizedBox(height: 10),
           ],
           TextFormField(
+            key: _barcodeFieldKey,
             controller: _barcodeController,
             enabled: !isBusy,
             decoration: InputDecoration(
@@ -453,33 +461,38 @@ class _GuidedProductSubmissionScreenState
                 (value ?? '').trim().isEmpty ? 'Barcode is required' : null,
           ),
           const SizedBox(height: 10),
-          DropdownButtonFormField<int>(
-            key: ValueKey('category-$_categoryId'),
-            initialValue: _categoryId,
-            decoration: InputDecoration(
-              labelText: 'Category',
-              errorText: _fieldErrors['categoryId'],
+          KeyedSubtree(
+            key: _categoryFieldKey,
+            child: DropdownButtonFormField<int>(
+              key: ValueKey('category-$_categoryId'),
+              initialValue: _categoryId,
+              decoration: InputDecoration(
+                labelText: 'Category',
+                errorText: _fieldErrors['categoryId'],
+              ),
+              items: categoryOptions
+                  .map(
+                    (option) => DropdownMenuItem<int>(
+                      value: option.id,
+                      child: Text(option.name),
+                    ),
+                  )
+                  .toList(),
+              onChanged: isBusy
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _categoryId = value;
+                        _categoryMessage = null;
+                      });
+                    },
+              validator: (value) =>
+                  value == null ? 'Category is required' : null,
             ),
-            items: categoryOptions
-                .map(
-                  (option) => DropdownMenuItem<int>(
-                    value: option.id,
-                    child: Text(option.name),
-                  ),
-                )
-                .toList(),
-            onChanged: isBusy
-                ? null
-                : (value) {
-                    setState(() {
-                      _categoryId = value;
-                      _categoryMessage = null;
-                    });
-                  },
-            validator: (value) => value == null ? 'Category is required' : null,
           ),
           const SizedBox(height: 10),
           TextFormField(
+            key: _nameFieldKey,
             controller: _nameController,
             enabled: !isBusy,
             decoration: InputDecoration(
@@ -501,25 +514,29 @@ class _GuidedProductSubmissionScreenState
           ),
           const SizedBox(height: 10),
           supermarketsAsync.when(
-            data: (supermarkets) => DropdownButtonFormField<int>(
-              key: ValueKey('market-$_supermarketId'),
-              initialValue: _supermarketId,
-              decoration: InputDecoration(
-                labelText: 'Market',
-                errorText: _fieldErrors['supermarketId'],
+            data: (supermarkets) => KeyedSubtree(
+              key: _supermarketFieldKey,
+              child: DropdownButtonFormField<int>(
+                key: ValueKey('market-$_supermarketId'),
+                initialValue: _supermarketId,
+                decoration: InputDecoration(
+                  labelText: 'Market',
+                  errorText: _fieldErrors['supermarketId'],
+                ),
+                items: supermarkets
+                    .map(
+                      (market) => DropdownMenuItem<int>(
+                        value: market.id,
+                        child: Text(market.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: isBusy
+                    ? null
+                    : (value) => setState(() => _supermarketId = value),
+                validator: (value) =>
+                    value == null ? 'Market is required' : null,
               ),
-              items: supermarkets
-                  .map(
-                    (market) => DropdownMenuItem<int>(
-                      value: market.id,
-                      child: Text(market.name),
-                    ),
-                  )
-                  .toList(),
-              onChanged: isBusy
-                  ? null
-                  : (value) => setState(() => _supermarketId = value),
-              validator: (value) => value == null ? 'Market is required' : null,
             ),
             loading: () => const _LoadingField(label: 'Loading markets...'),
             error: (error, _) => _ErrorField(
@@ -531,6 +548,7 @@ class _GuidedProductSubmissionScreenState
           ),
           const SizedBox(height: 10),
           TextFormField(
+            key: _priceFieldKey,
             controller: _priceController,
             enabled: !isBusy,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -547,18 +565,21 @@ class _GuidedProductSubmissionScreenState
             },
           ),
           const SizedBox(height: 14),
-          _ImageCaptureTile(
-            label: 'Product listing photo',
-            path: _productImagePath,
-            enabled: !isBusy,
-            onCapture: () => _captureImage((path) {
-              _productImagePath = path;
-              _imageUrl = null;
-            }),
-            onRemove: () => setState(() {
-              _productImagePath = null;
-              _imageUrl = null;
-            }),
+          KeyedSubtree(
+            key: _imageFieldKey,
+            child: _ImageCaptureTile(
+              label: 'Product listing photo',
+              path: _productImagePath,
+              enabled: !isBusy,
+              onCapture: () => _captureImage((path) {
+                _productImagePath = path;
+                _imageUrl = null;
+              }),
+              onRemove: () => setState(() {
+                _productImagePath = null;
+                _imageUrl = null;
+              }),
+            ),
           ),
           if (_productImagePath != null) ...[
             const SizedBox(height: 10),
@@ -580,6 +601,7 @@ class _GuidedProductSubmissionScreenState
           ),
           const SizedBox(height: 8),
           TextFormField(
+            key: _nutritionFieldKey,
             controller: _caloriesController,
             enabled: !isBusy && !_nutritionSkipped,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -905,10 +927,19 @@ class _GuidedProductSubmissionScreenState
   }
 
   Future<void> _submit() async {
-    if (!_reviewFormKey.currentState!.validate()) {
+    final formIsValid = _reviewFormKey.currentState!.validate();
+    if (_categoryId == null || _supermarketId == null) {
+      final nextFieldErrors = {
+        ..._fieldErrors,
+        if (_categoryId == null) 'categoryId': 'Category is required',
+        if (_supermarketId == null) 'supermarketId': 'Market is required',
+      };
+      setState(() => _fieldErrors = nextFieldErrors);
+      await _scrollToFirstInvalidField(nextFieldErrors);
       return;
     }
-    if (_categoryId == null || _supermarketId == null) {
+    if (!formIsValid) {
+      await _scrollToFirstInvalidField(_fieldErrors);
       return;
     }
     final barcodeIsUnique = await _ensureBarcodeStillUnique();
@@ -939,7 +970,7 @@ class _GuidedProductSubmissionScreenState
         if (!mounted) {
           return;
         }
-        _applyError(error);
+        await _applyError(error);
         return;
       } finally {
         if (mounted) {
@@ -987,7 +1018,7 @@ class _GuidedProductSubmissionScreenState
           .asError
           ?.error;
       if (error != null) {
-        _applyError(error);
+        await _applyError(error);
       }
       return;
     }
@@ -1085,7 +1116,7 @@ class _GuidedProductSubmissionScreenState
     }
   }
 
-  void _applyError(Object error) {
+  Future<void> _applyError(Object error) async {
     final debugModeEnabled = ref.read(debugModeEnabledProvider);
     if (error is AppException) {
       setState(() {
@@ -1095,6 +1126,7 @@ class _GuidedProductSubmissionScreenState
         );
         _fieldErrors = error.fieldErrors;
       });
+      await _scrollToFirstInvalidField(error.fieldErrors);
       return;
     }
     setState(() {
@@ -1104,6 +1136,40 @@ class _GuidedProductSubmissionScreenState
       );
       _fieldErrors = const {};
     });
+  }
+
+  Future<void> _scrollToFirstInvalidField(
+    Map<String, String> fieldErrors,
+  ) async {
+    final price = double.tryParse(_priceController.text.trim());
+    await scrollToFirstInvalidSubmissionField(
+      invalidFieldKeys: [
+        if (_barcodeController.text.trim().isEmpty ||
+            fieldErrors.containsKey('barcode'))
+          'barcode',
+        if (_categoryId == null || fieldErrors.containsKey('categoryId'))
+          'categoryId',
+        if (_nameController.text.trim().isEmpty ||
+            fieldErrors.containsKey('name'))
+          'name',
+        if (_supermarketId == null || fieldErrors.containsKey('supermarketId'))
+          'supermarketId',
+        if (price == null || price <= 0 || fieldErrors.containsKey('price'))
+          'price',
+        if (fieldErrors.containsKey('imageUrl')) 'imageUrl',
+        if (fieldErrors.keys.any((key) => key.startsWith('nutrition.')))
+          'nutrition',
+      ],
+      fieldAnchors: {
+        'barcode': _barcodeFieldKey,
+        'categoryId': _categoryFieldKey,
+        'name': _nameFieldKey,
+        'supermarketId': _supermarketFieldKey,
+        'price': _priceFieldKey,
+        'imageUrl': _imageFieldKey,
+        'nutrition': _nutritionFieldKey,
+      },
+    );
   }
 }
 

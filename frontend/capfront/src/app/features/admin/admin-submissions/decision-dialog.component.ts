@@ -5,12 +5,19 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { RejectionSeverity } from '../../../core/models/moderation.model';
 
 export interface DecisionDialogData {
   mode: 'approve' | 'reject';
   submissionId: number;
   submissionRef: string;
   title?: string;
+}
+
+export interface DecisionDialogResult {
+  reason: string;
+  rejectionSeverity?: RejectionSeverity;
 }
 
 @Component({
@@ -21,6 +28,7 @@ export interface DecisionDialogData {
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
   ],
   template: `
     <h2 mat-dialog-title>
@@ -40,6 +48,19 @@ export interface DecisionDialogData {
           <mat-error>Reason must be at most 1000 characters.</mat-error>
         }
       </mat-form-field>
+      @if (data.mode === 'reject') {
+        <mat-form-field appearance="outline" class="reason-field">
+          <mat-label>Severity</mat-label>
+          <mat-select [formControl]="form.controls.rejectionSeverity">
+            @for (option of severityOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+          @if (form.controls.rejectionSeverity.hasError('required')) {
+            <mat-error>Severity is required when rejecting a submission.</mat-error>
+          }
+        </mat-form-field>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="dialogRef.close()">Cancel</button>
@@ -57,8 +78,16 @@ export interface DecisionDialogData {
 })
 export class DecisionDialogComponent {
   readonly data = inject<DecisionDialogData>(MAT_DIALOG_DATA);
-  readonly dialogRef = inject(MatDialogRef<DecisionDialogComponent, string | undefined>);
+  readonly dialogRef = inject(
+    MatDialogRef<DecisionDialogComponent, DecisionDialogResult | undefined>,
+  );
   private readonly formBuilder = inject(FormBuilder);
+
+  readonly severityOptions: Array<{ value: RejectionSeverity; label: string }> = [
+    { value: 'MISTAKE', label: 'Mistake (-1)' },
+    { value: 'BAD', label: 'Bad submission (-3)' },
+    { value: 'FRAUD', label: 'Intentional misinformation (-10)' },
+  ];
 
   readonly form = this.formBuilder.group({
     reason: [
@@ -66,6 +95,10 @@ export class DecisionDialogComponent {
       this.data.mode === 'reject'
         ? [Validators.required, Validators.maxLength(1000)]
         : [Validators.maxLength(1000)],
+    ],
+    rejectionSeverity: [
+      this.data.mode === 'reject' ? ('BAD' as RejectionSeverity) : null,
+      this.data.mode === 'reject' ? [Validators.required] : [],
     ],
   });
 
@@ -75,6 +108,9 @@ export class DecisionDialogComponent {
       return;
     }
     const reason = (this.form.controls.reason.value ?? '').trim();
-    this.dialogRef.close(reason);
+    this.dialogRef.close({
+      reason,
+      rejectionSeverity: this.form.controls.rejectionSeverity.value ?? undefined,
+    });
   }
 }

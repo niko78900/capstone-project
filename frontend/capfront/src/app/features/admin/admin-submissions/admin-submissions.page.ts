@@ -37,7 +37,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { FilterToolbarComponent } from '../../../shared/components/filter-toolbar/filter-toolbar.component';
 import { LoadingStateComponent } from '../../../shared/components/loading-state/loading-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
-import { DecisionDialogComponent } from './decision-dialog.component';
+import { DecisionDialogComponent, DecisionDialogResult } from './decision-dialog.component';
 import {
   PayloadEditDialogComponent,
   PayloadEditDialogResult,
@@ -52,7 +52,7 @@ interface SubmissionDiffRow {
 }
 
 type SubmissionTypeFilter = 'ALL' | SubmissionType;
-type SubmissionSortOrder = 'NEWEST' | 'OLDEST';
+type SubmissionSortOrder = 'NEWEST' | 'OLDEST' | 'CONTRIBUTOR_SCORE';
 type PayloadRecord = Record<string, unknown>;
 
 const CATEGORY_NAMES: Record<number, string> = {
@@ -517,7 +517,11 @@ export class AdminSubmissionsPageComponent {
     const type = this.typeControl.value === 'ALL' ? undefined : this.typeControl.value;
     const q = this.normalizedServerQuery(this.searchControl.value);
     const sort: SubmissionSortToken =
-      this.sortControl.value === 'NEWEST' ? 'createdAt,desc' : 'createdAt,asc';
+      this.sortControl.value === 'CONTRIBUTOR_SCORE'
+        ? 'contributorScore,desc'
+        : this.sortControl.value === 'NEWEST'
+          ? 'createdAt,desc'
+          : 'createdAt,asc';
     const page = this.pageIndex();
     const size = this.pageSizeControl.value;
 
@@ -585,15 +589,19 @@ export class AdminSubmissionsPageComponent {
     dialogRef
       .afterClosed()
       .pipe(
-        filter((reason) => reason !== undefined),
-        switchMap((reason) => {
+        filter((result): result is DecisionDialogResult => result !== undefined),
+        switchMap((result) => {
           this.processingSubmissionId.set(submission.id);
           this.processingAction.set(mode);
 
           const request$ =
             mode === 'approve'
-              ? this.moderationService.approve(submission.id, reason)
-              : this.moderationService.reject(submission.id, reason);
+              ? this.moderationService.approve(submission.id, result.reason)
+              : this.moderationService.reject(
+                  submission.id,
+                  result.reason,
+                  result.rejectionSeverity,
+                );
 
           return request$.pipe(
             catchError((error: unknown) => {
@@ -1287,7 +1295,7 @@ export class AdminSubmissionsPageComponent {
   }
 
   private normalizeSortOrder(value: string): SubmissionSortOrder | null {
-    if (value === 'NEWEST' || value === 'OLDEST') {
+    if (value === 'NEWEST' || value === 'OLDEST' || value === 'CONTRIBUTOR_SCORE') {
       return value;
     }
     return null;

@@ -90,6 +90,7 @@ describe('AdminSubmissionDetailPageComponent', () => {
         status: 'APPROVED',
         action: 'APPROVED',
         reason: 'approved',
+        rejectionSeverity: null,
         reviewedAt: '2026-04-17T10:00:00Z',
       }),
     );
@@ -99,6 +100,7 @@ describe('AdminSubmissionDetailPageComponent', () => {
         status: 'REJECTED',
         action: 'REJECTED',
         reason: 'incorrect values',
+        rejectionSeverity: 'BAD',
         reviewedAt: '2026-04-17T10:00:00Z',
       }),
     );
@@ -170,12 +172,12 @@ describe('AdminSubmissionDetailPageComponent', () => {
 
   it('rejects with a required reason from decision dialog', () => {
     dialog.open.and.returnValue({
-      afterClosed: () => of('incorrect values'),
+      afterClosed: () => of({ reason: 'incorrect values', rejectionSeverity: 'BAD' }),
     } as never);
 
     component.onReject();
 
-    expect(moderationService.reject).toHaveBeenCalledWith(10, 'incorrect values');
+    expect(moderationService.reject).toHaveBeenCalledWith(10, 'incorrect values', 'BAD');
   });
 
   it('shows field-level patch errors from backend validation', () => {

@@ -1,7 +1,8 @@
 // File purpose: Defines Angular TypeScript models for moderation model.
 export type SubmissionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type SubmissionType = 'PRODUCT' | 'PRICE' | 'NUTRITION' | 'AVAILABILITY';
-export type SubmissionSortToken = 'createdAt,desc' | 'createdAt,asc';
+export type RejectionSeverity = 'MISTAKE' | 'BAD' | 'FRAUD';
+export type SubmissionSortToken = 'createdAt,desc' | 'createdAt,asc' | 'contributorScore,desc';
 
 export interface ModerationListQuery {
   status?: SubmissionStatus;
@@ -33,6 +34,7 @@ export interface ModerationSubmissionDto {
   reviewReason: string | null;
   submittedByUserId: number;
   submittedByEmail: string;
+  contributorScore: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,12 +48,12 @@ export interface ModerationSubmissionPage {
 }
 
 export interface ModerationSubmissionDetail extends ModerationSubmissionDto {
-  contributorScore: number | null;
   aiSummary: ModerationAiSummary | null;
 }
 
 export interface SubmissionDecisionRequest {
   reason?: string;
+  rejectionSeverity?: RejectionSeverity;
 }
 
 export interface SubmissionDecisionResponse {
@@ -59,6 +61,7 @@ export interface SubmissionDecisionResponse {
   status: SubmissionStatus;
   action: 'APPROVED' | 'REJECTED';
   reason: string | null;
+  rejectionSeverity: RejectionSeverity | null;
   reviewedAt: string;
 }
 
@@ -78,6 +81,7 @@ export interface SubmissionHistoryEntry {
   actorEmail: string;
   action: string;
   reason: string | null;
+  rejectionSeverity: RejectionSeverity | null;
   changedFieldCount: number | null;
   beforePayload: unknown;
   afterPayload: unknown;

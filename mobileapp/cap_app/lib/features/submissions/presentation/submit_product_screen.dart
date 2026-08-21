@@ -38,6 +38,12 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   static const _aiCaptureTypes = [AiCaptureType.price, AiCaptureType.nutrition];
 
   final _formKey = GlobalKey<FormState>();
+  final _categoryFieldKey = GlobalKey();
+  final _nameFieldKey = GlobalKey();
+  final _barcodeFieldKey = GlobalKey();
+  final _supermarketFieldKey = GlobalKey();
+  final _priceFieldKey = GlobalKey();
+  final _imageFieldKey = GlobalKey();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _barcodeController = TextEditingController();
@@ -119,30 +125,35 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  DropdownButtonFormField<int>(
-                    initialValue: _categoryId,
-                    decoration: InputDecoration(
-                      labelText: 'Category',
-                      errorText: _fieldErrors['categoryId'],
+                  KeyedSubtree(
+                    key: _categoryFieldKey,
+                    child: DropdownButtonFormField<int>(
+                      key: ValueKey('category-$_categoryId'),
+                      initialValue: _categoryId,
+                      decoration: InputDecoration(
+                        labelText: 'Category',
+                        errorText: _fieldErrors['categoryId'],
+                      ),
+                      items: categoryOptions
+                          .map(
+                            (option) => DropdownMenuItem<int>(
+                              value: option.id,
+                              child: Text(option.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: isBusy
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _categoryId = value ?? _categoryId;
+                              });
+                            },
                     ),
-                    items: categoryOptions
-                        .map(
-                          (option) => DropdownMenuItem<int>(
-                            value: option.id,
-                            child: Text(option.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: isBusy
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _categoryId = value ?? _categoryId;
-                            });
-                          },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    key: _nameFieldKey,
                     controller: _nameController,
                     decoration: InputDecoration(
                       labelText: 'Product name',
@@ -165,6 +176,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    key: _barcodeFieldKey,
                     controller: _barcodeController,
                     decoration: InputDecoration(
                       labelText: 'Barcode',
@@ -272,21 +284,24 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                   ),
                   const SizedBox(height: 12),
                   supermarketsAsync.when(
-                    data: (supermarkets) => _SupermarketDropdown(
-                      supermarkets: supermarkets,
-                      value: _supermarketId,
-                      errorText: _fieldErrors['supermarketId'],
-                      enabled: !isBusy,
-                      onChanged: (value) {
-                        final nextFieldErrors = Map<String, String>.from(
-                          _fieldErrors,
-                        );
-                        nextFieldErrors.remove('supermarketId');
-                        setState(() {
-                          _supermarketId = value;
-                          _fieldErrors = nextFieldErrors;
-                        });
-                      },
+                    data: (supermarkets) => KeyedSubtree(
+                      key: _supermarketFieldKey,
+                      child: _SupermarketDropdown(
+                        supermarkets: supermarkets,
+                        value: _supermarketId,
+                        errorText: _fieldErrors['supermarketId'],
+                        enabled: !isBusy,
+                        onChanged: (value) {
+                          final nextFieldErrors = Map<String, String>.from(
+                            _fieldErrors,
+                          );
+                          nextFieldErrors.remove('supermarketId');
+                          setState(() {
+                            _supermarketId = value;
+                            _fieldErrors = nextFieldErrors;
+                          });
+                        },
+                      ),
                     ),
                     loading: () =>
                         const _LoadingField(label: 'Loading supermarkets...'),
@@ -299,6 +314,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    key: _priceFieldKey,
                     controller: _priceController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -316,15 +332,19 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: isBusy ? null : _chooseImageSource,
-                    icon: const Icon(Icons.add_photo_alternate_outlined),
-                    label: Text(
-                      ((_selectedImagePath == null ||
-                                  _selectedImagePath!.trim().isEmpty) &&
-                              (_imageUrl == null || _imageUrl!.trim().isEmpty))
-                          ? 'Add an image'
-                          : 'Change image',
+                  KeyedSubtree(
+                    key: _imageFieldKey,
+                    child: OutlinedButton.icon(
+                      onPressed: isBusy ? null : _chooseImageSource,
+                      icon: const Icon(Icons.add_photo_alternate_outlined),
+                      label: Text(
+                        ((_selectedImagePath == null ||
+                                    _selectedImagePath!.trim().isEmpty) &&
+                                (_imageUrl == null ||
+                                    _imageUrl!.trim().isEmpty))
+                            ? 'Add an image'
+                            : 'Change image',
+                      ),
                     ),
                   ),
                   if (_fieldErrors['imageUrl'] != null) ...[
@@ -744,16 +764,18 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
+    final formIsValid = _formKey.currentState!.validate();
+    if (_supermarketId == null) {
+      final nextFieldErrors = {
+        ..._fieldErrors,
+        'supermarketId': 'Supermarket is required',
+      };
+      setState(() => _fieldErrors = nextFieldErrors);
+      await _scrollToFirstInvalidField(nextFieldErrors);
       return;
     }
-    if (_supermarketId == null) {
-      setState(() {
-        _fieldErrors = {
-          ..._fieldErrors,
-          'supermarketId': 'Supermarket is required',
-        };
-      });
+    if (!formIsValid) {
+      await _scrollToFirstInvalidField(_fieldErrors);
       return;
     }
 
@@ -782,7 +804,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
         if (!mounted) {
           return;
         }
-        _applyError(error);
+        await _applyError(error);
         return;
       } finally {
         if (mounted) {
@@ -829,7 +851,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
           .asError
           ?.error;
       if (error != null) {
-        _applyError(error);
+        await _applyError(error);
       }
       return;
     }
@@ -871,7 +893,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     ref.read(productSubmissionControllerProvider.notifier).clear();
   }
 
-  void _applyError(Object error) {
+  Future<void> _applyError(Object error) async {
     final debugModeEnabled = ref.read(debugModeEnabledProvider);
     if (error is AppException) {
       setState(() {
@@ -881,6 +903,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
         );
         _fieldErrors = error.fieldErrors;
       });
+      await _scrollToFirstInvalidField(error.fieldErrors);
       return;
     }
     setState(() {
@@ -890,6 +913,36 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       );
       _fieldErrors = const {};
     });
+  }
+
+  Future<void> _scrollToFirstInvalidField(
+    Map<String, String> fieldErrors,
+  ) async {
+    final price = double.tryParse(_priceController.text.trim());
+    await scrollToFirstInvalidSubmissionField(
+      invalidFieldKeys: [
+        if (fieldErrors.containsKey('categoryId')) 'categoryId',
+        if (_nameController.text.trim().isEmpty ||
+            fieldErrors.containsKey('name'))
+          'name',
+        if (_barcodeController.text.trim().isEmpty ||
+            fieldErrors.containsKey('barcode'))
+          'barcode',
+        if (_supermarketId == null || fieldErrors.containsKey('supermarketId'))
+          'supermarketId',
+        if (price == null || price <= 0 || fieldErrors.containsKey('price'))
+          'price',
+        if (fieldErrors.containsKey('imageUrl')) 'imageUrl',
+      ],
+      fieldAnchors: {
+        'categoryId': _categoryFieldKey,
+        'name': _nameFieldKey,
+        'barcode': _barcodeFieldKey,
+        'supermarketId': _supermarketFieldKey,
+        'price': _priceFieldKey,
+        'imageUrl': _imageFieldKey,
+      },
+    );
   }
 
   Future<void> _chooseImageSource() async {

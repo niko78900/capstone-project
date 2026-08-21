@@ -2,6 +2,7 @@
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
+import 'package:flutter/widgets.dart';
 
 const double defaultAiCategoryConfidenceThreshold = 0.65;
 
@@ -126,4 +127,27 @@ double? parseOptionalDouble(String raw) {
     return null;
   }
   return double.tryParse(trimmed);
+}
+
+Future<void> scrollToFirstInvalidSubmissionField({
+  required Iterable<String> invalidFieldKeys,
+  required Map<String, GlobalKey> fieldAnchors,
+}) async {
+  for (final fieldKey in invalidFieldKeys) {
+    final context = fieldAnchors[fieldKey]?.currentContext;
+    if (context == null) {
+      continue;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    if (!context.mounted) {
+      return;
+    }
+    await Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: 0.12,
+    );
+    return;
+  }
 }

@@ -28,6 +28,7 @@ import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionP
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.SubmissionNutritionInput;
 import com.niko.capstone.supermarket_api.domain.enums.PriceSourceType;
+import com.niko.capstone.supermarket_api.domain.enums.RejectionSeverity;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionReviewAction;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionType;
@@ -60,9 +61,11 @@ import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -102,12 +105,25 @@ public class ModerationService {
             Integer size,
             String sort
     ) {
-        Specification<SubmissionEntity> spec = buildSpecification(status, type, q);
-        Pageable pageable = buildPageable(page, size, sort);
-        Page<SubmissionEntity> pageResult = submissionRepository.findAll(spec, pageable);
-        List<ModerationSubmissionDto> items = pageResult.getContent()
+        String normalizedQuery = trimToNull(q);
+        Page<SubmissionEntity> pageResult;
+        if (isContributorScoreSort(sort)) {
+            pageResult = submissionRepository.findModerationPageOrderByContributorScore(
+                    status,
+                    type,
+                    normalizedQuery,
+                    PageRequest.of(safePage(page), safeSize(size))
+            );
+        } else {
+            Specification<SubmissionEntity> spec = buildSpecification(status, type, normalizedQuery);
+            Pageable pageable = buildPageable(page, size, sort);
+            pageResult = submissionRepository.findAll(spec, pageable);
+        }
+        List<SubmissionEntity> submissions = pageResult.getContent();
+        Map<Long, Integer> contributorScores = contributorScoresFor(submissions);
+        List<ModerationSubmissionDto> items = submissions
                 .stream()
-                .map(this::toModerationDto)
+                .map(submission -> toModerationDto(submission, contributorScores))
                 .toList();
         return new ModerationSubmissionPageResponse(
                 items,
@@ -180,6 +196,7 @@ public class ModerationService {
                     edit.getAdminUser().getEmail(),
                     "PATCH_PAYLOAD",
                     trimToNull(edit.getReason()),
+                    null,
                     edit.getChangedFieldCount(),
                     readPayloadValue(edit.getBeforePayload()),
                     readPayloadValue(edit.getAfterPayload()),
@@ -194,6 +211,7 @@ public class ModerationService {
                     review.getAdminUser().getEmail(),
                     review.getAction().name(),
                     trimToNull(review.getReason()),
+                    review.getRejectionSeverity(),
                     null,
                     null,
                     null,
@@ -245,12 +263,21 @@ public class ModerationService {
                 submission.getStatus(),
                 review.getAction(),
                 review.getReason(),
+                review.getRejectionSeverity(),
                 review.getCreatedAt()
         );
     }
 
     @Transactional
-    public SubmissionDecisionResponse reject(Long submissionId, String adminEmail, String reason) {
+    public SubmissionDecisionResponse reject(
+            Long submissionId,
+            String adminEmail,
+            String reason,
+            RejectionSeverity rejectionSeverity
+    ) {
+        if (rejectionSeverity == null) {
+            throw new UnprocessableEntityException("Rejection severity is required");
+        }
         UserEntity admin = findUserByEmail(adminEmail);
         SubmissionEntity submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new NotFoundException("Submission not found"));
@@ -265,6 +292,7 @@ public class ModerationService {
         review.setAdminUser(admin);
         review.setAction(SubmissionReviewAction.REJECTED);
         review.setReason(trimToNull(reason));
+        review.setRejectionSeverity(rejectionSeverity);
         submissionReviewRepository.save(review);
         rewardsService.recordDecision(submission, review);
 
@@ -273,6 +301,7 @@ public class ModerationService {
                 submission.getStatus(),
                 review.getAction(),
                 review.getReason(),
+                review.getRejectionSeverity(),
                 review.getCreatedAt()
         );
     }
@@ -405,7 +434,10 @@ public class ModerationService {
         nutrition.setServingSize(trimToNull(input.servingSize()));
     }
 
-    private ModerationSubmissionDto toModerationDto(SubmissionEntity submission) {
+    private ModerationSubmissionDto toModerationDto(
+            SubmissionEntity submission,
+            Map<Long, Integer> contributorScores
+    ) {
         return new ModerationSubmissionDto(
                 submission.getId(),
                 submission.getType(),
@@ -415,6 +447,7 @@ public class ModerationService {
                 latestReviewReason(submission.getId()),
                 submission.getUser().getId(),
                 submission.getUser().getEmail(),
+                contributorScores.getOrDefault(submission.getUser().getId(), 0),
                 submission.getCreatedAt(),
                 submission.getUpdatedAt()
         );
@@ -442,9 +475,17 @@ public class ModerationService {
 
     private Pageable buildPageable(Integer page, Integer size, String sort) {
         int safePage = page == null || page < 0 ? 0 : page;
-        int safeSize = size == null ? 50 : Math.min(Math.max(size, 1), 200);
+        int safeSize = safeSize(size);
         Sort safeSort = parseSort(sort);
         return PageRequest.of(safePage, safeSize, safeSort);
+    }
+
+    private int safePage(Integer page) {
+        return page == null || page < 0 ? 0 : page;
+    }
+
+    private int safeSize(Integer size) {
+        return size == null ? 50 : Math.min(Math.max(size, 1), 200);
     }
 
     private Specification<SubmissionEntity> buildSpecification(
@@ -497,6 +538,29 @@ public class ModerationService {
                     : Sort.Direction.DESC;
         }
         return Sort.by(direction, field);
+    }
+
+    private boolean isContributorScoreSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return false;
+        }
+        String[] parts = sort.split(",", 2);
+        return "contributorScore".equals(parts[0].trim())
+                && (parts.length == 1 || "desc".equalsIgnoreCase(parts[1].trim()));
+    }
+
+    private Map<Long, Integer> contributorScoresFor(List<SubmissionEntity> submissions) {
+        if (submissions.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> userIds = submissions.stream()
+                .map(submission -> submission.getUser().getId())
+                .distinct()
+                .toList();
+        Map<Long, Integer> scoresByUserId = new HashMap<>();
+        contributorStatsRepository.findAllById(userIds)
+                .forEach(stats -> scoresByUserId.put(stats.getUserId(), stats.getScore()));
+        return scoresByUserId;
     }
 
     private void assertPending(SubmissionEntity submission) {
