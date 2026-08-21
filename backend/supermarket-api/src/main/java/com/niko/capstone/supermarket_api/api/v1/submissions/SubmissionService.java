@@ -254,7 +254,7 @@ public class SubmissionService {
         if (submissionId == null) {
             return null;
         }
-        return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId)
+        return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDescIdDesc(submissionId)
                 .map(review -> trimToNull(review.getReason()))
                 .orElse(null);
     }

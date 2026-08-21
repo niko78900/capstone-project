@@ -121,9 +121,10 @@ public class ModerationService {
         }
         List<SubmissionEntity> submissions = pageResult.getContent();
         Map<Long, Integer> contributorScores = contributorScoresFor(submissions);
+        Map<Long, String> latestReviewReasons = latestReviewReasonsFor(submissions);
         List<ModerationSubmissionDto> items = submissions
                 .stream()
-                .map(submission -> toModerationDto(submission, contributorScores))
+                .map(submission -> toModerationDto(submission, contributorScores, latestReviewReasons))
                 .toList();
         return new ModerationSubmissionPageResponse(
                 items,
@@ -436,7 +437,8 @@ public class ModerationService {
 
     private ModerationSubmissionDto toModerationDto(
             SubmissionEntity submission,
-            Map<Long, Integer> contributorScores
+            Map<Long, Integer> contributorScores,
+            Map<Long, String> latestReviewReasons
     ) {
         return new ModerationSubmissionDto(
                 submission.getId(),
@@ -444,7 +446,7 @@ public class ModerationService {
                 submission.getStatus(),
                 readPayloadValue(submission.getPayload()),
                 submission.getNotes(),
-                latestReviewReason(submission.getId()),
+                latestReviewReasons.get(submission.getId()),
                 submission.getUser().getId(),
                 submission.getUser().getEmail(),
                 contributorScores.getOrDefault(submission.getUser().getId(), 0),
@@ -561,6 +563,25 @@ public class ModerationService {
         contributorStatsRepository.findAllById(userIds)
                 .forEach(stats -> scoresByUserId.put(stats.getUserId(), stats.getScore()));
         return scoresByUserId;
+    }
+
+    private Map<Long, String> latestReviewReasonsFor(List<SubmissionEntity> submissions) {
+        if (submissions.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> submissionIds = submissions.stream()
+                .map(SubmissionEntity::getId)
+                .distinct()
+                .toList();
+        Map<Long, String> reasonsBySubmissionId = new HashMap<>();
+        submissionReviewRepository.findLatestCandidatesBySubmissionIds(submissionIds)
+                .forEach(review -> {
+                    Long submissionId = review.getSubmission().getId();
+                    if (!reasonsBySubmissionId.containsKey(submissionId)) {
+                        reasonsBySubmissionId.put(submissionId, trimToNull(review.getReason()));
+                    }
+                });
+        return reasonsBySubmissionId;
     }
 
     private void assertPending(SubmissionEntity submission) {
@@ -771,7 +792,7 @@ public class ModerationService {
         if (submissionId == null) {
             return null;
         }
-        return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId)
+        return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDescIdDesc(submissionId)
                 .map(review -> trimToNull(review.getReason()))
                 .orElse(null);
     }
