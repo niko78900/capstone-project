@@ -48,4 +48,35 @@ public interface SubmissionRepository extends JpaRepository<SubmissionEntity, Lo
             @Param("q") String q,
             Pageable pageable
     );
+
+    @Query(
+            value = """
+                    select submission
+                    from SubmissionEntity submission
+                    left join ContributorTrustStatsEntity trustStats on trustStats.userId = submission.user.id
+                    where (:status is null or submission.status = :status)
+                      and (:type is null or submission.type = :type)
+                      and (:q is null
+                        or lower(submission.user.email) like lower(concat('%', :q, '%'))
+                        or str(submission.id) like concat('%', :q, '%')
+                        or lower(submission.payload) like lower(concat('%', :q, '%')))
+                    order by coalesce(trustStats.trustScore, 1000) desc, submission.createdAt desc
+                    """,
+            countQuery = """
+                    select count(submission)
+                    from SubmissionEntity submission
+                    where (:status is null or submission.status = :status)
+                      and (:type is null or submission.type = :type)
+                      and (:q is null
+                        or lower(submission.user.email) like lower(concat('%', :q, '%'))
+                        or str(submission.id) like concat('%', :q, '%')
+                        or lower(submission.payload) like lower(concat('%', :q, '%')))
+                    """
+    )
+    Page<SubmissionEntity> findModerationPageOrderByContributorTrust(
+            @Param("status") SubmissionStatus status,
+            @Param("type") SubmissionType type,
+            @Param("q") String q,
+            Pageable pageable
+    );
 }

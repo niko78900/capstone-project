@@ -37,6 +37,7 @@ describe('AdminSubmissionDetailPageComponent', () => {
     submittedByUserId: 2,
     submittedByEmail: 'user@example.com',
     contributorScore: 12,
+    contributorTrustTier: 'TRUSTED' as const,
     createdAt: '2026-04-15T13:20:00Z',
     updatedAt: '2026-04-15T13:20:00Z',
     aiSummary: null,

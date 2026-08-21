@@ -25,6 +25,7 @@ import {
 import { ProductDetailDto } from '../../../core/models/catalog.model';
 import { fieldErrorMap, mapApiError } from '../../../core/models/api-error.model';
 import {
+  ContributorTrustTier,
   ModerationAiSummary,
   ModerationSubmissionDto,
   SubmissionSortToken,
@@ -52,7 +53,7 @@ interface SubmissionDiffRow {
 }
 
 type SubmissionTypeFilter = 'ALL' | SubmissionType;
-type SubmissionSortOrder = 'NEWEST' | 'OLDEST' | 'CONTRIBUTOR_SCORE';
+type SubmissionSortOrder = 'NEWEST' | 'OLDEST' | 'TRUST';
 type PayloadRecord = Record<string, unknown>;
 
 const CATEGORY_NAMES: Record<number, string> = {
@@ -517,8 +518,8 @@ export class AdminSubmissionsPageComponent {
     const type = this.typeControl.value === 'ALL' ? undefined : this.typeControl.value;
     const q = this.normalizedServerQuery(this.searchControl.value);
     const sort: SubmissionSortToken =
-      this.sortControl.value === 'CONTRIBUTOR_SCORE'
-        ? 'contributorScore,desc'
+      this.sortControl.value === 'TRUST'
+        ? 'contributorTrust,desc'
         : this.sortControl.value === 'NEWEST'
           ? 'createdAt,desc'
           : 'createdAt,asc';
@@ -1295,9 +1296,28 @@ export class AdminSubmissionsPageComponent {
   }
 
   private normalizeSortOrder(value: string): SubmissionSortOrder | null {
-    if (value === 'NEWEST' || value === 'OLDEST' || value === 'CONTRIBUTOR_SCORE') {
+    if (value === 'NEWEST' || value === 'OLDEST' || value === 'TRUST') {
       return value;
     }
     return null;
+  }
+
+  trustTierLabel(tier: ContributorTrustTier | null | undefined): string {
+    return switchTrustTierLabel(tier ?? 'NEW');
+  }
+}
+
+function switchTrustTierLabel(tier: ContributorTrustTier): string {
+  switch (tier) {
+    case 'RISKY':
+      return 'Risky';
+    case 'RELIABLE':
+      return 'Reliable';
+    case 'TRUSTED':
+      return 'Trusted';
+    case 'HIGH_TRUST':
+      return 'High trust';
+    default:
+      return 'New';
   }
 }

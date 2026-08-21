@@ -36,6 +36,7 @@ describe('AdminSubmissionsPageComponent', () => {
     submittedByUserId: 2,
     submittedByEmail: 'user@example.com',
     contributorScore: 3,
+    contributorTrustTier: 'RELIABLE' as const,
     createdAt: '2026-04-15T13:20:00Z',
     updatedAt: '2026-04-15T13:20:00Z',
   };
@@ -55,6 +56,7 @@ describe('AdminSubmissionsPageComponent', () => {
     submittedByUserId: 3,
     submittedByEmail: 'another@example.com',
     contributorScore: 0,
+    contributorTrustTier: 'NEW' as const,
     createdAt: '2026-04-16T08:10:00Z',
     updatedAt: '2026-04-16T08:10:00Z',
   };
@@ -88,6 +90,7 @@ describe('AdminSubmissionsPageComponent', () => {
       of({
         ...pendingSubmission,
         contributorScore: 3,
+        contributorTrustTier: 'RELIABLE',
         aiSummary: {
           analysisId: 1,
           analysisType: 'REVIEW',
@@ -118,6 +121,7 @@ describe('AdminSubmissionsPageComponent', () => {
         submission: {
           ...pendingSubmission,
           contributorScore: 3,
+          contributorTrustTier: 'RELIABLE',
           aiSummary: null,
           payload: {
             ...pendingSubmission.payload,
@@ -231,17 +235,17 @@ describe('AdminSubmissionsPageComponent', () => {
     expect(moderationService.reject).toHaveBeenCalledWith(10, 'wrong barcode', 'BAD');
   });
 
-  it('maps contributor score sort to server token', () => {
+  it('maps trust sort to server token', () => {
     moderationService.listSubmissions.calls.reset();
 
-    component.sortControl.setValue('CONTRIBUTOR_SCORE', { emitEvent: false });
+    component.sortControl.setValue('TRUST', { emitEvent: false });
     (component as unknown as { loadSubmissionsFromServer: () => void }).loadSubmissionsFromServer();
 
     expect(moderationService.listSubmissions).toHaveBeenCalledWith({
       status: 'PENDING',
       type: undefined,
       q: undefined,
-      sort: 'contributorScore,desc',
+      sort: 'contributorTrust,desc',
       page: 0,
       size: 10,
     });

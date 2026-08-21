@@ -28,7 +28,7 @@
               submission.status
             }}</span>
             <p class="summary-meta">Updated {{ displayDate(submission.updatedAt) }}</p>
-            <p class="summary-meta">Contributor score {{ submission.contributorScore ?? 0 }}</p>
+            <p class="summary-meta">Trust: {{ trustTierLabel(submission.contributorTrustTier) }}</p>
             @if (submission.aiSummary; as aiSummary) {
               <p class="summary-meta">
                 AI {{ aiSummary.status }} | {{ aiSummary.warnings.length }} warning(s) |

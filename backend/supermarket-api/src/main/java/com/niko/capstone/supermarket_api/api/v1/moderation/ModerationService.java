@@ -27,6 +27,8 @@ import com.niko.capstone.supermarket_api.api.v1.submissions.dto.NutritionSubmiss
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.PriceSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.ProductSubmissionPayload;
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.SubmissionNutritionInput;
+import com.niko.capstone.supermarket_api.api.v1.trust.ContributorTrustService;
+import com.niko.capstone.supermarket_api.domain.enums.ContributorTrustTier;
 import com.niko.capstone.supermarket_api.domain.enums.PriceSourceType;
 import com.niko.capstone.supermarket_api.domain.enums.RejectionSeverity;
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionReviewAction;
@@ -35,6 +37,7 @@ import com.niko.capstone.supermarket_api.domain.enums.SubmissionType;
 import com.niko.capstone.supermarket_api.domain.model.BranchEntity;
 import com.niko.capstone.supermarket_api.domain.model.CategoryEntity;
 import com.niko.capstone.supermarket_api.domain.model.ContributorStatsEntity;
+import com.niko.capstone.supermarket_api.domain.model.ContributorTrustStatsEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductMarketAvailabilityEntity;
 import com.niko.capstone.supermarket_api.domain.model.ProductNutritionEntity;
@@ -47,6 +50,7 @@ import com.niko.capstone.supermarket_api.domain.model.VerifiedPriceEntity;
 import com.niko.capstone.supermarket_api.domain.repository.BranchRepository;
 import com.niko.capstone.supermarket_api.domain.repository.CategoryRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ContributorStatsRepository;
+import com.niko.capstone.supermarket_api.domain.repository.ContributorTrustStatsRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductMarketAvailabilityRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductNutritionRepository;
 import com.niko.capstone.supermarket_api.domain.repository.ProductRepository;
@@ -93,7 +97,9 @@ public class ModerationService {
     private final BranchRepository branchRepository;
     private final VerifiedPriceRepository verifiedPriceRepository;
     private final ContributorStatsRepository contributorStatsRepository;
+    private final ContributorTrustStatsRepository contributorTrustStatsRepository;
     private final RewardsService rewardsService;
+    private final ContributorTrustService contributorTrustService;
     private final AiAnalysisService aiAnalysisService;
 
     @Transactional(readOnly = true)
@@ -107,7 +113,14 @@ public class ModerationService {
     ) {
         String normalizedQuery = trimToNull(q);
         Page<SubmissionEntity> pageResult;
-        if (isContributorScoreSort(sort)) {
+        if (isContributorTrustSort(sort)) {
+            pageResult = submissionRepository.findModerationPageOrderByContributorTrust(
+                    status,
+                    type,
+                    normalizedQuery,
+                    PageRequest.of(safePage(page), safeSize(size))
+            );
+        } else if (isContributorScoreSort(sort)) {
             pageResult = submissionRepository.findModerationPageOrderByContributorScore(
                     status,
                     type,
@@ -121,10 +134,16 @@ public class ModerationService {
         }
         List<SubmissionEntity> submissions = pageResult.getContent();
         Map<Long, Integer> contributorScores = contributorScoresFor(submissions);
+        Map<Long, ContributorTrustTier> contributorTrustTiers = contributorTrustTiersFor(submissions);
         Map<Long, String> latestReviewReasons = latestReviewReasonsFor(submissions);
         List<ModerationSubmissionDto> items = submissions
                 .stream()
-                .map(submission -> toModerationDto(submission, contributorScores, latestReviewReasons))
+                .map(submission -> toModerationDto(
+                        submission,
+                        contributorScores,
+                        contributorTrustTiers,
+                        latestReviewReasons
+                ))
                 .toList();
         return new ModerationSubmissionPageResponse(
                 items,
@@ -258,6 +277,7 @@ public class ModerationService {
         review.setReason(trimToNull(reason));
         submissionReviewRepository.save(review);
         rewardsService.recordDecision(submission, review);
+        contributorTrustService.recordDecision(submission, review);
 
         return new SubmissionDecisionResponse(
                 submission.getId(),
@@ -296,6 +316,7 @@ public class ModerationService {
         review.setRejectionSeverity(rejectionSeverity);
         submissionReviewRepository.save(review);
         rewardsService.recordDecision(submission, review);
+        contributorTrustService.recordDecision(submission, review);
 
         return new SubmissionDecisionResponse(
                 submission.getId(),
@@ -438,8 +459,10 @@ public class ModerationService {
     private ModerationSubmissionDto toModerationDto(
             SubmissionEntity submission,
             Map<Long, Integer> contributorScores,
+            Map<Long, ContributorTrustTier> contributorTrustTiers,
             Map<Long, String> latestReviewReasons
     ) {
+        Long userId = submission.getUser().getId();
         return new ModerationSubmissionDto(
                 submission.getId(),
                 submission.getType(),
@@ -447,9 +470,10 @@ public class ModerationService {
                 readPayloadValue(submission.getPayload()),
                 submission.getNotes(),
                 latestReviewReasons.get(submission.getId()),
-                submission.getUser().getId(),
+                userId,
                 submission.getUser().getEmail(),
-                contributorScores.getOrDefault(submission.getUser().getId(), 0),
+                contributorScores.getOrDefault(userId, 0),
+                contributorTrustTiers.getOrDefault(userId, ContributorTrustTier.NEW),
                 submission.getCreatedAt(),
                 submission.getUpdatedAt()
         );
@@ -459,6 +483,9 @@ public class ModerationService {
         Integer contributorScore = contributorStatsRepository.findById(submission.getUser().getId())
                 .map(ContributorStatsEntity::getScore)
                 .orElse(0);
+        ContributorTrustTier contributorTrustTier = contributorTrustStatsRepository.findById(submission.getUser().getId())
+                .map(ContributorTrustStatsEntity::getTrustTier)
+                .orElse(ContributorTrustTier.NEW);
         return new ModerationSubmissionDetailDto(
                 submission.getId(),
                 submission.getType(),
@@ -469,6 +496,7 @@ public class ModerationService {
                 submission.getUser().getId(),
                 submission.getUser().getEmail(),
                 contributorScore,
+                contributorTrustTier,
                 submission.getCreatedAt(),
                 submission.getUpdatedAt(),
                 aiAnalysisService.latestSummaryForSubmission(submission.getId())
@@ -551,6 +579,15 @@ public class ModerationService {
                 && (parts.length == 1 || "desc".equalsIgnoreCase(parts[1].trim()));
     }
 
+    private boolean isContributorTrustSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return false;
+        }
+        String[] parts = sort.split(",", 2);
+        return "contributorTrust".equals(parts[0].trim())
+                && (parts.length == 1 || "desc".equalsIgnoreCase(parts[1].trim()));
+    }
+
     private Map<Long, Integer> contributorScoresFor(List<SubmissionEntity> submissions) {
         if (submissions.isEmpty()) {
             return Map.of();
@@ -563,6 +600,20 @@ public class ModerationService {
         contributorStatsRepository.findAllById(userIds)
                 .forEach(stats -> scoresByUserId.put(stats.getUserId(), stats.getScore()));
         return scoresByUserId;
+    }
+
+    private Map<Long, ContributorTrustTier> contributorTrustTiersFor(List<SubmissionEntity> submissions) {
+        if (submissions.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> userIds = submissions.stream()
+                .map(submission -> submission.getUser().getId())
+                .distinct()
+                .toList();
+        Map<Long, ContributorTrustTier> tiersByUserId = new HashMap<>();
+        contributorTrustStatsRepository.findAllById(userIds)
+                .forEach(stats -> tiersByUserId.put(stats.getUserId(), stats.getTrustTier()));
+        return tiersByUserId;
     }
 
     private Map<Long, String> latestReviewReasonsFor(List<SubmissionEntity> submissions) {

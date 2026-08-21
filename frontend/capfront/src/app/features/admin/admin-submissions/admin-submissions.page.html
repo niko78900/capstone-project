@@ -53,7 +53,7 @@
         <mat-select [formControl]="sortControl" aria-label="Sort by">
           <mat-option value="NEWEST">Newest first</mat-option>
           <mat-option value="OLDEST">Oldest first</mat-option>
-          <mat-option value="CONTRIBUTOR_SCORE">Highest contributor score</mat-option>
+          <mat-option value="TRUST">Highest trust</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -147,7 +147,8 @@
               >Ref {{ submissionReference(submission) }} - {{ submission.type }}</mat-card-title
             >
             <mat-card-subtitle>
-              {{ submission.submittedByEmail }} | Score {{ submission.contributorScore ?? 0 }} |
+              {{ submission.submittedByEmail }} | Trust:
+              {{ trustTierLabel(submission.contributorTrustTier) }} |
               Created {{ displayDate(submission.createdAt) }}
             </mat-card-subtitle>
           </div>

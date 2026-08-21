@@ -2,7 +2,12 @@
 export type SubmissionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type SubmissionType = 'PRODUCT' | 'PRICE' | 'NUTRITION' | 'AVAILABILITY';
 export type RejectionSeverity = 'MISTAKE' | 'BAD' | 'FRAUD';
-export type SubmissionSortToken = 'createdAt,desc' | 'createdAt,asc' | 'contributorScore,desc';
+export type ContributorTrustTier = 'RISKY' | 'NEW' | 'RELIABLE' | 'TRUSTED' | 'HIGH_TRUST';
+export type SubmissionSortToken =
+  | 'createdAt,desc'
+  | 'createdAt,asc'
+  | 'contributorScore,desc'
+  | 'contributorTrust,desc';
 
 export interface ModerationListQuery {
   status?: SubmissionStatus;
@@ -35,6 +40,7 @@ export interface ModerationSubmissionDto {
   submittedByUserId: number;
   submittedByEmail: string;
   contributorScore: number | null;
+  contributorTrustTier: ContributorTrustTier | null;
   createdAt: string;
   updatedAt: string;
 }

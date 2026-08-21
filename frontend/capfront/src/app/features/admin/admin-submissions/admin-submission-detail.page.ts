@@ -15,6 +15,7 @@ import { catchError, filter, finalize, map, of, switchMap } from 'rxjs';
 import { ProductDetailDto, SupermarketDto } from '../../../core/models/catalog.model';
 import { fieldErrorMap, mapApiError } from '../../../core/models/api-error.model';
 import {
+  ContributorTrustTier,
   ModerationSubmissionDetail,
   SubmissionHistoryEntry,
   SubmissionStatus,
@@ -257,6 +258,21 @@ export class AdminSubmissionDetailPageComponent {
 
   historyLabel(entry: SubmissionHistoryEntry): string {
     return entry.kind === 'EDIT' ? 'Payload edit' : 'Moderation decision';
+  }
+
+  trustTierLabel(tier: ContributorTrustTier | null | undefined): string {
+    switch (tier ?? 'NEW') {
+      case 'RISKY':
+        return 'Risky';
+      case 'RELIABLE':
+        return 'Reliable';
+      case 'TRUSTED':
+        return 'Trusted';
+      case 'HIGH_TRUST':
+        return 'High trust';
+      default:
+        return 'New';
+    }
   }
 
   onApprove(): void {
