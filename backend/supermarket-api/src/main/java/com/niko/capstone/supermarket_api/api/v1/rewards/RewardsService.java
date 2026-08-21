@@ -1,3 +1,4 @@
+// File purpose: Implements business logic for rewards service workflows.
 package com.niko.capstone.supermarket_api.api.v1.rewards;
 
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;

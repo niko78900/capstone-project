@@ -1,3 +1,4 @@
+// File purpose: Wraps Angular client-side service logic for rewards service.
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -18,9 +19,7 @@ export class RewardsService {
   }
 
   getLeaderboard(window: RewardWindow = 'ALL_TIME', limit = 50): Observable<LeaderboardResponse> {
-    const params = new HttpParams()
-      .set('window', window)
-      .set('limit', String(limit));
+    const params = new HttpParams().set('window', window).set('limit', String(limit));
     return this.http.get<LeaderboardResponse>(`${API_BASE}/rewards/leaderboard`, { params });
   }
 

@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular page for admin submissions page.
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -923,13 +924,9 @@ export class AdminSubmissionsPageComponent {
     );
 
     rows.push(
-      this.makeRow(
-        'imageUrl',
-        'Image',
-        '-',
-        this.asText(payload['imageUrl'], 'No image'),
-        { canCompare: false },
-      ),
+      this.makeRow('imageUrl', 'Image', '-', this.asText(payload['imageUrl'], 'No image'), {
+        canCompare: false,
+      }),
     );
 
     return rows;
@@ -1062,7 +1059,11 @@ export class AdminSubmissionsPageComponent {
       this.makeRow(
         'availability',
         'Availability',
-        currentUnavailable ? 'Not available' : currentPrice ? 'Available with verified price' : 'Unknown',
+        currentUnavailable
+          ? 'Not available'
+          : currentPrice
+            ? 'Available with verified price'
+            : 'Unknown',
         available === false ? 'Not available' : available === true ? 'Available' : 'Unknown',
         { canCompare: currentPrice != null || currentUnavailable != null },
       ),
@@ -1077,13 +1078,9 @@ export class AdminSubmissionsPageComponent {
         this.asDateText(payload['observedAt']) ?? 'On approval time',
         { canCompare: false },
       ),
-      this.makeRow(
-        'imageUrl',
-        'Image',
-        '-',
-        this.asText(payload['imageUrl'], 'No image'),
-        { canCompare: false },
-      ),
+      this.makeRow('imageUrl', 'Image', '-', this.asText(payload['imageUrl'], 'No image'), {
+        canCompare: false,
+      }),
     ];
   }
 

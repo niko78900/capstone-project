@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter data models for rewards feature flows.
 enum RewardWindow { allTime, thirtyDays }
 
 extension RewardWindowLabels on RewardWindow {

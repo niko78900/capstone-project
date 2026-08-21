@@ -1,3 +1,4 @@
+// File purpose: Defines Angular TypeScript models for rewards model.
 import { SubmissionType } from './moderation.model';
 
 export type RewardWindow = 'ALL_TIME' | '30D';

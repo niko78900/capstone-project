@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for admin password reset decision request.
 package com.niko.capstone.supermarket_api.api.v1.users.dto;
 
 import jakarta.validation.constraints.Size;

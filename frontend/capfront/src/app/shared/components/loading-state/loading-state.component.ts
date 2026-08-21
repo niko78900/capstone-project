@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular component for loading state component.
 import { Component, input } from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 

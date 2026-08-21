@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for reward window.
 package com.niko.capstone.supermarket_api.api.v1.rewards.dto;
 
 public enum RewardWindow {

@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for ai analysis service test behavior.
 package com.niko.capstone.supermarket_api.api.v1.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -1,3 +1,4 @@
+// File purpose: Provides reusable Flutter helpers for catalog feature workflows.
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 
 enum BarcodeResolutionType { openProductDetail, openSubmitProduct }

@@ -1,3 +1,4 @@
+// File purpose: Provides reusable backend utility behavior for text transliterator.
 package com.niko.capstone.supermarket_api.api.v1.common.util;
 
 import java.util.Map;

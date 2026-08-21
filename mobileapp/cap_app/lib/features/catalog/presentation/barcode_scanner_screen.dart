@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for catalog feature workflows.
 import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

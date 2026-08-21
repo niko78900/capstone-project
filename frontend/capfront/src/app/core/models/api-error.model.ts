@@ -1,3 +1,4 @@
+// File purpose: Defines Angular TypeScript models for api error model.
 import { HttpErrorResponse } from '@angular/common/http';
 
 export interface FieldValidationError {

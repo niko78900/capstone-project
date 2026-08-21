@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for submission response.
 package com.niko.capstone.supermarket_api.api.v1.submissions.dto;
 
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;

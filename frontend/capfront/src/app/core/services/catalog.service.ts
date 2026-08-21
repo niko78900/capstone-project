@@ -1,3 +1,4 @@
+// File purpose: Wraps Angular client-side service logic for catalog service.
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';

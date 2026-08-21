@@ -1,3 +1,4 @@
+<!-- File purpose: Defines the Angular HTML template for app. -->
 @if (isAdminRoute()) {
   <mat-toolbar class="topbar admin-topbar">
     <div class="brand" routerLink="/products">Skopje Price Compass</div>
@@ -24,7 +25,12 @@
         <mat-icon aria-hidden="true">dashboard</mat-icon>
         <span>Overview</span>
       </a>
-      <a mat-button class="side-link" routerLink="/admin/submissions" routerLinkActive="active-link">
+      <a
+        mat-button
+        class="side-link"
+        routerLink="/admin/submissions"
+        routerLinkActive="active-link"
+      >
         <mat-icon aria-hidden="true">fact_check</mat-icon>
         <span>Moderation Queue</span>
       </a>

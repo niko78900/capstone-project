@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter data models for cart feature flows.
 import 'dart:convert';
 
 class CartItem {

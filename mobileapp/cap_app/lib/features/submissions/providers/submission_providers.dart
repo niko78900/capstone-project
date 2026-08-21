@@ -1,3 +1,4 @@
+// File purpose: Manages Riverpod state for Flutter submissions feature flows.
 import 'dart:async';
 import 'dart:convert';
 

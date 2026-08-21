@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for product list page spec behavior.
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -47,7 +48,10 @@ describe('ProductListPageComponent', () => {
   ];
 
   beforeEach(async () => {
-    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', ['getProducts', 'getSupermarkets']);
+    catalogService = jasmine.createSpyObj<CatalogService>('CatalogService', [
+      'getProducts',
+      'getSupermarkets',
+    ]);
     catalogService.getProducts.and.returnValue(of(items));
     catalogService.getSupermarkets.and.returnValue(
       of([

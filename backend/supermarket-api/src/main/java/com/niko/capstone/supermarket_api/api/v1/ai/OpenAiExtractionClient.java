@@ -1,3 +1,4 @@
+// File purpose: Defines backend behavior for open ai extraction client.
 package com.niko.capstone.supermarket_api.api.v1.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;

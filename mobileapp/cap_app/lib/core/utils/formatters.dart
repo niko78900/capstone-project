@@ -1,3 +1,4 @@
+// File purpose: Provides reusable Flutter helpers for  feature workflows.
 import 'package:intl/intl.dart';
 
 class AppFormatters {

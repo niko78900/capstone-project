@@ -1,3 +1,4 @@
+// File purpose: Handles Angular HTTP interception for auth interceptor.
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';

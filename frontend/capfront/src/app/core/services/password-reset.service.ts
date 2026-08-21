@@ -1,3 +1,4 @@
+// File purpose: Wraps Angular client-side service logic for password reset service.
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, tap } from 'rxjs';
@@ -39,7 +40,10 @@ export class PasswordResetService {
     );
   }
 
-  completeStoredReset(email: string, newPassword: string): Observable<PasswordResetCompleteResponse> {
+  completeStoredReset(
+    email: string,
+    newPassword: string,
+  ): Observable<PasswordResetCompleteResponse> {
     const token = this.getStoredToken();
     if (!token) {
       throw new Error('No password reset request is stored in this browser.');
@@ -52,11 +56,13 @@ export class PasswordResetService {
       .pipe(tap(() => this.clearStoredToken()));
   }
 
-  listAdminRequests(query: {
-    status?: PasswordResetStatus;
-    page?: number;
-    size?: number;
-  } = {}): Observable<AdminPasswordResetPageResponse> {
+  listAdminRequests(
+    query: {
+      status?: PasswordResetStatus;
+      page?: number;
+      size?: number;
+    } = {},
+  ): Observable<AdminPasswordResetPageResponse> {
     let params = new HttpParams();
     if (query.status) {
       params = params.set('status', query.status);

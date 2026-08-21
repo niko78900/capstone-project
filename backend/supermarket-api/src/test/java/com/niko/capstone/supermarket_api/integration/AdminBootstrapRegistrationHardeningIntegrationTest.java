@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for admin bootstrap registration hardening integration test behavior.
 package com.niko.capstone.supermarket_api.integration;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;

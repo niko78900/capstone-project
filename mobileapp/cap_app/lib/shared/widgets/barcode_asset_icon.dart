@@ -1,3 +1,4 @@
+// File purpose: Defines reusable Flutter widget behavior for barcode asset icon.
 import 'package:flutter/material.dart';
 
 class BarcodeAssetIcon extends StatelessWidget {

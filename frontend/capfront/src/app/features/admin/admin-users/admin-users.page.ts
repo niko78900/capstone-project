@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular page for admin users page.
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -62,7 +63,9 @@ export class AdminUsersPageComponent {
   readonly pendingCount = computed(
     () => this.requests().filter((request) => request.status === 'PENDING').length,
   );
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalResults() / this.pageSize())));
+  readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.totalResults() / this.pageSize())),
+  );
   readonly paginationSummary = computed(() => {
     const total = this.totalResults();
     if (total === 0) {

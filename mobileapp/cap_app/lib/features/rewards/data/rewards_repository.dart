@@ -1,3 +1,4 @@
+// File purpose: Connects Flutter rewards feature code to backend or local data sources.
 import 'package:cap_app/core/network/api_client.dart';
 import 'package:cap_app/features/rewards/models/rewards_models.dart';
 

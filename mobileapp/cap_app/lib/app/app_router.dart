@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter app shell and navigation behavior.
 import 'package:cap_app/features/auth/presentation/forgot_password_screen.dart';
 import 'package:cap_app/features/auth/presentation/login_screen.dart';
 import 'package:cap_app/features/auth/presentation/register_screen.dart';

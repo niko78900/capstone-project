@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for admin password reset request dto.
 package com.niko.capstone.supermarket_api.api.v1.users.dto;
 
 import com.niko.capstone.supermarket_api.domain.enums.PasswordResetRequestStatus;

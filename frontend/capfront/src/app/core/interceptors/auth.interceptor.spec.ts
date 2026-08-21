@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for auth interceptor spec behavior.
 import { HttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -98,7 +99,10 @@ describe('authInterceptor', () => {
     });
 
     const req = httpMock.expectOne('/api/v1/auth/login');
-    req.flush({ message: 'Invalid email or password' }, { status: 401, statusText: 'Unauthorized' });
+    req.flush(
+      { message: 'Invalid email or password' },
+      { status: 401, statusText: 'Unauthorized' },
+    );
 
     expect(clearSpy).not.toHaveBeenCalled();
     expect(navigateSpy).not.toHaveBeenCalled();

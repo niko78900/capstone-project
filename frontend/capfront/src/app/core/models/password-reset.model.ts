@@ -1,3 +1,4 @@
+// File purpose: Defines Angular TypeScript models for password reset model.
 export type PasswordResetStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'COMPLETED' | 'EXPIRED';
 
 export interface PasswordResetRequestCreateResponse {

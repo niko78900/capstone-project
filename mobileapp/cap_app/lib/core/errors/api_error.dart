@@ -1,3 +1,4 @@
+// File purpose: Normalizes and presents Flutter error behavior.
 class FieldValidationError {
   const FieldValidationError({required this.field, required this.message});
 

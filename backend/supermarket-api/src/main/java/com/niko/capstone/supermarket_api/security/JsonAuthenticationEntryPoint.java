@@ -1,3 +1,4 @@
+// File purpose: Configures or supports authentication and authorization for json authentication entry point.
 package com.niko.capstone.supermarket_api.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;

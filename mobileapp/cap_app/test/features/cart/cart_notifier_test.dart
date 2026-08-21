@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for cart notifier test behavior.
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,20 +20,24 @@ void main() {
     await notifier.addOrIncrement(productId: 1, productName: 'Banana');
     await notifier.addOrIncrement(productId: 1, productName: 'Banana');
 
-    var items = container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
+    var items =
+        container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
     expect(items, hasLength(1));
     expect(items.first.quantity, 2);
 
     await notifier.updateQuantity(productId: 1, quantity: 3.5);
-    items = container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
+    items =
+        container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
     expect(items.first.quantity, 3.5);
 
     await notifier.decrement(1);
-    items = container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
+    items =
+        container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
     expect(items.first.quantity, 2.5);
 
     await notifier.remove(1);
-    items = container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
+    items =
+        container.read(cartNotifierProvider).valueOrNull ?? const <CartItem>[];
     expect(items, isEmpty);
 
     await notifier.addOrIncrement(productId: 2, productName: 'Milk');

@@ -1,3 +1,4 @@
+// File purpose: Configures or supports authentication and authorization for jwt authentication filter.
 package com.niko.capstone.supermarket_api.security;
 
 import jakarta.servlet.FilterChain;

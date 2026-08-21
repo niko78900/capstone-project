@@ -1,4 +1,7 @@
+// File purpose: Implements business logic for password reset service workflows.
 package com.niko.capstone.supermarket_api.api.v1.auth;
+
+import static com.niko.capstone.supermarket_api.api.v1.common.util.TextInputNormalizer.trimToNull;
 
 import com.niko.capstone.supermarket_api.api.v1.auth.dto.PasswordResetCompleteResponse;
 import com.niko.capstone.supermarket_api.api.v1.auth.dto.PasswordResetRequestCreateResponse;
@@ -151,7 +154,7 @@ public class PasswordResetService {
 
         request.setStatus(PasswordResetRequestStatus.APPROVED);
         request.setDecidedByAdminUser(admin);
-        request.setDecisionReason(normalizeOptional(reason));
+        request.setDecisionReason(trimToNull(reason));
         request.setDecisionAt(Instant.now());
         return toAdminDto(passwordResetRequestRepository.save(request));
     }
@@ -166,7 +169,7 @@ public class PasswordResetService {
 
         request.setStatus(PasswordResetRequestStatus.DENIED);
         request.setDecidedByAdminUser(admin);
-        request.setDecisionReason(normalizeOptional(reason));
+        request.setDecisionReason(trimToNull(reason));
         request.setDecisionAt(Instant.now());
         return toAdminDto(passwordResetRequestRepository.save(request));
     }
@@ -187,7 +190,7 @@ public class PasswordResetService {
     }
 
     private PasswordResetRequestEntity findByToken(String token) {
-        String normalized = normalizeOptional(token);
+        String normalized = trimToNull(token);
         if (normalized == null) {
             throw new NotFoundException("Password reset request not found");
         }
@@ -251,11 +254,4 @@ public class PasswordResetService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    private String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 }

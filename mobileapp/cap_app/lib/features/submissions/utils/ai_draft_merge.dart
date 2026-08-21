@@ -1,3 +1,4 @@
+// File purpose: Provides reusable Flutter helpers for submissions feature workflows.
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 
 ProductAiDraftMergedSuggestion mergeAiDraftResponses({

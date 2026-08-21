@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular page for admin login page.
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,7 +18,13 @@ type LoginMode = 'login' | 'requestReset' | 'pendingReset' | 'completeReset';
 
 @Component({
   selector: 'app-admin-login-page',
-  imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
   templateUrl: './admin-login.page.html',
   styleUrl: './admin-login.page.css',
 })
@@ -94,17 +101,12 @@ export class AdminLoginPageComponent {
       .subscribe({
         next: (response) => {
           const redirect = this.route.snapshot.queryParamMap.get('redirect');
-          if (
-            redirect?.startsWith('/admin') &&
-            response.user.role !== 'ADMIN'
-          ) {
+          if (redirect?.startsWith('/admin') && response.user.role !== 'ADMIN') {
             void this.router.navigateByUrl('/products');
             return;
           }
 
-          const roleHome = response.user.role === 'ADMIN'
-            ? '/admin/submissions'
-            : '/products';
+          const roleHome = response.user.role === 'ADMIN' ? '/admin/submissions' : '/products';
           void this.router.navigateByUrl(redirect || roleHome);
         },
         error: (error: unknown) => {

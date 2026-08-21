@@ -1,3 +1,4 @@
+// File purpose: Wraps Angular client-side service logic for auth session service.
 import { Injectable, computed, signal } from '@angular/core';
 import { AuthResponse, AuthSession } from '../models/auth.model';
 

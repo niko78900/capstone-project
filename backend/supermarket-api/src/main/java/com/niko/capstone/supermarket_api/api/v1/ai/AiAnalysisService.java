@@ -1,4 +1,7 @@
+// File purpose: Implements business logic for ai analysis service workflows.
 package com.niko.capstone.supermarket_api.api.v1.ai;
+
+import static com.niko.capstone.supermarket_api.api.v1.common.util.TextInputNormalizer.trimToNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -66,7 +69,7 @@ public class AiAnalysisService {
         SubmissionAiAnalysisEntity analysis = new SubmissionAiAnalysisEntity();
         analysis.setUser(user);
         analysis.setAnalysisType(SubmissionAiAnalysisType.DRAFT);
-        analysis.setSourceImageUrl(normalizeOptional(imageUrl));
+        analysis.setSourceImageUrl(trimToNull(imageUrl));
         analysis.setModel(aiExtractionClient.configuredModel());
         analysis.setPromptVersion(promptVersion);
         analysis.setStatus(SubmissionAiAnalysisStatus.PENDING);
@@ -329,7 +332,7 @@ public class AiAnalysisService {
             return null;
         }
         String imageUrl = textOrNull(payload.path("imageUrl"));
-        return normalizeOptional(imageUrl);
+        return trimToNull(imageUrl);
     }
 
     private String textOrNull(JsonNode node) {
@@ -337,7 +340,7 @@ public class AiAnalysisService {
             return null;
         }
         String text = node.asText(null);
-        return normalizeOptional(text);
+        return trimToNull(text);
     }
 
     private BigDecimal decimalOrNull(JsonNode node) {
@@ -384,13 +387,6 @@ public class AiAnalysisService {
         }
     }
 
-    private String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     private AiExtractionResult extractProductDraftForSubmissionImage(String imageUrl) {
         Path localUpload = resolveLocalUploadPath(imageUrl);
@@ -432,7 +428,7 @@ public class AiAnalysisService {
     }
 
     private String imagePath(String imageUrl) {
-        String normalized = normalizeOptional(imageUrl);
+        String normalized = trimToNull(imageUrl);
         if (normalized == null) {
             return null;
         }

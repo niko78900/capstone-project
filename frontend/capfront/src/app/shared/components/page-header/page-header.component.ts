@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular component for page header component.
 import { Component, input } from '@angular/core';
 
 @Component({

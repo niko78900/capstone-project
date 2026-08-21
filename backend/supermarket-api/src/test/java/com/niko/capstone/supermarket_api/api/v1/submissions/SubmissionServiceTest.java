@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for submission service test behavior.
 package com.niko.capstone.supermarket_api.api.v1.submissions;
 
 import static org.assertj.core.api.Assertions.assertThat;

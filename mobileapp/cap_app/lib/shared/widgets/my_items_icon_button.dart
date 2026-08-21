@@ -1,3 +1,4 @@
+// File purpose: Defines reusable Flutter widget behavior for my items icon button.
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';
 import 'package:flutter/material.dart';

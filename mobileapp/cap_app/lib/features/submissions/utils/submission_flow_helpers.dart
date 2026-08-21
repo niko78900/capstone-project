@@ -1,3 +1,4 @@
+// File purpose: Provides reusable Flutter helpers for submissions feature workflows.
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
@@ -35,6 +36,32 @@ ProductSummaryDto? findExactBarcodeMatch({
   return null;
 }
 
+int? resolveCategoryIdFromHint(String? categoryHint) {
+  final normalizedHint = (categoryHint ?? '').trim().toLowerCase();
+  if (normalizedHint.isEmpty) {
+    return null;
+  }
+  for (final option in categoryOptions) {
+    final candidate = option.name.toLowerCase();
+    if (candidate == normalizedHint ||
+        candidate.contains(normalizedHint) ||
+        normalizedHint.contains(candidate)) {
+      return option.id;
+    }
+  }
+  return null;
+}
+
+int resolveCategoryIdByName(String categoryName) {
+  final normalized = categoryName.trim().toLowerCase();
+  for (final option in categoryOptions) {
+    if (option.name.toLowerCase() == normalized) {
+      return option.id;
+    }
+  }
+  return categoryOptions.first.id;
+}
+
 CategoryHintResolution resolveCategoryHint({
   required String? categoryHint,
   Iterable<ProductAiDraftResponseDto> drafts = const [],
@@ -64,17 +91,16 @@ CategoryHintResolution resolveCategoryHint({
     );
   }
 
-  for (final option in categoryOptions) {
-    final candidate = option.name.toLowerCase();
-    if (candidate == normalizedHint ||
-        candidate.contains(normalizedHint) ||
-        normalizedHint.contains(candidate)) {
-      return CategoryHintResolution(
-        categoryId: option.id,
-        requiresManualSelection: false,
-        message: 'AI suggested ${option.name}. Review before submitting.',
-      );
-    }
+  final categoryId = resolveCategoryIdFromHint(categoryHint);
+  if (categoryId != null) {
+    final option = categoryOptions.firstWhere(
+      (option) => option.id == categoryId,
+    );
+    return CategoryHintResolution(
+      categoryId: categoryId,
+      requiresManualSelection: false,
+      message: 'AI suggested ${option.name}. Review before submitting.',
+    );
   }
 
   return const CategoryHintResolution(

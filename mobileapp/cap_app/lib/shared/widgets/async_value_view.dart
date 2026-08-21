@@ -1,3 +1,4 @@
+// File purpose: Defines reusable Flutter widget behavior for async value view.
 import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:flutter/material.dart';

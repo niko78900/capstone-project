@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for app spec behavior.
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { provideRouter } from '@angular/router';

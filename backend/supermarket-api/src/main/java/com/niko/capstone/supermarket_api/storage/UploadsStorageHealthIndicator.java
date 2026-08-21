@@ -1,3 +1,4 @@
+// File purpose: Manages upload storage behavior for uploads storage health indicator.
 package com.niko.capstone.supermarket_api.storage;
 
 import java.nio.file.Files;

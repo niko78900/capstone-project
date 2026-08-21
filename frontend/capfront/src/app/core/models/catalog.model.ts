@@ -1,3 +1,4 @@
+// File purpose: Defines Angular TypeScript models for catalog model.
 export interface ProductNutritionDto {
   calories: number | null;
   proteinG: number | null;

@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for submissions feature workflows.
 import 'dart:io';
 
 import 'package:cap_app/app/app_router.dart';

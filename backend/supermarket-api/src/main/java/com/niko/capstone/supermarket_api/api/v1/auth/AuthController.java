@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for auth controller operations.
 package com.niko.capstone.supermarket_api.api.v1.auth;
 
 import com.niko.capstone.supermarket_api.api.v1.auth.dto.AuthResponse;

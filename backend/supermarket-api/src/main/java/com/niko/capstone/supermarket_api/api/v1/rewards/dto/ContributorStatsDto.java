@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for contributor stats dto.
 package com.niko.capstone.supermarket_api.api.v1.rewards.dto;
 
 import java.time.Instant;

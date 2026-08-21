@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular component for filter toolbar component.
 import { Component, input } from '@angular/core';
 
 @Component({

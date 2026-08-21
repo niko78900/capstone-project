@@ -1,4 +1,7 @@
+// File purpose: Implements business logic for moderation service workflows.
 package com.niko.capstone.supermarket_api.api.v1.moderation;
+
+import static com.niko.capstone.supermarket_api.api.v1.common.util.TextInputNormalizer.trimToNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -156,7 +159,7 @@ public class ModerationService {
         edit.setAdminUser(admin);
         edit.setBeforePayload(writeJson(beforePayload));
         edit.setAfterPayload(afterPayloadJson);
-        edit.setReason(normalizeOptional(editReason));
+        edit.setReason(trimToNull(editReason));
         edit.setChangedFieldCount(changedFieldCount);
         submissionEditRepository.save(edit);
 
@@ -176,7 +179,7 @@ public class ModerationService {
                     "EDIT",
                     edit.getAdminUser().getEmail(),
                     "PATCH_PAYLOAD",
-                    normalizeOptional(edit.getReason()),
+                    trimToNull(edit.getReason()),
                     edit.getChangedFieldCount(),
                     readPayloadValue(edit.getBeforePayload()),
                     readPayloadValue(edit.getAfterPayload()),
@@ -190,7 +193,7 @@ public class ModerationService {
                     "REVIEW",
                     review.getAdminUser().getEmail(),
                     review.getAction().name(),
-                    normalizeOptional(review.getReason()),
+                    trimToNull(review.getReason()),
                     null,
                     null,
                     null,
@@ -233,7 +236,7 @@ public class ModerationService {
         review.setSubmission(submission);
         review.setAdminUser(admin);
         review.setAction(SubmissionReviewAction.APPROVED);
-        review.setReason(normalizeOptional(reason));
+        review.setReason(trimToNull(reason));
         submissionReviewRepository.save(review);
         rewardsService.recordDecision(submission, review);
 
@@ -261,7 +264,7 @@ public class ModerationService {
         review.setSubmission(submission);
         review.setAdminUser(admin);
         review.setAction(SubmissionReviewAction.REJECTED);
-        review.setReason(normalizeOptional(reason));
+        review.setReason(trimToNull(reason));
         submissionReviewRepository.save(review);
         rewardsService.recordDecision(submission, review);
 
@@ -286,13 +289,13 @@ public class ModerationService {
         SupermarketEntity supermarket = supermarketRepository.findById(payload.supermarketId())
                 .orElseThrow(() -> new NotFoundException("Supermarket not found"));
 
-        String barcode = normalizeOptional(payload.barcode());
+        String barcode = trimToNull(payload.barcode());
         if (isDuplicateBarcode(barcode, sourceProduct)) {
             throw new ConflictException("Duplicate product by barcode");
         }
 
         String displayName = transliterateRequired(payload.name());
-        String displayBrand = normalizeOptional(TextTransliterator.toLatin(payload.brand()));
+        String displayBrand = trimToNull(TextTransliterator.toLatin(payload.brand()));
         String normalizedName = NameNormalizer.normalize(displayName);
         String normalizedBrand = NameNormalizer.normalize(displayBrand);
         if (isDuplicateNameBrand(normalizedName, normalizedBrand, sourceProduct)) {
@@ -309,7 +312,7 @@ public class ModerationService {
         product.setNormalizedName(normalizedName);
         product.setNormalizedBrand(normalizedBrand);
         product.setBarcode(barcode);
-        product.setImageUrl(normalizeOptional(payload.imageUrl()));
+        product.setImageUrl(trimToNull(payload.imageUrl()));
         product.setActive(true);
         ProductEntity savedProduct = productRepository.save(product);
 
@@ -399,7 +402,7 @@ public class ModerationService {
         nutrition.setProteinG(input.proteinG());
         nutrition.setCarbsG(input.carbsG());
         nutrition.setFatG(input.fatG());
-        nutrition.setServingSize(normalizeOptional(input.servingSize()));
+        nutrition.setServingSize(trimToNull(input.servingSize()));
     }
 
     private ModerationSubmissionDto toModerationDto(SubmissionEntity submission) {
@@ -553,7 +556,7 @@ public class ModerationService {
                 .orElseThrow(() -> new NotFoundException("Category not found"));
         supermarketRepository.findById(payload.supermarketId())
                 .orElseThrow(() -> new NotFoundException("Supermarket not found"));
-        String barcode = normalizeOptional(payload.barcode());
+        String barcode = trimToNull(payload.barcode());
         if (isDuplicateBarcode(barcode, sourceProduct)) {
             throw new ConflictException("Duplicate product by barcode");
         }
@@ -622,7 +625,7 @@ public class ModerationService {
                 && input.proteinG() == null
                 && input.carbsG() == null
                 && input.fatG() == null
-                && normalizeOptional(input.servingSize()) == null) {
+                && trimToNull(input.servingSize()) == null) {
             throw new UnprocessableEntityException("Nutrition values are required");
         }
     }
@@ -634,7 +637,7 @@ public class ModerationService {
     }
 
     private void requireText(String value, int maxLength, String missingMessage, String tooLongMessage) {
-        if (normalizeOptional(value) == null) {
+        if (trimToNull(value) == null) {
             throw new UnprocessableEntityException(missingMessage);
         }
         requireMaxLength(value, maxLength, tooLongMessage);
@@ -692,13 +695,6 @@ public class ModerationService {
                 .orElseThrow(() -> new UnauthorizedException("Authenticated user not found"));
     }
 
-    private String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     private String transliterateRequired(String value) {
         if (value == null) {
@@ -712,7 +708,7 @@ public class ModerationService {
             return null;
         }
         return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId)
-                .map(review -> normalizeOptional(review.getReason()))
+                .map(review -> trimToNull(review.getReason()))
                 .orElse(null);
     }
 

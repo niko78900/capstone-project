@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for latest price point.
 package com.niko.capstone.supermarket_api.api.v1.pricing.dto;
 
 import java.math.BigDecimal;

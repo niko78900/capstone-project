@@ -1,3 +1,4 @@
+/* File purpose: Styles the Angular view or shared UI for app. */
 :host {
   display: block;
   min-height: 100vh;

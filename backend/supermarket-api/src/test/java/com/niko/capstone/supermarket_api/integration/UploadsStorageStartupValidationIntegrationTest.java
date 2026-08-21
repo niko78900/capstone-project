@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for uploads storage startup validation integration test behavior.
 package com.niko.capstone.supermarket_api.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;

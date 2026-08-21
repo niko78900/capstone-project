@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular component for market logo component.
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -123,9 +124,7 @@ export class MarketLogoComponent {
   });
 
   readonly initials = computed(() => {
-    const tokens = this.normalizeMarketName(this.supermarketName())
-      .split(' ')
-      .filter(Boolean);
+    const tokens = this.normalizeMarketName(this.supermarketName()).split(' ').filter(Boolean);
     const initials = tokens
       .slice(0, 2)
       .map((token) => token[0])

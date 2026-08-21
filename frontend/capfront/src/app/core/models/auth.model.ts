@@ -1,3 +1,4 @@
+// File purpose: Defines Angular TypeScript models for auth model.
 export type UserRole = 'USER' | 'ADMIN';
 
 export interface AuthUserDto {

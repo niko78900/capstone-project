@@ -1,3 +1,4 @@
+// File purpose: Provides persistence access for import job row repository data.
 package com.niko.capstone.supermarket_api.domain.repository;
 
 import com.niko.capstone.supermarket_api.domain.model.ImportJobRowEntity;

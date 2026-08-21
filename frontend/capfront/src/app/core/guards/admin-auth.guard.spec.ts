@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for admin auth guard spec behavior.
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { adminAuthGuard } from './admin-auth.guard';

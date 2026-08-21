@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for catalog feature workflows.
 import 'dart:async';
 
 import 'package:cap_app/app/app_router.dart';

@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for catalog feature workflows.
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';

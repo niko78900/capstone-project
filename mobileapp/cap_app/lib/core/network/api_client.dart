@@ -1,3 +1,4 @@
+// File purpose: Configures Flutter networking and authenticated API access.
 import 'package:cap_app/core/config/app_config.dart';
 import 'package:cap_app/core/errors/api_error.dart';
 import 'package:cap_app/core/errors/app_exception.dart';

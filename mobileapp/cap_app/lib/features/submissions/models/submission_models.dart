@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter data models for submissions feature flows.
 class CategoryOption {
   const CategoryOption({required this.id, required this.name});
 

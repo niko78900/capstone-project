@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for product ai capture type test behavior.
 package com.niko.capstone.supermarket_api.api.v1.submissions.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;

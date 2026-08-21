@@ -1,3 +1,4 @@
+// File purpose: Implements business logic for auth service workflows.
 package com.niko.capstone.supermarket_api.api.v1.auth;
 
 import com.niko.capstone.supermarket_api.api.v1.auth.dto.AuthResponse;

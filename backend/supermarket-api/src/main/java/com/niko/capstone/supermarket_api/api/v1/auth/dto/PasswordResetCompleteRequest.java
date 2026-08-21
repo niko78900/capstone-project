@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for password reset complete request.
 package com.niko.capstone.supermarket_api.api.v1.auth.dto;
 
 import jakarta.validation.constraints.Email;

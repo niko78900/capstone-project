@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular page for admin dashboard page.
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -5,7 +6,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { mapApiError } from '../../../core/models/api-error.model';
-import { ModerationSubmissionDto, SubmissionSortToken } from '../../../core/models/moderation.model';
+import {
+  ModerationSubmissionDto,
+  SubmissionSortToken,
+} from '../../../core/models/moderation.model';
 import { LeaderboardEntryDto } from '../../../core/models/rewards.model';
 import { ModerationService } from '../../../core/services/moderation.service';
 import { RewardsService } from '../../../core/services/rewards.service';

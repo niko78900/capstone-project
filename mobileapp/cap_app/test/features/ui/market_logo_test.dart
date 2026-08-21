@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for market logo test behavior.
 import 'package:cap_app/shared/widgets/market_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

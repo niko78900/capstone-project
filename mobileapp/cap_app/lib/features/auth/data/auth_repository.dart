@@ -1,3 +1,4 @@
+// File purpose: Connects Flutter auth feature code to backend or local data sources.
 import 'dart:convert';
 
 import 'package:cap_app/core/errors/app_exception.dart';

@@ -1,3 +1,4 @@
+// File purpose: Configures backend infrastructure for async config.
 package com.niko.capstone.supermarket_api.api.v1.common.config;
 
 import org.springframework.context.annotation.Configuration;

@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for cart feature workflows.
 import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:cap_app/features/cart/providers/cart_providers.dart';

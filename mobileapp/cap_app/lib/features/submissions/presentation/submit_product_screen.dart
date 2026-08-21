@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for submissions feature workflows.
 import 'dart:io';
 
 import 'package:cap_app/core/errors/app_exception.dart';
@@ -10,6 +11,7 @@ import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';
 import 'package:cap_app/features/submissions/utils/ai_draft_merge.dart';
+import 'package:cap_app/features/submissions/utils/submission_flow_helpers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:cap_app/shared/widgets/barcode_asset_icon.dart';
 import 'package:flutter/material.dart';
@@ -66,7 +68,7 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     if (initialProduct == null) {
       return;
     }
-    _categoryId = _resolveCategoryId(initialProduct.category);
+    _categoryId = resolveCategoryIdByName(initialProduct.category);
     _nameController.text = initialProduct.name;
     _brandController.text = initialProduct.brand ?? '';
     _barcodeController.text = initialProduct.barcode ?? _barcodeController.text;
@@ -74,14 +76,14 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
     if (initialProduct.prices.isNotEmpty) {
       final firstPrice = initialProduct.prices.first;
       _supermarketId = firstPrice.supermarketId;
-      _priceController.text = _asNumberInput(firstPrice.price);
+      _priceController.text = asNumberInput(firstPrice.price);
     }
     final nutrition = initialProduct.nutrition;
     if (nutrition != null) {
-      _caloriesController.text = _asNumberInput(nutrition.calories);
-      _proteinController.text = _asNumberInput(nutrition.proteinG);
-      _carbsController.text = _asNumberInput(nutrition.carbsG);
-      _fatController.text = _asNumberInput(nutrition.fatG);
+      _caloriesController.text = asNumberInput(nutrition.calories);
+      _proteinController.text = asNumberInput(nutrition.proteinG);
+      _carbsController.text = asNumberInput(nutrition.carbsG);
+      _fatController.text = asNumberInput(nutrition.fatG);
     }
   }
 
@@ -667,37 +669,21 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       _brandController.text = merged.brand!;
     }
     if (merged.priceHint != null) {
-      _priceController.text = _asNumberInput(merged.priceHint);
+      _priceController.text = asNumberInput(merged.priceHint);
     }
     if (merged.nutrition != null) {
-      _caloriesController.text = _asNumberInput(merged.nutrition!.calories);
-      _proteinController.text = _asNumberInput(merged.nutrition!.proteinG);
-      _carbsController.text = _asNumberInput(merged.nutrition!.carbsG);
-      _fatController.text = _asNumberInput(merged.nutrition!.fatG);
+      _caloriesController.text = asNumberInput(merged.nutrition!.calories);
+      _proteinController.text = asNumberInput(merged.nutrition!.proteinG);
+      _carbsController.text = asNumberInput(merged.nutrition!.carbsG);
+      _fatController.text = asNumberInput(merged.nutrition!.fatG);
     }
-    final hintedCategory = _resolveCategoryIdFromHint(merged.categoryHint);
+    final hintedCategory = resolveCategoryIdFromHint(merged.categoryHint);
     if (hintedCategory != null) {
       _categoryId = hintedCategory;
     }
     if (supermarketId != null) {
       _supermarketId = supermarketId;
     }
-  }
-
-  int? _resolveCategoryIdFromHint(String? categoryHint) {
-    final normalizedHint = (categoryHint ?? '').trim().toLowerCase();
-    if (normalizedHint.isEmpty) {
-      return null;
-    }
-    for (final option in categoryOptions) {
-      final candidate = option.name.toLowerCase();
-      if (candidate == normalizedHint ||
-          candidate.contains(normalizedHint) ||
-          normalizedHint.contains(candidate)) {
-        return option.id;
-      }
-    }
-    return null;
   }
 
   Future<int?> _resolveSupermarketIdFromHint(String? supermarketHint) async {
@@ -807,10 +793,10 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       }
     }
 
-    final calories = _toDouble(_caloriesController.text);
-    final proteinG = _toDouble(_proteinController.text);
-    final carbsG = _toDouble(_carbsController.text);
-    final fatG = _toDouble(_fatController.text);
+    final calories = parseOptionalDouble(_caloriesController.text);
+    final proteinG = parseOptionalDouble(_proteinController.text);
+    final carbsG = parseOptionalDouble(_carbsController.text);
+    final fatG = parseOptionalDouble(_fatController.text);
     final hasNutritionInput =
         calories != null || proteinG != null || carbsG != null || fatG != null;
 
@@ -904,34 +890,6 @@ class _SubmitProductScreenState extends ConsumerState<SubmitProductScreen> {
       );
       _fieldErrors = const {};
     });
-  }
-
-  double? _toDouble(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) {
-      return null;
-    }
-    return double.tryParse(trimmed);
-  }
-
-  int _resolveCategoryId(String categoryName) {
-    final normalized = categoryName.trim().toLowerCase();
-    for (final option in categoryOptions) {
-      if (option.name.toLowerCase() == normalized) {
-        return option.id;
-      }
-    }
-    return categoryOptions.first.id;
-  }
-
-  String _asNumberInput(double? value) {
-    if (value == null) {
-      return '';
-    }
-    if (value == value.roundToDouble()) {
-      return value.toInt().toString();
-    }
-    return value.toString();
   }
 
   Future<void> _chooseImageSource() async {

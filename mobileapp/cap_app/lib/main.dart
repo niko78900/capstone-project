@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter behavior for main.
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/features/submissions/providers/submission_providers.dart';

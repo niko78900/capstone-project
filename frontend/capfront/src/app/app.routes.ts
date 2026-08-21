@@ -1,3 +1,4 @@
+// File purpose: Declares Angular routes and lazy-loaded screens.
 import { Routes } from '@angular/router';
 import { adminAuthGuard } from './core/guards/admin-auth.guard';
 import { authGuard } from './core/guards/auth.guard';

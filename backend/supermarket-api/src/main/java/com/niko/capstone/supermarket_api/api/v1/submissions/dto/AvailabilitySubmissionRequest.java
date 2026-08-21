@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for availability submission request.
 package com.niko.capstone.supermarket_api.api.v1.submissions.dto;
 
 import jakarta.validation.constraints.NotNull;

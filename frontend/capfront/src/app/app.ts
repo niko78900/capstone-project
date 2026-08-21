@@ -1,3 +1,4 @@
+// File purpose: Defines Angular behavior for app.
 import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -48,13 +49,9 @@ export class App {
   readonly isDarkTheme = this.theme.isDark;
   readonly isLoginRoute = computed(() => this.currentUrl().startsWith('/login'));
   readonly isAdminRoute = computed(() => this.currentUrl().startsWith('/admin'));
-  readonly themeToggleLabel = computed(() =>
-    this.isDarkTheme() ? 'Light theme' : 'Dark theme',
-  );
+  readonly themeToggleLabel = computed(() => (this.isDarkTheme() ? 'Light theme' : 'Dark theme'));
   readonly navItems = computed<NavItem[]>(() => {
-    const items: NavItem[] = [
-      { label: 'Products', link: '/products', exact: true },
-    ];
+    const items: NavItem[] = [{ label: 'Products', link: '/products', exact: true }];
 
     if (this.isAuthenticated()) {
       items.push({ label: 'Rewards', link: '/rewards', exact: true });

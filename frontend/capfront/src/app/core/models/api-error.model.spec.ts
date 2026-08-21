@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for api error model spec behavior.
 import { HttpErrorResponse } from '@angular/common/http';
 import { fieldErrorMap, mapApiError } from './api-error.model';
 

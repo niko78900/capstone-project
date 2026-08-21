@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter data models for catalog feature flows.
 class ProductNutritionDto {
   const ProductNutritionDto({
     this.calories,

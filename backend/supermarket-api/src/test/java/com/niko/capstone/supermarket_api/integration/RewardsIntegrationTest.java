@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for rewards integration test behavior.
 package com.niko.capstone.supermarket_api.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;

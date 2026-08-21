@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for async value view test behavior.
 import 'dart:io';
 
 import 'package:cap_app/core/errors/app_exception.dart';

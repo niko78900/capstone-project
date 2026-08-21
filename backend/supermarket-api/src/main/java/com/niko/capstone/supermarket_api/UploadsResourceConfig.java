@@ -1,3 +1,4 @@
+// File purpose: Defines backend behavior for uploads resource config.
 package com.niko.capstone.supermarket_api;
 
 import com.niko.capstone.supermarket_api.storage.UploadsStoragePathResolver;

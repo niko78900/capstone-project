@@ -1,3 +1,4 @@
+// File purpose: Maps the submission entity database record to a JPA entity.
 package com.niko.capstone.supermarket_api.domain.model;
 
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;

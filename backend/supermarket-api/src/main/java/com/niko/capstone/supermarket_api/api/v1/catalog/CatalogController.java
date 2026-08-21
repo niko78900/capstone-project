@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for catalog controller operations.
 package com.niko.capstone.supermarket_api.api.v1.catalog;
 
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductDetailDto;

@@ -1,3 +1,4 @@
+// File purpose: Controls Angular route access for admin auth guard.
 import { CanActivateFn, Router } from '@angular/router';
 import { inject } from '@angular/core';
 import { AuthSessionService } from '../services/auth-session.service';

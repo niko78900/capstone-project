@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for admin rewards controller operations.
 package com.niko.capstone.supermarket_api.api.v1.rewards;
 
 import com.niko.capstone.supermarket_api.api.v1.rewards.dto.RecomputeRewardsResponse;

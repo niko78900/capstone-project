@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular component for decision dialog component.
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -14,13 +15,23 @@ export interface DecisionDialogData {
 
 @Component({
   selector: 'app-decision-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
   template: `
-    <h2 mat-dialog-title>{{ data.title || (data.mode === 'approve' ? 'Approve' : 'Reject') + ' submission' }}</h2>
+    <h2 mat-dialog-title>
+      {{ data.title || (data.mode === 'approve' ? 'Approve' : 'Reject') + ' submission' }}
+    </h2>
     <mat-dialog-content>
       <p>Ref {{ data.submissionRef }}</p>
       <mat-form-field appearance="outline" class="reason-field">
-        <mat-label>{{ data.mode === 'reject' ? 'Reason (required)' : 'Reason (optional)' }}</mat-label>
+        <mat-label>{{
+          data.mode === 'reject' ? 'Reason (required)' : 'Reason (optional)'
+        }}</mat-label>
         <textarea matInput rows="4" [formControl]="form.controls.reason"></textarea>
         @if (form.controls.reason.hasError('required')) {
           <mat-error>Reason is required when rejecting a submission.</mat-error>

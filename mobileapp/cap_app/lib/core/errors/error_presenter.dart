@@ -1,3 +1,4 @@
+// File purpose: Normalizes and presents Flutter error behavior.
 import 'dart:async';
 import 'dart:io';
 
@@ -41,10 +42,7 @@ String humanizeErrorMessage(Object error) {
   return 'Something went wrong. Please try again.';
 }
 
-String formatErrorMessageForUi(
-  Object error, {
-  required bool debugModeEnabled,
-}) {
+String formatErrorMessageForUi(Object error, {required bool debugModeEnabled}) {
   final humanized = humanizeErrorMessage(error);
   if (!debugModeEnabled) {
     return humanized;

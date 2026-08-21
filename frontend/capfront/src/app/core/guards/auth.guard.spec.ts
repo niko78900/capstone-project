@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for auth guard spec behavior.
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { authGuard } from './auth.guard';

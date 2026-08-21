@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for ai draft merge test behavior.
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/utils/ai_draft_merge.dart';
 import 'package:flutter_test/flutter_test.dart';

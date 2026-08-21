@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for import job response.
 package com.niko.capstone.supermarket_api.api.v1.imports.dto;
 
 import java.time.Instant;

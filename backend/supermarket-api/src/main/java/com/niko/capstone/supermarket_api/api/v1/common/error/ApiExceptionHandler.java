@@ -1,3 +1,4 @@
+// File purpose: Defines backend behavior for api exception handler.
 package com.niko.capstone.supermarket_api.api.v1.common.error;
 
 import com.niko.capstone.supermarket_api.api.v1.common.exception.ConflictException;

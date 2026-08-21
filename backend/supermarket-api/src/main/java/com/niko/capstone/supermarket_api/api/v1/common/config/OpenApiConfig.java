@@ -1,3 +1,4 @@
+// File purpose: Configures backend infrastructure for open api config.
 package com.niko.capstone.supermarket_api.api.v1.common.config;
 
 import io.swagger.v3.oas.models.OpenAPI;

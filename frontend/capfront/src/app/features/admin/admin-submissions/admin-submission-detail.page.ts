@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular page for admin submission detail page.
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -296,7 +297,9 @@ export class AdminSubmissionDetailPageComponent {
         if (!summary) {
           return;
         }
-        this.submission.update((current) => (current ? { ...current, aiSummary: summary } : current));
+        this.submission.update((current) =>
+          current ? { ...current, aiSummary: summary } : current,
+        );
         this.snackBar.open('AI moderation hints refreshed.', 'Dismiss', { duration: 2600 });
       });
   }

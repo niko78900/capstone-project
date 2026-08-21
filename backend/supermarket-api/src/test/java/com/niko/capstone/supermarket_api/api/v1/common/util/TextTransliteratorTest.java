@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for text transliterator test behavior.
 package com.niko.capstone.supermarket_api.api.v1.common.util;
 
 import static org.assertj.core.api.Assertions.assertThat;

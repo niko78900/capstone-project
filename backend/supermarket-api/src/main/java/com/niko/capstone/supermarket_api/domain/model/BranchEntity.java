@@ -1,3 +1,4 @@
+// File purpose: Maps the branch entity database record to a JPA entity.
 package com.niko.capstone.supermarket_api.domain.model;
 
 import jakarta.persistence.Column;

@@ -1,4 +1,7 @@
+// File purpose: Implements business logic for catalog import service workflows.
 package com.niko.capstone.supermarket_api.api.v1.imports;
+
+import static com.niko.capstone.supermarket_api.api.v1.common.util.TextInputNormalizer.trimToNull;
 
 import com.niko.capstone.supermarket_api.api.v1.common.exception.NotFoundException;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
@@ -172,12 +175,12 @@ public class CatalogImportService {
 
     private RowOutcome processProductRow(CsvRecord row, boolean commit) {
         try {
-            String barcode = normalizeOptional(value(row, "barcode"));
-            String name = normalizeOptional(value(row, "name"));
-            String brand = normalizeOptional(value(row, "brand"));
-            String categoryName = normalizeOptional(value(row, "category"));
-            String supermarketName = normalizeOptional(value(row, "supermarket"));
-            String imageUrl = normalizeOptional(value(row, "imageUrl"));
+            String barcode = trimToNull(value(row, "barcode"));
+            String name = trimToNull(value(row, "name"));
+            String brand = trimToNull(value(row, "brand"));
+            String categoryName = trimToNull(value(row, "category"));
+            String supermarketName = trimToNull(value(row, "supermarket"));
+            String imageUrl = trimToNull(value(row, "imageUrl"));
             BigDecimal price = parseRequiredPrice(value(row, "price"));
             Instant observedAt = parseOptionalInstant(value(row, "observedAt"));
 
@@ -229,7 +232,7 @@ public class CatalogImportService {
             ProductEntity savedProduct = productRepository.save(product);
 
             upsertNutritionIfPresent(savedProduct, nutritionValues);
-            createSystemPrice(savedProduct, supermarket, price, observedAt, normalizeOptional(value(row, "currency")));
+            createSystemPrice(savedProduct, supermarket, price, observedAt, trimToNull(value(row, "currency")));
             return RowOutcome.imported("PRODUCT", savedProduct.getId());
         } catch (Exception ex) {
             return RowOutcome.invalid(ex.getMessage());
@@ -238,13 +241,13 @@ public class CatalogImportService {
 
     private RowOutcome processPriceRow(CsvRecord row, boolean commit) {
         try {
-            String barcode = normalizeOptional(value(row, "productBarcode"));
-            String name = normalizeOptional(value(row, "productName"));
-            String brand = normalizeOptional(value(row, "productBrand"));
-            String supermarketName = normalizeOptional(value(row, "supermarket"));
+            String barcode = trimToNull(value(row, "productBarcode"));
+            String name = trimToNull(value(row, "productName"));
+            String brand = trimToNull(value(row, "productBrand"));
+            String supermarketName = trimToNull(value(row, "supermarket"));
             BigDecimal price = parseRequiredPrice(value(row, "price"));
             Instant observedAt = parseOptionalInstant(value(row, "observedAt"));
-            String currency = normalizeOptional(value(row, "currency"));
+            String currency = trimToNull(value(row, "currency"));
 
             ProductEntity product = resolveProductForPrice(barcode, name, brand);
             if (product == null) {
@@ -308,7 +311,7 @@ public class CatalogImportService {
         BigDecimal proteinG = parseOptionalDecimal(value(row, "proteinG"));
         BigDecimal carbsG = parseOptionalDecimal(value(row, "carbsG"));
         BigDecimal fatG = parseOptionalDecimal(value(row, "fatG"));
-        String servingSize = normalizeOptional(value(row, "servingSize"));
+        String servingSize = trimToNull(value(row, "servingSize"));
         return new NutritionValues(calories, proteinG, carbsG, fatG, servingSize);
     }
 
@@ -429,7 +432,7 @@ public class CatalogImportService {
     }
 
     private BigDecimal parseOptionalDecimal(String raw) {
-        String value = normalizeOptional(raw);
+        String value = trimToNull(raw);
         if (value == null) {
             return null;
         }
@@ -441,7 +444,7 @@ public class CatalogImportService {
     }
 
     private Instant parseOptionalInstant(String raw) {
-        String value = normalizeOptional(raw);
+        String value = trimToNull(raw);
         if (value == null) {
             return null;
         }
@@ -464,13 +467,6 @@ public class CatalogImportService {
                 .orElseThrow(() -> new UnauthorizedException("Authenticated user not found"));
     }
 
-    private String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     private record CsvRecord(int rowNumber, String rawLine, Map<String, String> values) {
     }

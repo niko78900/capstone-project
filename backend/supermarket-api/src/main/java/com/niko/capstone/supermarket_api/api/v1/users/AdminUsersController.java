@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for admin users controller operations.
 package com.niko.capstone.supermarket_api.api.v1.users;
 
 import com.niko.capstone.supermarket_api.api.v1.auth.PasswordResetService;

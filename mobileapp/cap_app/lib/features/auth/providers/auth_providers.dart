@@ -1,3 +1,4 @@
+// File purpose: Manages Riverpod state for Flutter auth feature flows.
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/notifications/local_notifications_service.dart';
 import 'package:cap_app/core/network/network_providers.dart';

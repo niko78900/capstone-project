@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for integration test catalog behavior.
 package com.niko.capstone.supermarket_api.integration;
 
 import com.niko.capstone.supermarket_api.domain.enums.PriceSourceType;

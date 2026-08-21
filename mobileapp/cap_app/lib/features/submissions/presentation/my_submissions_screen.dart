@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for submissions feature workflows.
 import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/catalog/providers/catalog_providers.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';

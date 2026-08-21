@@ -1,3 +1,4 @@
+// File purpose: Defines reusable Flutter widget behavior for android back scope.
 import 'package:cap_app/app/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

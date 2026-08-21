@@ -1,3 +1,4 @@
+// File purpose: Configures Flutter networking and authenticated API access.
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class RememberedCredentials {

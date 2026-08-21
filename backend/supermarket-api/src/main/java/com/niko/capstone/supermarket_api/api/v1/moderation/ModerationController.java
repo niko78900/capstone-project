@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for moderation controller operations.
 package com.niko.capstone.supermarket_api.api.v1.moderation;
 
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;

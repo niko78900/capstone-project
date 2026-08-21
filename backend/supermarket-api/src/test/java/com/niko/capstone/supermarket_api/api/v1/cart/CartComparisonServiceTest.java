@@ -1,3 +1,4 @@
+// File purpose: Covers automated tests for cart comparison service test behavior.
 package com.niko.capstone.supermarket_api.api.v1.cart;
 
 import static org.assertj.core.api.Assertions.assertThat;

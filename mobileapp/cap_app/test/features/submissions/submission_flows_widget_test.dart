@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for submission flows widget test behavior.
 import 'package:cap_app/core/network/api_client.dart';
 import 'package:cap_app/core/network/auth_token_storage.dart';
 import 'package:cap_app/features/catalog/data/catalog_repository.dart';

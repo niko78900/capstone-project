@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for settings feature workflows.
 import 'package:cap_app/features/settings/providers/settings_providers.dart';
 import 'package:cap_app/shared/widgets/android_back_scope.dart';
 import 'package:flutter/material.dart';

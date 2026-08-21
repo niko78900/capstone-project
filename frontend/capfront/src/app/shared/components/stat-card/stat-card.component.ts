@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular component for stat card component.
 import { Component, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 
@@ -7,8 +8,13 @@ type StatTone = 'neutral' | 'pending' | 'approved' | 'rejected';
   selector: 'app-stat-card',
   imports: [MatCardModule],
   template: `
-    <mat-card class="stat-card" appearance="outlined" [class.stat-pending]="tone() === 'pending'"
-      [class.stat-approved]="tone() === 'approved'" [class.stat-rejected]="tone() === 'rejected'">
+    <mat-card
+      class="stat-card"
+      appearance="outlined"
+      [class.stat-pending]="tone() === 'pending'"
+      [class.stat-approved]="tone() === 'approved'"
+      [class.stat-rejected]="tone() === 'rejected'"
+    >
       <p class="label">{{ label() }}</p>
       <p class="value">{{ value() }}</p>
       @if (hint()) {
@@ -53,17 +59,23 @@ type StatTone = 'neutral' | 'pending' | 'approved' | 'rejected';
 
     .stat-pending {
       border-color: rgba(245, 158, 11, 0.42);
-      box-shadow: 0 8px 18px var(--card-shadow), inset 0 1px 0 rgba(245, 158, 11, 0.45);
+      box-shadow:
+        0 8px 18px var(--card-shadow),
+        inset 0 1px 0 rgba(245, 158, 11, 0.45);
     }
 
     .stat-approved {
       border-color: rgba(34, 197, 94, 0.42);
-      box-shadow: 0 8px 18px var(--card-shadow), inset 0 1px 0 rgba(34, 197, 94, 0.5);
+      box-shadow:
+        0 8px 18px var(--card-shadow),
+        inset 0 1px 0 rgba(34, 197, 94, 0.5);
     }
 
     .stat-rejected {
       border-color: rgba(220, 38, 38, 0.42);
-      box-shadow: 0 8px 18px var(--card-shadow), inset 0 1px 0 rgba(220, 38, 38, 0.54);
+      box-shadow:
+        0 8px 18px var(--card-shadow),
+        inset 0 1px 0 rgba(220, 38, 38, 0.54);
     }
   `,
 })

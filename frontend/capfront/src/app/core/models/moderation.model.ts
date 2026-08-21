@@ -1,3 +1,4 @@
+// File purpose: Defines Angular TypeScript models for moderation model.
 export type SubmissionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type SubmissionType = 'PRODUCT' | 'PRICE' | 'NUTRITION' | 'AVAILABILITY';
 export type SubmissionSortToken = 'createdAt,desc' | 'createdAt,asc';

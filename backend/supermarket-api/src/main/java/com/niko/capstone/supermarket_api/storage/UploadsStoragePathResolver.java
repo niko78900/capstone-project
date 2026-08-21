@@ -1,3 +1,4 @@
+// File purpose: Manages upload storage behavior for uploads storage path resolver.
 package com.niko.capstone.supermarket_api.storage;
 
 import java.nio.file.InvalidPathException;

@@ -1,3 +1,4 @@
+// File purpose: Defines reusable Flutter widget behavior for market logo.
 import 'package:flutter/material.dart';
 
 class MarketLogo extends StatelessWidget {

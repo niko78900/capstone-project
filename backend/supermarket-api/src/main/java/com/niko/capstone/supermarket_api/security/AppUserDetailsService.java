@@ -1,3 +1,4 @@
+// File purpose: Implements business logic for app user details service workflows.
 package com.niko.capstone.supermarket_api.security;
 
 import com.niko.capstone.supermarket_api.domain.model.UserEntity;

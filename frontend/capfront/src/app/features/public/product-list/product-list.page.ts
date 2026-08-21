@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular page for product list page.
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -58,7 +59,9 @@ export class ProductListPageComponent {
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly sortControl = new FormControl<ProductSortOrder>('RELEVANCE', { nonNullable: true });
   readonly categoryControl = new FormControl<CategoryFilterValue>('ALL', { nonNullable: true });
-  readonly supermarketControl = new FormControl<SupermarketFilterValue>('ALL', { nonNullable: true });
+  readonly supermarketControl = new FormControl<SupermarketFilterValue>('ALL', {
+    nonNullable: true,
+  });
 
   readonly products = signal<ProductSummaryDto[]>([]);
   readonly supermarkets = signal<SupermarketDto[]>([]);
@@ -143,17 +146,16 @@ export class ProductListPageComponent {
           this.loading.set(true);
           this.errorMessage.set(null);
 
-          return this.catalogService.getProducts(
-            query,
-            supermarketId === 'ALL' ? undefined : supermarketId,
-          ).pipe(
-            catchError((error: unknown) => {
-              const apiError = mapApiError(error);
-              this.errorMessage.set(apiError.message);
-              return of([]);
-            }),
-            finalize(() => this.loading.set(false)),
-          );
+          return this.catalogService
+            .getProducts(query, supermarketId === 'ALL' ? undefined : supermarketId)
+            .pipe(
+              catchError((error: unknown) => {
+                const apiError = mapApiError(error);
+                this.errorMessage.set(apiError.message);
+                return of([]);
+              }),
+              finalize(() => this.loading.set(false)),
+            );
         }),
         takeUntilDestroyed(this.destroyRef),
       )

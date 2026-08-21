@@ -1,3 +1,4 @@
+// File purpose: Defines backend behavior for supermarket api application.
 package com.niko.capstone.supermarket_api;
 
 import org.springframework.boot.SpringApplication;

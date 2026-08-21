@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for submission flow helpers test behavior.
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';
 import 'package:cap_app/features/submissions/utils/submission_flow_helpers.dart';

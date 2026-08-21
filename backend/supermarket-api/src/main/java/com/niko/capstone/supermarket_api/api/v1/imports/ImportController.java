@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for import controller operations.
 package com.niko.capstone.supermarket_api.api.v1.imports;
 
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;

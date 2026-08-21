@@ -1,4 +1,7 @@
+// File purpose: Implements business logic for submission service workflows.
 package com.niko.capstone.supermarket_api.api.v1.submissions;
+
+import static com.niko.capstone.supermarket_api.api.v1.common.util.TextInputNormalizer.trimToNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,13 +73,13 @@ public class SubmissionService {
                 .orElseThrow(() -> new NotFoundException("Supermarket not found"));
         ProductEntity sourceProduct = resolveSourceProduct(request.sourceProductId());
 
-        String barcode = normalizeOptional(request.barcode());
+        String barcode = trimToNull(request.barcode());
         if (isDuplicateBarcode(barcode, sourceProduct)) {
             throw new ConflictException("Duplicate product by barcode");
         }
 
         String displayName = transliterateRequired(request.name());
-        String displayBrand = normalizeOptional(TextTransliterator.toLatin(request.brand()));
+        String displayBrand = trimToNull(TextTransliterator.toLatin(request.brand()));
         String normalizedName = NameNormalizer.normalize(displayName);
         String normalizedBrand = NameNormalizer.normalize(displayBrand);
         if (isDuplicateNameBrand(normalizedName, normalizedBrand, sourceProduct)) {
@@ -91,7 +94,7 @@ public class SubmissionService {
                 barcode,
                 request.supermarketId(),
                 request.price(),
-                normalizeOptional(request.imageUrl()),
+                trimToNull(request.imageUrl()),
                 request.nutrition()
         );
 
@@ -100,7 +103,7 @@ public class SubmissionService {
         submission.setType(SubmissionType.PRODUCT);
         submission.setStatus(SubmissionStatus.PENDING);
         submission.setPayload(writeJson(payload));
-        submission.setNotes(normalizeOptional(TextTransliterator.toLatin(request.notes())));
+        submission.setNotes(trimToNull(TextTransliterator.toLatin(request.notes())));
 
         SubmissionEntity saved = submissionRepository.save(submission);
         aiAnalysisService.analyzeSubmissionAsync(saved.getId());
@@ -129,7 +132,7 @@ public class SubmissionService {
                 request.branchId(),
                 request.price(),
                 request.observedAt() == null ? Instant.now() : request.observedAt(),
-                normalizeOptional(request.imageUrl())
+                trimToNull(request.imageUrl())
         );
 
         SubmissionEntity submission = new SubmissionEntity();
@@ -137,7 +140,7 @@ public class SubmissionService {
         submission.setType(SubmissionType.PRICE);
         submission.setStatus(SubmissionStatus.PENDING);
         submission.setPayload(writeJson(payload));
-        submission.setNotes(normalizeOptional(TextTransliterator.toLatin(request.notes())));
+        submission.setNotes(trimToNull(TextTransliterator.toLatin(request.notes())));
 
         SubmissionEntity saved = submissionRepository.save(submission);
         aiAnalysisService.analyzeSubmissionAsync(saved.getId());
@@ -157,7 +160,7 @@ public class SubmissionService {
                 supermarket.getId(),
                 request.available(),
                 request.observedAt() == null ? Instant.now() : request.observedAt(),
-                normalizeOptional(request.imageUrl())
+                trimToNull(request.imageUrl())
         );
 
         SubmissionEntity submission = new SubmissionEntity();
@@ -165,7 +168,7 @@ public class SubmissionService {
         submission.setType(SubmissionType.AVAILABILITY);
         submission.setStatus(SubmissionStatus.PENDING);
         submission.setPayload(writeJson(payload));
-        submission.setNotes(normalizeOptional(TextTransliterator.toLatin(request.notes())));
+        submission.setNotes(trimToNull(TextTransliterator.toLatin(request.notes())));
 
         SubmissionEntity saved = submissionRepository.save(submission);
         aiAnalysisService.analyzeSubmissionAsync(saved.getId());
@@ -252,7 +255,7 @@ public class SubmissionService {
             return null;
         }
         return submissionReviewRepository.findTopBySubmissionIdOrderByCreatedAtDesc(submissionId)
-                .map(review -> normalizeOptional(review.getReason()))
+                .map(review -> trimToNull(review.getReason()))
                 .orElse(null);
     }
 
@@ -272,13 +275,6 @@ public class SubmissionService {
         }
     }
 
-    private String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     private String transliterateRequired(String value) {
         if (value == null) {

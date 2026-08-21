@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for rewards feature workflows.
 import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/core/utils/formatters.dart';
 import 'package:cap_app/features/auth/models/auth_models.dart';

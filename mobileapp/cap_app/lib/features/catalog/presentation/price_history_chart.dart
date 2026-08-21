@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for catalog feature workflows.
 import 'dart:math' as math;
 
 import 'package:cap_app/core/utils/formatters.dart';

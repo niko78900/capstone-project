@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for moderation submission dto.
 package com.niko.capstone.supermarket_api.api.v1.moderation.dto;
 
 import com.niko.capstone.supermarket_api.domain.enums.SubmissionStatus;

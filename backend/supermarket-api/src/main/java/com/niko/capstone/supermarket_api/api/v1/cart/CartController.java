@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for cart controller operations.
 package com.niko.capstone.supermarket_api.api.v1.cart;
 
 import com.niko.capstone.supermarket_api.api.v1.cart.dto.CartCompareRequest;

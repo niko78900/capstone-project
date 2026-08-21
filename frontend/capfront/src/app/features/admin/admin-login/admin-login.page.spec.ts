@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for admin login page spec behavior.
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';

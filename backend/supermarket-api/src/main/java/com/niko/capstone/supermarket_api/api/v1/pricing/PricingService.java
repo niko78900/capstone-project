@@ -1,3 +1,4 @@
+// File purpose: Implements business logic for pricing service workflows.
 package com.niko.capstone.supermarket_api.api.v1.pricing;
 
 import com.niko.capstone.supermarket_api.api.v1.pricing.dto.LatestPricePoint;

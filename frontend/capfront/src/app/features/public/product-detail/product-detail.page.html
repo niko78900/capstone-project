@@ -1,3 +1,4 @@
+<!-- File purpose: Defines the Angular HTML template for product detail page. -->
 <section class="page">
   <app-page-header
     eyebrow="Public Catalog"
@@ -135,9 +136,15 @@
           }
 
           @if (detail.unavailableMarkets.length > 0) {
-            <div class="unavailable-markets" aria-label="Markets where this product is no longer available">
+            <div
+              class="unavailable-markets"
+              aria-label="Markets where this product is no longer available"
+            >
               <p class="unavailable-title">Marked no longer available</p>
-              @for (market of detail.unavailableMarkets; track market.supermarketId + '-' + market.observedAt) {
+              @for (
+                market of detail.unavailableMarkets;
+                track market.supermarketId + '-' + market.observedAt
+              ) {
                 <div class="unavailable-market">
                   <span class="market-cell">
                     <app-market-logo size="sm" [supermarketName]="market.supermarketName" />

@@ -1,3 +1,4 @@
+// File purpose: Provides persistence access for submission ai analysis repository data.
 package com.niko.capstone.supermarket_api.domain.repository;
 
 import com.niko.capstone.supermarket_api.domain.model.SubmissionAiAnalysisEntity;

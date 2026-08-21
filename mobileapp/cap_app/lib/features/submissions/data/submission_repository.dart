@@ -1,3 +1,4 @@
+// File purpose: Connects Flutter submissions feature code to backend or local data sources.
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/network/api_client.dart';
 import 'package:cap_app/features/submissions/models/submission_models.dart';

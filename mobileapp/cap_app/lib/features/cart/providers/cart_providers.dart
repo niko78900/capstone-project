@@ -1,3 +1,4 @@
+// File purpose: Manages Riverpod state for Flutter cart feature flows.
 import 'package:cap_app/core/network/network_providers.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:cap_app/features/cart/data/cart_repository.dart';

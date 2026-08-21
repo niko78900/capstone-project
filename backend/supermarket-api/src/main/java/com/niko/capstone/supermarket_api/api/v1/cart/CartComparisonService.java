@@ -1,3 +1,4 @@
+// File purpose: Implements business logic for cart comparison service workflows.
 package com.niko.capstone.supermarket_api.api.v1.cart;
 
 import com.niko.capstone.supermarket_api.api.v1.cart.dto.CartCompareRequest;

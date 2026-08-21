@@ -1,4 +1,7 @@
+// File purpose: Implements business logic for catalog service workflows.
 package com.niko.capstone.supermarket_api.api.v1.catalog;
+
+import static com.niko.capstone.supermarket_api.api.v1.common.util.TextInputNormalizer.trimToNull;
 
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductDetailDto;
 import com.niko.capstone.supermarket_api.api.v1.catalog.dto.ProductAvailabilityDto;
@@ -216,7 +219,7 @@ public class CatalogService {
     }
 
     private String resolveImageUrlForClient(String storedImageUrl, String requestBaseUrl) {
-        String normalizedImageUrl = normalizeOptional(storedImageUrl);
+        String normalizedImageUrl = trimToNull(storedImageUrl);
         if (normalizedImageUrl == null) {
             return null;
         }
@@ -252,7 +255,7 @@ public class CatalogService {
             return null;
         }
 
-        String host = normalizeOptional(uri.getHost());
+        String host = trimToNull(uri.getHost());
         if (host == null || !isLikelyLocalAddress(host)) {
             return null;
         }
@@ -275,7 +278,7 @@ public class CatalogService {
     }
 
     private String normalizeUploadsPath(String imageUrl) {
-        String normalized = normalizeOptional(imageUrl);
+        String normalized = trimToNull(imageUrl);
         if (normalized == null) {
             return null;
         }
@@ -289,7 +292,7 @@ public class CatalogService {
     }
 
     private String normalizeBaseUrl(String baseUrl) {
-        String normalized = normalizeOptional(baseUrl);
+        String normalized = trimToNull(baseUrl);
         if (normalized == null) {
             return null;
         }
@@ -299,11 +302,4 @@ public class CatalogService {
         return normalized;
     }
 
-    private String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 }

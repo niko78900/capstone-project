@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter runtime configuration values.
 class AppConfig {
   const AppConfig._();
 

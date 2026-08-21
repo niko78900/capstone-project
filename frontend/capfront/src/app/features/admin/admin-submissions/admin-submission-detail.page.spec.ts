@@ -1,3 +1,4 @@
+// File purpose: Covers Angular tests for admin submission detail page spec behavior.
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';

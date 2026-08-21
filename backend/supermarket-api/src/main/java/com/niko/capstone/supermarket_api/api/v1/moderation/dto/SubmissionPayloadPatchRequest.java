@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for submission payload patch request.
 package com.niko.capstone.supermarket_api.api.v1.moderation.dto;
 
 import jakarta.validation.constraints.NotNull;

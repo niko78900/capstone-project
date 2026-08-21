@@ -1,3 +1,4 @@
+// File purpose: Exposes REST endpoints for submission controller operations.
 package com.niko.capstone.supermarket_api.api.v1.submissions;
 
 import com.niko.capstone.supermarket_api.api.v1.ai.AiAnalysisService;

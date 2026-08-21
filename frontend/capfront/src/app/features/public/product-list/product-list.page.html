@@ -1,3 +1,4 @@
+<!-- File purpose: Defines the Angular HTML template for product list page. -->
 <section class="page">
   <app-page-header
     eyebrow="Public Catalog"
@@ -26,7 +27,13 @@
         aria-label="Search by product or brand"
       />
       @if (hasQuery()) {
-        <button mat-icon-button matSuffix type="button" aria-label="Clear search" (click)="clearSearch()">
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          aria-label="Clear search"
+          (click)="clearSearch()"
+        >
           <mat-icon>close</mat-icon>
         </button>
       } @else {
@@ -48,7 +55,9 @@
       <mat-label>Category</mat-label>
       <mat-select [formControl]="categoryControl">
         @for (category of categoryOptions(); track category) {
-          <mat-option [value]="category">{{ category === 'ALL' ? 'All categories' : category }}</mat-option>
+          <mat-option [value]="category">{{
+            category === 'ALL' ? 'All categories' : category
+          }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
@@ -62,7 +71,6 @@
         }
       </mat-select>
     </mat-form-field>
-
   </app-filter-toolbar>
 
   @if (loading()) {
@@ -77,9 +85,11 @@
     <app-empty-state
       icon="inventory_2"
       title="No products found"
-      [message]="hasQuery()
-        ? 'Try a broader search phrase, clear search, or remove filters.'
-        : 'The catalog is currently empty.'"
+      [message]="
+        hasQuery()
+          ? 'Try a broader search phrase, clear search, or remove filters.'
+          : 'The catalog is currently empty.'
+      "
     >
       @if (hasQuery() || hasActiveFilters()) {
         <button mat-stroked-button type="button" (click)="clearSearch()">Clear search</button>

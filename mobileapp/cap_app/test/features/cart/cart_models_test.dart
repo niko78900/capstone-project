@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for cart models test behavior.
 import 'package:cap_app/features/cart/models/cart_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -59,10 +60,7 @@ void main() {
             'fullCoverage': false,
             'coverageRatio': 0.67,
             'missingItems': [
-              {
-                'productId': 7,
-                'productName': 'Frozen Pizza',
-              },
+              {'productId': 7, 'productName': 'Frozen Pizza'},
             ],
             'lineItems': [],
           },
@@ -77,7 +75,10 @@ void main() {
       expect(response.cheapestEligible, isNull);
       expect(response.rankedSupermarkets.first.fullCoverage, isFalse);
       expect(response.rankedSupermarkets.first.missingItems, hasLength(1));
-      expect(response.rankedSupermarkets.first.missingItems.first.productName, 'Frozen Pizza');
+      expect(
+        response.rankedSupermarkets.first.missingItems.first.productName,
+        'Frozen Pizza',
+      );
       expect(response.diagnostics.partialSupermarkets, 1);
     });
   });

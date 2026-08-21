@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for api error test behavior.
 import 'package:cap_app/core/errors/api_error.dart';
 import 'package:flutter_test/flutter_test.dart';
 

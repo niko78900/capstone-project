@@ -1,8 +1,11 @@
+<!-- File purpose: Defines the Angular HTML template for admin login page. -->
 <section class="login-page">
   <mat-card appearance="outlined">
     <mat-card-header>
       <mat-card-title>Log In</mat-card-title>
-      <mat-card-subtitle>Access catalog, rewards, and role-based moderation tools.</mat-card-subtitle>
+      <mat-card-subtitle
+        >Access catalog, rewards, and role-based moderation tools.</mat-card-subtitle
+      >
     </mat-card-header>
 
     <mat-card-content>
@@ -14,12 +17,7 @@
         <form [formGroup]="form" (ngSubmit)="submit()" class="form">
           <mat-form-field appearance="outline">
             <mat-label>Email</mat-label>
-            <input
-              matInput
-              type="email"
-              formControlName="email"
-              aria-label="Email"
-            />
+            <input matInput type="email" formControlName="email" aria-label="Email" />
             @if (form.controls.email.touched && form.controls.email.invalid) {
               <mat-error>Email is required and must be valid.</mat-error>
             }
@@ -30,12 +28,7 @@
 
           <mat-form-field appearance="outline">
             <mat-label>Password</mat-label>
-            <input
-              matInput
-              type="password"
-              formControlName="password"
-              aria-label="Password"
-            />
+            <input matInput type="password" formControlName="password" aria-label="Password" />
             @if (form.controls.password.touched && form.controls.password.invalid) {
               <mat-error>Password must be at least 8 characters.</mat-error>
             }
@@ -69,7 +62,9 @@
               formControlName="email"
               aria-label="Password reset email"
             />
-            @if (resetRequestForm.controls.email.touched && resetRequestForm.controls.email.invalid) {
+            @if (
+              resetRequestForm.controls.email.touched && resetRequestForm.controls.email.invalid
+            ) {
               <mat-error>Email is required and must be valid.</mat-error>
             }
           </mat-form-field>
@@ -120,7 +115,9 @@
               formControlName="email"
               aria-label="Reset confirmation email"
             />
-            @if (resetCompleteForm.controls.email.touched && resetCompleteForm.controls.email.invalid) {
+            @if (
+              resetCompleteForm.controls.email.touched && resetCompleteForm.controls.email.invalid
+            ) {
               <mat-error>Email is required and must be valid.</mat-error>
             }
           </mat-form-field>
@@ -133,7 +130,10 @@
               formControlName="newPassword"
               aria-label="New password"
             />
-            @if (resetCompleteForm.controls.newPassword.touched && resetCompleteForm.controls.newPassword.invalid) {
+            @if (
+              resetCompleteForm.controls.newPassword.touched &&
+              resetCompleteForm.controls.newPassword.invalid
+            ) {
               <mat-error>Password must be at least 8 characters.</mat-error>
             }
           </mat-form-field>
@@ -146,7 +146,10 @@
               formControlName="confirmPassword"
               aria-label="Confirm new password"
             />
-            @if (resetCompleteForm.controls.confirmPassword.touched && resetCompleteForm.controls.confirmPassword.invalid) {
+            @if (
+              resetCompleteForm.controls.confirmPassword.touched &&
+              resetCompleteForm.controls.confirmPassword.invalid
+            ) {
               <mat-error>Please confirm the new password.</mat-error>
             }
           </mat-form-field>

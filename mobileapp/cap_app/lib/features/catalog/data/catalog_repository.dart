@@ -1,3 +1,4 @@
+// File purpose: Connects Flutter catalog feature code to backend or local data sources.
 import 'package:cap_app/core/network/api_client.dart';
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 

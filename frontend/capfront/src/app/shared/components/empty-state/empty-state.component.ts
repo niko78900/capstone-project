@@ -1,3 +1,4 @@
+// File purpose: Implements the Angular component for empty state component.
 import { Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 

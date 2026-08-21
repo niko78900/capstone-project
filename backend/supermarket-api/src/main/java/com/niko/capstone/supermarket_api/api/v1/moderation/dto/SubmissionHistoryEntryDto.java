@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for submission history entry dto.
 package com.niko.capstone.supermarket_api.api.v1.moderation.dto;
 
 import java.time.Instant;

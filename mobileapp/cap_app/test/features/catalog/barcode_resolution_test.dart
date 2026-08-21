@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for barcode resolution test behavior.
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:cap_app/features/catalog/utils/barcode_resolution.dart';
 import 'package:flutter_test/flutter_test.dart';

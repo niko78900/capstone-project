@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for rewards models test behavior.
 import 'package:cap_app/features/rewards/models/rewards_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 

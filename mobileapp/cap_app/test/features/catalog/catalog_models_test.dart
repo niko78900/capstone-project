@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for catalog models test behavior.
 import 'package:cap_app/features/catalog/models/catalog_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,3 +1,4 @@
+// File purpose: Covers Flutter tests for auth and catalog widget test behavior.
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/core/notifications/local_notifications_service.dart';
 import 'package:cap_app/core/network/auth_token_storage.dart';

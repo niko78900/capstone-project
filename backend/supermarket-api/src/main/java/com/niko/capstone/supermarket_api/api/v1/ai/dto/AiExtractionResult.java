@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for ai extraction result.
 package com.niko.capstone.supermarket_api.api.v1.ai.dto;
 
 import com.niko.capstone.supermarket_api.api.v1.submissions.dto.SubmissionNutritionInput;

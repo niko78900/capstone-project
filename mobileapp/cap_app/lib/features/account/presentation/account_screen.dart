@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for account feature workflows.
 import 'package:cap_app/app/app_router.dart';
 import 'package:cap_app/features/auth/providers/auth_providers.dart';
 import 'package:flutter/material.dart';

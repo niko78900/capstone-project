@@ -1,3 +1,4 @@
+// File purpose: Wraps Angular client-side service logic for theme service.
 import { DOCUMENT } from '@angular/common';
 import { Inject, Injectable, computed, signal } from '@angular/core';
 

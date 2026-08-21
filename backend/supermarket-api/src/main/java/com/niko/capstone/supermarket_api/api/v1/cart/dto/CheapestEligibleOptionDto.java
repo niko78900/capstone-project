@@ -1,3 +1,4 @@
+// File purpose: Defines the API payload shape for cheapest eligible option dto.
 package com.niko.capstone.supermarket_api.api.v1.cart.dto;
 
 import java.math.BigDecimal;

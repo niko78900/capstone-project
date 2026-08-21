@@ -1,3 +1,4 @@
+// File purpose: Defines backend behavior for field validation error.
 package com.niko.capstone.supermarket_api.api.v1.common.error;
 
 public record FieldValidationError(

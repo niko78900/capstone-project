@@ -1,3 +1,4 @@
+// File purpose: Manages upload storage behavior for uploads storage initializer.
 package com.niko.capstone.supermarket_api.storage;
 
 import jakarta.annotation.PostConstruct;

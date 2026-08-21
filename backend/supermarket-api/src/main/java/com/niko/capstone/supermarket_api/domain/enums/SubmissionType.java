@@ -1,3 +1,4 @@
+// File purpose: Defines allowed enum values for submission type.
 package com.niko.capstone.supermarket_api.domain.enums;
 
 public enum SubmissionType {

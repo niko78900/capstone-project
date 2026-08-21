@@ -1,3 +1,4 @@
+// File purpose: Renders Flutter UI for submissions feature workflows.
 import 'package:cap_app/core/errors/app_exception.dart';
 import 'package:cap_app/core/errors/error_presenter.dart';
 import 'package:cap_app/features/settings/providers/settings_providers.dart';

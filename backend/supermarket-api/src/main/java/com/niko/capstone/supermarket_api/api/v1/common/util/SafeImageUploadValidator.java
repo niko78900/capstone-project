@@ -1,3 +1,4 @@
+// File purpose: Provides reusable backend utility behavior for safe image upload validator.
 package com.niko.capstone.supermarket_api.api.v1.common.util;
 
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnprocessableEntityException;

@@ -1,3 +1,4 @@
+// File purpose: Defines Flutter data models for auth feature flows.
 enum PasswordResetStatus {
   pending,
   approved,
