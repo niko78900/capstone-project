@@ -1,8 +1,9 @@
 // File purpose: Implements business logic for rewards service workflows.
 package com.niko.capstone.supermarket_api.api.v1.rewards;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import static com.niko.capstone.supermarket_api.api.v1.common.util.SubmissionDecisionPayloads.hasEvidenceImage;
+import static com.niko.capstone.supermarket_api.api.v1.common.util.SubmissionDecisionPayloads.metadataJson;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.common.exception.UnauthorizedException;
 import com.niko.capstone.supermarket_api.api.v1.rewards.dto.ContributorScoreEventDto;
@@ -217,7 +218,7 @@ public class RewardsService {
         if (review.getAction() == SubmissionReviewAction.REJECTED) {
             RejectionSeverity severity = rejectionSeverityOrDefault(review.getRejectionSeverity());
             int points = pointsForRejection(severity);
-            return new ScoreDecision(points, metadataJson(Map.of(
+            return new ScoreDecision(points, metadataJson(objectMapper, Map.of(
                     "basePoints", points,
                     "imageBonus", 0,
                     "rejectionSeverity", severity.name()
@@ -225,8 +226,8 @@ public class RewardsService {
         }
 
         int basePoints = pointsForApproval(submission.getType());
-        int imageBonus = hasEvidenceImage(submission) ? 2 : 0;
-        return new ScoreDecision(basePoints + imageBonus, metadataJson(Map.of(
+        int imageBonus = hasEvidenceImage(objectMapper, submission.getPayload()) ? 2 : 0;
+        return new ScoreDecision(basePoints + imageBonus, metadataJson(objectMapper, Map.of(
                 "basePoints", basePoints,
                 "imageBonus", imageBonus
         )));
@@ -251,27 +252,6 @@ public class RewardsService {
 
     private RejectionSeverity rejectionSeverityOrDefault(RejectionSeverity severity) {
         return severity == null ? RejectionSeverity.BAD : severity;
-    }
-
-    private boolean hasEvidenceImage(SubmissionEntity submission) {
-        if (submission.getPayload() == null || submission.getPayload().isBlank()) {
-            return false;
-        }
-        try {
-            JsonNode payload = objectMapper.readTree(submission.getPayload());
-            JsonNode imageUrl = payload.path("imageUrl");
-            return imageUrl.isTextual() && !imageUrl.asText().trim().isEmpty();
-        } catch (JsonProcessingException ex) {
-            return false;
-        }
-    }
-
-    private String metadataJson(Map<String, Object> metadata) {
-        try {
-            return objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException ex) {
-            return null;
-        }
     }
 
     private String buildEventType(SubmissionType type, SubmissionReviewAction action) {

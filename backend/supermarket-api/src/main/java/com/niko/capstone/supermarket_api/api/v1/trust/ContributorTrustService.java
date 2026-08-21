@@ -1,8 +1,9 @@
 // File purpose: Implements private contributor trust scoring for moderation prioritization.
 package com.niko.capstone.supermarket_api.api.v1.trust;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import static com.niko.capstone.supermarket_api.api.v1.common.util.SubmissionDecisionPayloads.hasEvidenceImage;
+import static com.niko.capstone.supermarket_api.api.v1.common.util.SubmissionDecisionPayloads.metadataJson;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.niko.capstone.supermarket_api.api.v1.trust.dto.RecomputeTrustResponse;
 import com.niko.capstone.supermarket_api.domain.enums.ContributorTrustTier;
@@ -141,41 +142,20 @@ public class ContributorTrustService {
                 case BAD -> -25;
                 case FRAUD -> -100;
             };
-            return new TrustDecision(delta, false, metadataJson(Map.of(
+            return new TrustDecision(delta, false, metadataJson(objectMapper, Map.of(
                     "rejectionSeverity", severity.name()
             )));
         }
 
-        boolean hasEvidenceImage = hasEvidenceImage(submission);
+        boolean hasEvidenceImage = hasEvidenceImage(objectMapper, submission.getPayload());
         int delta = hasEvidenceImage ? 10 : 8;
-        return new TrustDecision(delta, hasEvidenceImage, metadataJson(Map.of(
+        return new TrustDecision(delta, hasEvidenceImage, metadataJson(objectMapper, Map.of(
                 "imageBonusApplied", hasEvidenceImage
         )));
     }
 
     private RejectionSeverity rejectionSeverityOrDefault(RejectionSeverity severity) {
         return severity == null ? RejectionSeverity.BAD : severity;
-    }
-
-    private boolean hasEvidenceImage(SubmissionEntity submission) {
-        if (submission.getPayload() == null || submission.getPayload().isBlank()) {
-            return false;
-        }
-        try {
-            JsonNode payload = objectMapper.readTree(submission.getPayload());
-            JsonNode imageUrl = payload.path("imageUrl");
-            return imageUrl.isTextual() && !imageUrl.asText().trim().isEmpty();
-        } catch (JsonProcessingException ex) {
-            return false;
-        }
-    }
-
-    private String metadataJson(Map<String, Object> metadata) {
-        try {
-            return objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException ex) {
-            return null;
-        }
     }
 
     private String buildEventType(SubmissionEntity submission, SubmissionReviewEntity review) {
